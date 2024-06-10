@@ -521,6 +521,7 @@ class ColBERT(nn.Sequential, FitMixin):
             features = self.tokenize(sentences_batch)
             # Remplace the second token by the document prefix
             #TODO: Do this in a prettier way. Okay we cannot directly add the text in the string, but this is not robust (multiple ids, ...)
+            #e.g : # features["input_ids"] = torch.cat((features["input_ids"][:, :1], self.document_prefix_id, ids[:, 1:]), dim=1) ; features["attention_mask"] = torch.cat((features["attention_mask"][:, :1], torch.ones((features["attention_mask"].shape[0], 1), dtype=torch.int8), features["attention_mask"][:, 1:]), dim=1)
             features["input_ids"][:, 1] = self.document_prefix_id
             if self.device.type == "hpu":
                 if "input_ids" in features:
