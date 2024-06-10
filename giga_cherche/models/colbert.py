@@ -184,6 +184,8 @@ class ColBERT(nn.Sequential, FitMixin):
         self._model_card_vars = {}
         self._model_card_text = None
         self._model_config = {}
+        self.query_prefix = query_prefix
+        self.document_prefix = document_prefix
         if use_auth_token is not None:
             warnings.warn(
                 "The `use_auth_token` argument is deprecated and will be removed in v3 of SentenceTransformers.",
@@ -333,8 +335,8 @@ class ColBERT(nn.Sequential, FitMixin):
         # TODO: do this more cleanly
         if(len(modules) < 2):
             logger.warning(f"The checkpoint does not contain a linear projection layer. Adding one with output dimensions ({hidden_size}, {embedding_size})")
-            # Linear layer from hidden_size to target embedding_size
-            linear_layer = LinearProjection(hidden_size, embedding_size)
+            # Linear layer from hidden_size to target embedding_size, original ColBERT does not have bias in the linear layer
+            linear_layer = LinearProjection(hidden_size, embedding_size, bias=False)
             # modules.append(nn.Linear(hidden_size, embedding_size, bias=False))
             modules.append(linear_layer)
         if modules is not None and not isinstance(modules, OrderedDict):
@@ -380,6 +382,9 @@ class ColBERT(nn.Sequential, FitMixin):
         # Pass the model to the model card data for later use in generating a model card upon saving this model
         self.model_card_data.register_model(self)
 
+        self.document_prefix_id = self.tokenizer.convert_tokens_to_ids(self.document_prefix)
+        self.query_prefix_id = self.tokenizer.convert_tokens_to_ids(self.query_prefix)
+
     def encode(
         self,
         sentences: Union[str, List[str]],
@@ -392,7 +397,7 @@ class ColBERT(nn.Sequential, FitMixin):
         convert_to_numpy: bool = True,
         convert_to_tensor: bool = False,
         device: str = None,
-        normalize_embeddings: bool = False,
+        normalize_embeddings: bool = True, # Normalize the embedding to compute cosine similarity
     ) -> Union[List[Tensor], ndarray, Tensor]:
         """
         Computes sentence embeddings.
@@ -507,11 +512,16 @@ class ColBERT(nn.Sequential, FitMixin):
 
         all_embeddings = []
         length_sorted_idx = np.argsort([-self._text_length(sen) for sen in sentences])
+        # Add placeholder for the document prefix
+        sentences = [". " + sentence for sentence in sentences]
         sentences_sorted = [sentences[idx] for idx in length_sorted_idx]
-
+        
         for start_index in trange(0, len(sentences), batch_size, desc="Batches", disable=not show_progress_bar):
             sentences_batch = sentences_sorted[start_index : start_index + batch_size]
             features = self.tokenize(sentences_batch)
+            # Remplace the second token by the document prefix
+            #TODO: Do this in a prettier way. Okay we cannot directly add the text in the string, but this is not robust (multiple ids, ...)
+            features["input_ids"][:, 1] = self.document_prefix_id
             if self.device.type == "hpu":
                 if "input_ids" in features:
                     curr_tokenize_len = features["input_ids"].shape
@@ -558,7 +568,9 @@ class ColBERT(nn.Sequential, FitMixin):
                     last_mask_id = len(attention) - 1
                     while last_mask_id > 0 and attention[last_mask_id].item() == 0:
                         last_mask_id -= 1
-
+                    #TODO: normalize at the list level/use the module Normalize?
+                    if normalize_embeddings:
+                        token_emb = torch.nn.functional.normalize(token_emb[0 : last_mask_id + 1], p=2, dim=1)
                     embeddings.append(token_emb[0 : last_mask_id + 1])
                 # elif output_value is None:  # Return all outputs
                 #     embeddings = []
@@ -568,8 +580,8 @@ class ColBERT(nn.Sequential, FitMixin):
                 # else:  # Sentence embeddings
                 #     embeddings = out_features[output_value]
                 #     embeddings = embeddings.detach()
-                #     if normalize_embeddings:
-                #         embeddings = torch.nn.functional.normalize(embeddings, p=2, dim=1)
+                    # if normalize_embeddings:
+                    #     embeddings = torch.nn.functional.normalize(embeddings, p=2, dim=1)
 
                 # fixes for #522 and #487 to avoid oom problems on gpu with large datasets
                 if convert_to_numpy:
@@ -758,7 +770,7 @@ class ColBERT(nn.Sequential, FitMixin):
 
         for device_id in target_devices:
             p = ctx.Process(
-                target=SentenceTransformer._encode_multi_process_worker,
+                target=ColBERT._encode_multi_process_worker,
                 args=(device_id, self, input_queue, output_queue),
                 daemon=True,
             )
@@ -1047,6 +1059,8 @@ class ColBERT(nn.Sequential, FitMixin):
             config["prompts"] = self.prompts
             config["default_prompt_name"] = self.default_prompt_name
             config["similarity_fn_name"] = self.similarity_fn_name
+            config["query_prefix"] = self.query_prefix
+            config["document_prefix"] = self.document_prefix
             json.dump(config, fOut, indent=2)
 
         # Save modules
@@ -1413,6 +1427,12 @@ class ColBERT(nn.Sequential, FitMixin):
                 self.prompts = self._model_config.get("prompts", {})
             if not self.default_prompt_name:
                 self.default_prompt_name = self._model_config.get("default_prompt_name", None)
+            # Loading the query/document prefixes
+            if "query_prefix" in self._model_config:
+                self.query_prefix = self._model_config["query_prefix"]
+            if "document_prefix" in self._model_config:
+                self.document_prefix = self._model_config["document_prefix"]
+
 
         # Check if a readme exists
         model_card_path = load_file_path(
