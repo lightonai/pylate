@@ -1,0 +1,5 @@
+# Modeling
+sentence_transformers
+# Training
+datasets
+accelerate
