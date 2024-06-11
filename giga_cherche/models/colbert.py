@@ -384,6 +384,9 @@ class ColBERT(nn.Sequential, FitMixin):
 
         self.document_prefix_id = self.tokenizer.convert_tokens_to_ids(self.document_prefix)
         self.query_prefix_id = self.tokenizer.convert_tokens_to_ids(self.query_prefix)
+        # We are using the mask token as the padding token for padding queries
+        self.tokenizer.pad_token_id = self.tokenizer.mask_token_id 
+        # self.max_seq_length = 32
 
     def encode(
         self,
@@ -398,6 +401,7 @@ class ColBERT(nn.Sequential, FitMixin):
         convert_to_tensor: bool = False,
         device: str = None,
         normalize_embeddings: bool = True, # Normalize the embedding to compute cosine similarity
+        is_query: bool = True,
     ) -> Union[List[Tensor], ndarray, Tensor]:
         """
         Computes sentence embeddings.
@@ -428,6 +432,7 @@ class ColBERT(nn.Sequential, FitMixin):
             device (str, optional): Which :class:`torch.device` to use for the computation. Defaults to None.
             normalize_embeddings (bool, optional): Whether to normalize returned vectors to have length 1. In that case,
                 the faster dot-product (util.dot_score) instead of cosine similarity can be used. Defaults to False.
+            is_query (bool, optional): Whether the input sentences are queries. If True, the query prefix is added to the input sentences and the sequence is padded, else the document prefix is added and the sequence is not padded. Defaults to True.
 
         Returns:
             Union[List[Tensor], ndarray, Tensor]: By default, a 2d numpy array with shape [num_inputs, output_dimension] is returned.
@@ -512,17 +517,12 @@ class ColBERT(nn.Sequential, FitMixin):
 
         all_embeddings = []
         length_sorted_idx = np.argsort([-self._text_length(sen) for sen in sentences])
-        # Add placeholder for the document prefix
-        sentences = [". " + sentence for sentence in sentences]
         sentences_sorted = [sentences[idx] for idx in length_sorted_idx]
         
         for start_index in trange(0, len(sentences), batch_size, desc="Batches", disable=not show_progress_bar):
             sentences_batch = sentences_sorted[start_index : start_index + batch_size]
-            features = self.tokenize(sentences_batch)
-            # Remplace the second token by the document prefix
-            #TODO: Do this in a prettier way. Okay we cannot directly add the text in the string, but this is not robust (multiple ids, ...)
-            #e.g : # features["input_ids"] = torch.cat((features["input_ids"][:, :1], self.document_prefix_id, ids[:, 1:]), dim=1) ; features["attention_mask"] = torch.cat((features["attention_mask"][:, :1], torch.ones((features["attention_mask"].shape[0], 1), dtype=torch.int8), features["attention_mask"][:, 1:]), dim=1)
-            features["input_ids"][:, 1] = self.document_prefix_id
+            features = self.tokenize(sentences_batch, is_query=is_query)
+            
             if self.device.type == "hpu":
                 if "input_ids" in features:
                     curr_tokenize_len = features["input_ids"].shape
@@ -946,7 +946,7 @@ class ColBERT(nn.Sequential, FitMixin):
 
         return None
 
-    def tokenize(self, texts: Union[List[str], List[Dict], List[Tuple[str, str]]]) -> Dict[str, Tensor]:
+    def tokenize(self, texts: Union[List[str], List[Dict], List[Tuple[str, str]]], is_query: Optional[bool] = True) -> Dict[str, Tensor]:
         """
         Tokenizes the texts.
 
@@ -957,6 +957,27 @@ class ColBERT(nn.Sequential, FitMixin):
             Dict[str, Tensor]: A dictionary of tensors with the tokenized texts. Common keys are "input_ids",
                 "attention_mask", and "token_type_ids".
         """
+        # Add placeholder for the document/query prefix
+        texts = [". " + text for text in texts]
+        if(is_query):
+            features = self._first_module().tokenize(texts, padding="max_length")
+            # Remplace the second token by the query prefix
+            #TODO: Do this in a prettier way. Okay we cannot directly add the text in the string, but this is not robust (multiple ids, ...)
+            #e.g : # features["input_ids"] = torch.cat((features["input_ids"][:, :1], self.document_query_id, ids[:, 1:]), dim=1) ; features["attention_mask"] = torch.cat((features["attention_mask"][:, :1], torch.ones((features["attention_mask"].shape[0], 1), dtype=torch.int8), features["attention_mask"][:, 1:]), dim=1)
+            features["input_ids"][:, 1] = self.query_prefix_id
+            # Since we cannot feed a target size to the tokenize function, truncate to query_max_seq_length
+            features["input_ids"] = features["input_ids"][:, :32]
+            features["attention_mask"] = features["attention_mask"][:, :32]
+            features["token_type_ids"] = features["token_type_ids"][:, :32]
+            # Fill the attention mask with ones (we attend to "padding" tokens)
+            features["attention_mask"].fill_(1)
+            # features["attention_mask"] = torch.ones_like(features["attention_mask"])
+            return features
+        else:
+            features = self._first_module().tokenize(texts)
+            # Remplace the second token by the document prefix
+            features["input_ids"][:, 1] = self.document_prefix_id
+            return features
         return self._first_module().tokenize(texts)
 
     def get_sentence_features(self, *features):
