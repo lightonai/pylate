@@ -472,7 +472,7 @@ class ColBERT(nn.Sequential, FitMixin):
         if convert_to_tensor:
             convert_to_numpy = False
 
-        #TODO: why was this here? we are not using the output_value anymore here
+        #TODO: We cannot convert to tensor/numpy for token embeddings as they are not the same size
         # if output_value != "sentence_embedding":
         # convert_to_tensor = False
         # convert_to_numpy = False
@@ -568,11 +568,14 @@ class ColBERT(nn.Sequential, FitMixin):
                 embeddings = []
                 for token_emb, attention in zip(out_features["token_embeddings"], out_features["attention_mask"]):
                     last_mask_id = len(attention) - 1
+                    #TODO: isn't torch.sum(attention) better?
                     while last_mask_id > 0 and attention[last_mask_id].item() == 0:
                         last_mask_id -= 1
                     #TODO: normalize at the list level/use the module Normalize?
                     if normalize_embeddings:
+                        # token_emb = torch.nn.functional.normalize(token_emb, p=2, dim=1)
                         token_emb = torch.nn.functional.normalize(token_emb[0 : last_mask_id + 1], p=2, dim=1)
+                    # embeddings.append(token_emb)
                     embeddings.append(token_emb[0 : last_mask_id + 1])
                 # elif output_value is None:  # Return all outputs
                 #     embeddings = []
