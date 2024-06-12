@@ -11,9 +11,15 @@ from sentence_transformers.SentenceTransformer import SentenceTransformer
 class ColBERTSimilarityMetric(Enum):
     """The metric for the contrastive loss"""
 
-    def COLBERT_SIMILARITY(x, y):
+    def COLBERT_SIMILARITY(x, y, mask):
         # a num_queries, s queries_seqlen, h hidden_size, b num_documents, t documents_seqlen
         # Take make along the t axis (get max similarity for each query tokens), then sum over all the query tokens
+        simis = torch.einsum("ash,bth->abst", x, y)
+        expanded_mask = mask.unsqueeze(0).unsqueeze(2)
+        expanded_mask = expanded_mask.expand(simis.size(0), -1, simis.size(2), -1)
+        simis[expanded_mask == 0] = float("-inf")
+        return simis.max(axis=3).values.sum(axis=2)
+   
         return torch.einsum("ash,bth->abst", x, y).max(axis=3).values.sum(axis=2)
 
 
@@ -91,11 +97,11 @@ class ColBERTLoss(nn.Module):
 
     def forward(self, sentence_features: Iterable[Dict[str, Tensor]], labels: Tensor):
         reps = [self.model(sentence_feature)["token_embeddings"] for sentence_feature in sentence_features]
+        masks = [sentence_feature["attention_mask"] for sentence_feature in sentence_features]
         # rep_anchor, rep_pos, rep_neg = reps
-        # print(rep_anchor.shape, rep_pos.shape, rep_neg.shape)
         # distances = self.distance_metric(rep_anchor, (torch.cat((rep_pos, rep_neg))))
         # Compute the distances between the anchor (0) and the positives (1) as well as the negatives (2)
-        distances = torch.cat([self.distance_metric(reps[0], rep) for rep in reps[1:]], dim=1)
+        distances = torch.cat([self.distance_metric(reps[0], rep, mask) for rep, mask in zip(reps[1:], masks[1:])], dim=1)
         # create corresponding labels
         # labels = torch.arange(0, rep_anchor.size(0), device=rep_anchor.device)
         labels = torch.arange(0, reps[0].size(0), device=reps[0].device)

@@ -147,27 +147,36 @@ class ColBERTTripletEvaluator(SentenceEvaluator):
                 self.anchors,
                 batch_size=self.batch_size,
                 show_progress_bar=self.show_progress_bar,
-                convert_to_numpy=True,
+                convert_to_tensor=True,
+                is_query=True,
             )
             embeddings_positives = model.encode(
                 self.positives,
                 batch_size=self.batch_size,
                 show_progress_bar=self.show_progress_bar,
-                convert_to_numpy=True,
+                convert_to_numpy=False,
+                is_query=False,
             )
             embeddings_negatives = model.encode(
                 self.negatives,
                 batch_size=self.batch_size,
                 show_progress_bar=self.show_progress_bar,
-                convert_to_numpy=True,
+                convert_to_numpy=False,
+                is_query=False,
             )
+
+        # TODO: do the padding in encode()?
+        embeddings_positives = torch.nn.utils.rnn.pad_sequence(embeddings_positives, batch_first=True, padding_value=0)
+        attention_mask_positives = (embeddings_positives.sum(dim=-1) != 0).float()
+   
+        embeddings_negatives = torch.nn.utils.rnn.pad_sequence(embeddings_negatives, batch_first=True, padding_value=0)
+        attention_mask_negatives = (embeddings_negatives.sum(dim=-1) != 0).float()
 
         # Colbert distance
         # pos_colbert_distances = colbert_pairwise_score(embeddings_anchors, embeddings_positives)
         # neg_colbert_distances = colbert_pairwise_score(embeddings_anchors, embeddings_negatives)
-        
-        pos_colbert_distances_full = colbert_score(embeddings_anchors, embeddings_positives)
-        neg_colbert_distances_full = colbert_score(embeddings_anchors, embeddings_negatives)
+        pos_colbert_distances_full = colbert_score(embeddings_anchors, embeddings_positives, attention_mask_positives)
+        neg_colbert_distances_full = colbert_score(embeddings_anchors, embeddings_negatives, attention_mask_negatives)
         distances_full = torch.cat([pos_colbert_distances_full, neg_colbert_distances_full], dim=1)
         # print(distances_full.shape)
         labels = np.arange(0, len(embeddings_anchors))
@@ -176,7 +185,6 @@ class ColBERTTripletEvaluator(SentenceEvaluator):
         # print(ranks.shape)
         ranks = ranks[np.arange(len(labels)), labels]
         ranks = ranks + 1
-        print(ranks)
         pos_colbert_distances = pos_colbert_distances_full.diag()
         neg_colbert_distances = neg_colbert_distances_full.diag()
 
@@ -214,8 +222,6 @@ class ColBERTTripletEvaluator(SentenceEvaluator):
             "hits@5": np.sum(ranks <= 5)/len(ranks),
             "hits@10": np.sum(ranks <= 10)/len(ranks),
             "hits@25": np.sum(ranks <= 25)/len(ranks),
-            "mean_pos_simi": pos_colbert_distances.mean(),
-            "mean_neg_simi": neg_colbert_distances.mean(),
             # "max_accuracy": max(accuracy_cos, accuracy_manhattan, accuracy_euclidean),
         }
         metrics = self.prefix_name_to_metrics(metrics, self.name)

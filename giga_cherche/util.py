@@ -21,7 +21,7 @@ from sentence_transformers.util import _convert_to_tensor, _convert_to_batch_ten
 logger = logging.getLogger(__name__)
 
 
-def colbert_score(a: Union[list, np.ndarray, Tensor], b: Union[list, np.ndarray, Tensor]) -> Tensor:
+def colbert_score(a: Union[list, np.ndarray, Tensor], b: Union[list, np.ndarray, Tensor], mask: Tensor) -> Tensor:
     """
     Computes the ColBERT score for all pairs of vectors in a and b.
 
@@ -34,7 +34,13 @@ def colbert_score(a: Union[list, np.ndarray, Tensor], b: Union[list, np.ndarray,
     """
     a = _convert_to_batch_tensor(a)
     b = _convert_to_batch_tensor(b)
-
+    simis = torch.einsum("ash,bth->abst", a, b)
+    expanded_mask = mask.unsqueeze(0).unsqueeze(2)
+    expanded_mask = expanded_mask.expand(simis.size(0), -1, simis.size(2), -1)
+    # simis = simis * (expanded_mask)
+    simis[expanded_mask == 0] = float("-inf")
+    # print(simis)
+    return simis.max(axis=3).values.sum(axis=2)
     return torch.einsum("ash,bth->abst", a, b).max(axis=3).values.sum(axis=2)
 
 
