@@ -472,9 +472,10 @@ class ColBERT(nn.Sequential, FitMixin):
         if convert_to_tensor:
             convert_to_numpy = False
 
+        #TODO: why was this here? we are not using the output_value anymore here
         # if output_value != "sentence_embedding":
-        convert_to_tensor = False
-        convert_to_numpy = False
+        # convert_to_tensor = False
+        # convert_to_numpy = False
 
         input_was_string = False
         if isinstance(sentences, str) or not hasattr(
@@ -586,7 +587,9 @@ class ColBERT(nn.Sequential, FitMixin):
 
                 # fixes for #522 and #487 to avoid oom problems on gpu with large datasets
                 if convert_to_numpy:
-                    embeddings = embeddings.cpu()
+                    #TODO: convert to tensor to do all .cpu() at once?
+                    embeddings = [emb.cpu() for emb in embeddings]
+                    # embeddings = embeddings.cpu()
 
                 all_embeddings.extend(embeddings)
 
