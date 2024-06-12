@@ -20,7 +20,7 @@ class ColBERTDataCollator:
         columns = list(features[0].keys())
 
         # We should always be able to return a loss, label or not:
-        batch = {}
+        batch = {"return_loss": True}
 
         if "dataset_name" in columns:
             columns.remove("dataset_name")
