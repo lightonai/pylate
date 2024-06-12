@@ -190,7 +190,7 @@ class ColBERTTripletEvaluator(SentenceEvaluator):
 
         for idx in range(len(pos_colbert_distances)):
             num_triplets += 1
-            if pos_colbert_distances[idx] < neg_colbert_distances[idx]:
+            if pos_colbert_distances[idx] > neg_colbert_distances[idx]:
                 num_correct_colbert_triplets += 1
         
         accuracy_colbert = num_correct_colbert_triplets / num_triplets
