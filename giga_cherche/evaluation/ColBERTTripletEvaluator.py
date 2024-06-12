@@ -4,13 +4,14 @@ import os
 from contextlib import nullcontext
 from typing import TYPE_CHECKING, Dict, List, Optional, Union
 
+from giga_cherche.util import colbert_pairwise_score, colbert_score
 import numpy as np
-from sklearn.metrics.pairwise import paired_cosine_distances, paired_euclidean_distances, paired_manhattan_distances
-from giga_cherche.util import colbert_pairwise_score
 
 from sentence_transformers.evaluation.SentenceEvaluator import SentenceEvaluator
 from sentence_transformers.readers import InputExample
 from sentence_transformers.similarity_functions import SimilarityFunction
+
+import torch
 
 if TYPE_CHECKING:
     from sentence_transformers.SentenceTransformer import SentenceTransformer
@@ -162,15 +163,26 @@ class ColBERTTripletEvaluator(SentenceEvaluator):
             )
 
         # Colbert distance
-        # print(embeddings_anchors)
-        pos_colbert_distance = colbert_pairwise_score(embeddings_anchors, embeddings_positives)
-        neg_colbert_distances = colbert_pairwise_score(embeddings_anchors, embeddings_negatives)
-        # print(pos_colbert_distance)
-        # print(neg_colbert_distances)
+        # pos_colbert_distances = colbert_pairwise_score(embeddings_anchors, embeddings_positives)
+        # neg_colbert_distances = colbert_pairwise_score(embeddings_anchors, embeddings_negatives)
+        
+        pos_colbert_distances_full = colbert_score(embeddings_anchors, embeddings_positives)
+        neg_colbert_distances_full = colbert_score(embeddings_anchors, embeddings_negatives)
+        distances_full = torch.cat([pos_colbert_distances_full, neg_colbert_distances_full], dim=1)
+        # print(distances_full.shape)
+        labels = np.arange(0, len(embeddings_anchors))
+        indices = np.argsort(-distances_full.cpu().numpy(), axis=1)
+        ranks = indices.argsort()
+        # print(ranks.shape)
+        ranks = ranks[np.arange(len(labels)), labels]
+        ranks = ranks + 1
+        print(ranks)
+        pos_colbert_distances = pos_colbert_distances_full.diag()
+        neg_colbert_distances = neg_colbert_distances_full.diag()
 
-        for idx in range(len(pos_colbert_distance)):
+        for idx in range(len(pos_colbert_distances)):
             num_triplets += 1
-            if pos_colbert_distance[idx] < neg_colbert_distances[idx]:
+            if pos_colbert_distances[idx] < neg_colbert_distances[idx]:
                 num_correct_colbert_triplets += 1
         
         accuracy_colbert = num_correct_colbert_triplets / num_triplets
@@ -198,6 +210,12 @@ class ColBERTTripletEvaluator(SentenceEvaluator):
         }.get(self.main_distance_function, "max_accuracy")
         metrics = {
             "colbert_accuracy": accuracy_colbert,
+            "hits@1": np.sum(ranks <= 1)/len(ranks),
+            "hits@5": np.sum(ranks <= 5)/len(ranks),
+            "hits@10": np.sum(ranks <= 10)/len(ranks),
+            "hits@25": np.sum(ranks <= 25)/len(ranks),
+            "mean_pos_simi": pos_colbert_distances.mean(),
+            "mean_neg_simi": neg_colbert_distances.mean(),
             # "max_accuracy": max(accuracy_cos, accuracy_manhattan, accuracy_euclidean),
         }
         metrics = self.prefix_name_to_metrics(metrics, self.name)
