@@ -123,6 +123,8 @@ class ColBERT(nn.Sequential, FitMixin):
             Add the prefix to the inputs.
         truncation
             Truncate the inputs to the encoder max lengths or use sliding window encoding.
+        query_length
+            The length of the query to pad to with mask tokens.
 
     Example:
         ::
@@ -174,6 +176,7 @@ class ColBERT(nn.Sequential, FitMixin):
         document_prefix: Optional[str] = "[D] ",
         add_special_tokens: Optional[bool] = True,
         truncation: Optional[bool] = True,
+        query_length: Optional[int] = 32,
     ):
         # Note: self._load_sbert_model can also update `self.prompts` and `self.default_prompt_name`
         self.prompts = prompts or {}
@@ -186,6 +189,7 @@ class ColBERT(nn.Sequential, FitMixin):
         self._model_config = {}
         self.query_prefix = query_prefix
         self.document_prefix = document_prefix
+        self.query_length = query_length
         if use_auth_token is not None:
             warnings.warn(
                 "The `use_auth_token` argument is deprecated and will be removed in v3 of SentenceTransformers.",
@@ -386,7 +390,7 @@ class ColBERT(nn.Sequential, FitMixin):
         self.query_prefix_id = self.tokenizer.convert_tokens_to_ids(self.query_prefix)
         # We are using the mask token as the padding token for padding queries
         self.tokenizer.pad_token_id = self.tokenizer.mask_token_id 
-        # self.max_seq_length = 32
+
 
     def encode(
         self,
@@ -573,9 +577,7 @@ class ColBERT(nn.Sequential, FitMixin):
                         last_mask_id -= 1
                     #TODO: normalize at the list level/use the module Normalize?
                     if normalize_embeddings:
-                        # token_emb = torch.nn.functional.normalize(token_emb, p=2, dim=1)
                         token_emb = torch.nn.functional.normalize(token_emb[0 : last_mask_id + 1], p=2, dim=1)
-                    # embeddings.append(token_emb)
                     embeddings.append(token_emb[0 : last_mask_id + 1])
                 # elif output_value is None:  # Return all outputs
                 #     embeddings = []
@@ -963,6 +965,7 @@ class ColBERT(nn.Sequential, FitMixin):
             Dict[str, Tensor]: A dictionary of tensors with the tokenized texts. Common keys are "input_ids",
                 "attention_mask", and "token_type_ids".
         """
+        #TODO: add the skiplist
         # Add placeholder for the document/query prefix
         texts = [". " + text for text in texts]
         if(is_query):
@@ -972,9 +975,9 @@ class ColBERT(nn.Sequential, FitMixin):
             #e.g : # features["input_ids"] = torch.cat((features["input_ids"][:, :1], self.document_query_id, ids[:, 1:]), dim=1) ; features["attention_mask"] = torch.cat((features["attention_mask"][:, :1], torch.ones((features["attention_mask"].shape[0], 1), dtype=torch.int8), features["attention_mask"][:, 1:]), dim=1)
             features["input_ids"][:, 1] = self.query_prefix_id
             # Since we cannot feed a target size to the tokenize function, truncate to query_max_seq_length
-            features["input_ids"] = features["input_ids"][:, :32]
-            features["attention_mask"] = features["attention_mask"][:, :32]
-            features["token_type_ids"] = features["token_type_ids"][:, :32]
+            features["input_ids"] = features["input_ids"][:, :self.query_length]
+            features["attention_mask"] = features["attention_mask"][:, :self.query_length]
+            features["token_type_ids"] = features["token_type_ids"][:, :self.query_length]
             # Fill the attention mask with ones (we attend to "padding" tokens)
             features["attention_mask"].fill_(1)
             # features["attention_mask"] = torch.ones_like(features["attention_mask"])
@@ -1089,6 +1092,7 @@ class ColBERT(nn.Sequential, FitMixin):
             config["similarity_fn_name"] = self.similarity_fn_name
             config["query_prefix"] = self.query_prefix
             config["document_prefix"] = self.document_prefix
+            config["query_length"] = self.query_length
             json.dump(config, fOut, indent=2)
 
         # Save modules
@@ -1455,11 +1459,13 @@ class ColBERT(nn.Sequential, FitMixin):
                 self.prompts = self._model_config.get("prompts", {})
             if not self.default_prompt_name:
                 self.default_prompt_name = self._model_config.get("default_prompt_name", None)
-            # Loading the query/document prefixes
+            # Loading the query/document prefixes and query_length
             if "query_prefix" in self._model_config:
                 self.query_prefix = self._model_config["query_prefix"]
             if "document_prefix" in self._model_config:
                 self.document_prefix = self._model_config["document_prefix"]
+            if "query_length" in self._model_config:
+                self.query_length = self._model_config["query_length"]
 
 
         # Check if a readme exists
