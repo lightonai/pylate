@@ -39,7 +39,7 @@ def colbert_score(a: Union[list, np.ndarray, Tensor], b: Union[list, np.ndarray,
     expanded_mask = mask.unsqueeze(0).unsqueeze(2)
     expanded_mask = expanded_mask.expand(simis.size(0), -1, simis.size(2), -1)
     # Masking out the padding tokens
-    simis[expanded_mask == 0] = float("-inf")
+    simis[expanded_mask == 0] = 0
     return simis.max(axis=3).values.sum(axis=2)
     return torch.einsum("ash,bth->abst", a, b).max(axis=3).values.sum(axis=2)
 

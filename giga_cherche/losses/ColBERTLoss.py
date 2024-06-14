@@ -19,7 +19,7 @@ class ColBERTSimilarityMetric(Enum):
         expanded_mask = mask.unsqueeze(0).unsqueeze(2)
         expanded_mask = expanded_mask.expand(simis.size(0), -1, simis.size(2), -1)
         # Masking out the padding tokens
-        simis[expanded_mask == 0] = float("-inf")
+        simis[expanded_mask == 0] = 0
         return simis.max(axis=3).values.sum(axis=2)
    
         return torch.einsum("ash,bth->abst", x, y).max(axis=3).values.sum(axis=2)
@@ -98,7 +98,7 @@ class ColBERTLoss(nn.Module):
         return {"distance_metric": distance_metric_name, "size_average": self.size_average}
 
     def forward(self, sentence_features: Iterable[Dict[str, Tensor]], labels: Tensor):
-        reps = [self.model(sentence_feature)["token_embeddings"] for sentence_feature in sentence_features]
+        reps = [torch.nn.functional.normalize(self.model(sentence_feature)["token_embeddings"], p=2, dim=-1) for sentence_feature in sentence_features]
         masks = [sentence_feature["attention_mask"] for sentence_feature in sentence_features]
         # rep_anchor, rep_pos, rep_neg = reps
         # distances = self.distance_metric(rep_anchor, (torch.cat((rep_pos, rep_neg))))
