@@ -3,3 +3,5 @@ sentence_transformers
 # Training
 datasets
 accelerate
+# Indexing
+weaviate-client
