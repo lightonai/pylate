@@ -53,7 +53,7 @@ from torch import Tensor, device, nn
 from tqdm.autonotebook import trange
 from transformers import is_torch_npu_available
 
-from .linear_projection import LinearProjection
+from .LinearProjection import LinearProjection
 
 logger = logging.getLogger(__name__)
 
