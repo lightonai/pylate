@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 def colbert_score(
-    a: Union[list, np.ndarray, Tensor], b: Union[list, np.ndarray, Tensor], mask: Tensor
+    a: Union[list, np.ndarray, Tensor], b: Union[list, np.ndarray, Tensor]
 ) -> Tensor:
     """
     Computes the ColBERT score for all pairs of vectors in a and b.
@@ -24,13 +24,8 @@ def colbert_score(
     """
     a = _convert_to_batch_tensor(a)
     b = _convert_to_batch_tensor(b)
-    simis = torch.einsum("ash,bth->abst", a, b)
-    # Expanding mask from (num_doc, doc_len) to (num_query, num_doc, query_len, doc_len)
-    expanded_mask = mask.unsqueeze(0).unsqueeze(2)
-    expanded_mask = expanded_mask.expand(simis.size(0), -1, simis.size(2), -1)
-    # Masking out the padding tokens
-    simis[expanded_mask == 0] = 0
-    return simis.max(axis=3).values.sum(axis=2)
+    # a num_queries, s queries_seqlen, h hidden_size, b num_documents, t documents_seqlen
+    # Take make along the t axis (get max similarity for each query tokens), then sum over all the query tokens
     return torch.einsum("ash,bth->abst", a, b).max(axis=3).values.sum(axis=2)
 
 

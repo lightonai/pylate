@@ -187,24 +187,23 @@ class ColBERTTripletEvaluator(SentenceEvaluator):
             )
 
         # TODO: do the padding in encode()?
+        # We do not need masking as padding with zeros vectors yields 0 cosine similarity
         embeddings_positives = torch.nn.utils.rnn.pad_sequence(
             embeddings_positives, batch_first=True, padding_value=0
         )
-        attention_mask_positives = (embeddings_positives.sum(dim=-1) != 0).float()
 
         embeddings_negatives = torch.nn.utils.rnn.pad_sequence(
             embeddings_negatives, batch_first=True, padding_value=0
         )
-        attention_mask_negatives = (embeddings_negatives.sum(dim=-1) != 0).float()
 
         # Colbert distance
         # pos_colbert_distances = colbert_pairwise_score(embeddings_anchors, embeddings_positives)
         # neg_colbert_distances = colbert_pairwise_score(embeddings_anchors, embeddings_negatives)
         pos_colbert_distances_full = colbert_score(
-            embeddings_anchors, embeddings_positives, attention_mask_positives
+            embeddings_anchors, embeddings_positives
         )
         neg_colbert_distances_full = colbert_score(
-            embeddings_anchors, embeddings_negatives, attention_mask_negatives
+            embeddings_anchors, embeddings_negatives
         )
         distances_full = torch.cat(
             [pos_colbert_distances_full, neg_colbert_distances_full], dim=1
