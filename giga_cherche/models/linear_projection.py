@@ -5,7 +5,6 @@ from typing import Dict
 import torch
 from torch import Tensor, nn
 
-from sentence_transformers.util import fullname, import_from_string
 
 # This is a linear projection layer, very similar to the Dense layer without a non-linearity and could be merged to it
 class LinearProjection(nn.Module):
@@ -17,7 +16,7 @@ class LinearProjection(nn.Module):
         out_features: Size of the output embeddings after linear projection
         init_weight: Initial value for the matrix of the linear layer
         init_bias: Initial value for the bias of the linear layer
-    
+
 
     Args:
         in_features: Size of the input dimension
@@ -84,6 +83,9 @@ class LinearProjection(nn.Module):
 
         model = LinearProjection(**config)
         model.load_state_dict(
-            torch.load(os.path.join(input_path, "pytorch_model.bin"), map_location=torch.device("cpu"))
+            torch.load(
+                os.path.join(input_path, "pytorch_model.bin"),
+                map_location=torch.device("cpu"),
+            )
         )
         return model

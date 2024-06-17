@@ -1,27 +1,17 @@
-import functools
-import heapq
-import importlib
 import logging
-import os
-import queue
-import sys
-from contextlib import contextmanager
-from typing import Callable, Dict, List, Literal, Optional, Union, overload
+from typing import Union
 
 import numpy as np
-import requests
 import torch
-from huggingface_hub import hf_hub_download, snapshot_download
-from torch import Tensor, device
-from tqdm.autonotebook import tqdm
-from transformers import is_torch_npu_available
-
-from sentence_transformers.util import _convert_to_tensor, _convert_to_batch_tensor
+from sentence_transformers.util import _convert_to_batch_tensor
+from torch import Tensor
 
 logger = logging.getLogger(__name__)
 
 
-def colbert_score(a: Union[list, np.ndarray, Tensor], b: Union[list, np.ndarray, Tensor], mask: Tensor) -> Tensor:
+def colbert_score(
+    a: Union[list, np.ndarray, Tensor], b: Union[list, np.ndarray, Tensor], mask: Tensor
+) -> Tensor:
     """
     Computes the ColBERT score for all pairs of vectors in a and b.
 
@@ -44,7 +34,7 @@ def colbert_score(a: Union[list, np.ndarray, Tensor], b: Union[list, np.ndarray,
     return torch.einsum("ash,bth->abst", a, b).max(axis=3).values.sum(axis=2)
 
 
-#TODO: only compute the diagonal
+# TODO: only compute the diagonal
 def colbert_pairwise_score(a: Tensor, b: Tensor) -> Tensor:
     """
     Computes the pairwise ColBERT score colbert_score(a[i], b[i]).

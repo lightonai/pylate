@@ -11,7 +11,18 @@ import warnings
 from collections import OrderedDict
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Literal, Optional, Tuple, Union, overload
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Literal,
+    Optional,
+    Tuple,
+    Union,
+    overload,
+)
 
 import numpy as np
 import torch
@@ -19,18 +30,15 @@ import torch.multiprocessing as mp
 import transformers
 from huggingface_hub import HfApi
 from numpy import ndarray
-from torch import Tensor, device, nn
-from tqdm.autonotebook import trange
-from transformers import is_torch_npu_available
-
-from sentence_transformers.model_card import SentenceTransformerModelCardData, generate_model_card
-from sentence_transformers.similarity_functions import SimilarityFunction
-
-from . import __MODEL_HUB_ORGANIZATION__, __version__
 from sentence_transformers.evaluation import SentenceEvaluator
 from sentence_transformers.fit_mixin import FitMixin
-from sentence_transformers.models import Normalize, Transformer
+from sentence_transformers.model_card import (
+    SentenceTransformerModelCardData,
+    generate_model_card,
+)
+from sentence_transformers.models import Normalize, Pooling, Transformer
 from sentence_transformers.quantization import quantize_embeddings
+from sentence_transformers.similarity_functions import SimilarityFunction
 from sentence_transformers.util import (
     batch_to_device,
     get_device_name,
@@ -39,12 +47,18 @@ from sentence_transformers.util import (
     load_dir_path,
     load_file_path,
     save_to_hub_args_decorator,
-    truncate_embeddings,
 )
+from torch import Tensor, device, nn
+from tqdm.autonotebook import trange
+from transformers import is_torch_npu_available
 
-from .LinearProjection import LinearProjection
+from .linear_projection import LinearProjection
 
 logger = logging.getLogger(__name__)
+
+
+__version__ = "3.0.0"
+__MODEL_HUB_ORGANIZATION__ = "sentence-transformers"
 
 
 class ColBERT(nn.Sequential, FitMixin):
@@ -209,12 +223,16 @@ class ColBERT(nn.Sequential, FitMixin):
             logger.info("Use pytorch device_name: {}".format(device))
 
         if device == "hpu" and importlib.util.find_spec("optimum") is not None:
-            from optimum.habana.transformers.modeling_utils import adapt_transformers_to_gaudi
+            from optimum.habana.transformers.modeling_utils import (
+                adapt_transformers_to_gaudi,
+            )
 
             adapt_transformers_to_gaudi()
 
         if model_name_or_path is not None and model_name_or_path != "":
-            logger.info("Load pretrained SentenceTransformer: {}".format(model_name_or_path))
+            logger.info(
+                "Load pretrained SentenceTransformer: {}".format(model_name_or_path)
+            )
 
             # Old models that don't belong to any organization
             basic_transformer_models = [
@@ -293,13 +311,18 @@ class ColBERT(nn.Sequential, FitMixin):
                 if "\\" in model_name_or_path or model_name_or_path.count("/") > 1:
                     raise ValueError("Path {} not found".format(model_name_or_path))
 
-                if "/" not in model_name_or_path and model_name_or_path.lower() not in basic_transformer_models:
+                if (
+                    "/" not in model_name_or_path
+                    and model_name_or_path.lower() not in basic_transformer_models
+                ):
                     # A model from sentence-transformers
-                    model_name_or_path = __MODEL_HUB_ORGANIZATION__ + "/" + model_name_or_path
-             # This is actually not required as even if we pool, we also return the unpooled embeddings and are using these
-            if(model_kwargs is None):
+                    model_name_or_path = (
+                        __MODEL_HUB_ORGANIZATION__ + "/" + model_name_or_path
+                    )
+            # This is actually not required as even if we pool, we also return the unpooled embeddings and are using these
+            if model_kwargs is None:
                 model_kwargs = {}
-            model_kwargs["add_pooling_layer"]= False
+            model_kwargs["add_pooling_layer"] = False
 
             if is_sentence_transformer_model(
                 model_name_or_path,
@@ -309,7 +332,7 @@ class ColBERT(nn.Sequential, FitMixin):
                 local_files_only=local_files_only,
             ):
                 modules = self._load_sbert_model(
-                    model_name_or_path,
+                    model_name_or_path=model_name_or_path,
                     token=token,
                     cache_folder=cache_folder,
                     revision=revision,
@@ -321,7 +344,7 @@ class ColBERT(nn.Sequential, FitMixin):
                 )
             else:
                 modules = self._load_auto_model(
-                    model_name_or_path,
+                    model_name_or_path=model_name_or_path,
                     token=token,
                     cache_folder=cache_folder,
                     revision=revision,
@@ -331,34 +354,43 @@ class ColBERT(nn.Sequential, FitMixin):
                     tokenizer_kwargs=tokenizer_kwargs,
                     config_kwargs=config_kwargs,
                 )
-       
+
         # modules = [module for module in modules if isinstance(module, Transformer) or isinstance(module, LinearProjection)]
         # print(modules)
         hidden_size = modules[0].get_word_embedding_dimension()
-        # If there is no linear projection layer, add one 
+        # If there is no linear projection layer, add one
         # TODO: do this more cleanly
-        if(len(modules) < 2):
-            logger.warning(f"The checkpoint does not contain a linear projection layer. Adding one with output dimensions ({hidden_size}, {embedding_size})")
+        if len(modules) < 2:
+            logger.warning(
+                f"The checkpoint does not contain a linear projection layer. Adding one with output dimensions ({hidden_size}, {embedding_size})"
+            )
             # Linear layer from hidden_size to target embedding_size, original ColBERT does not have bias in the linear layer
             linear_layer = LinearProjection(hidden_size, embedding_size, bias=False)
             # modules.append(nn.Linear(hidden_size, embedding_size, bias=False))
             modules.append(linear_layer)
         if modules is not None and not isinstance(modules, OrderedDict):
-            modules = OrderedDict([(str(idx), module) for idx, module in enumerate(modules)])
+            modules = OrderedDict(
+                [(str(idx), module) for idx, module in enumerate(modules)]
+            )
 
         super().__init__(modules)
 
         self.to(device)
         self.is_hpu_graph_enabled = False
 
-        if self.default_prompt_name is not None and self.default_prompt_name not in self.prompts:
+        if (
+            self.default_prompt_name is not None
+            and self.default_prompt_name not in self.prompts
+        ):
             raise ValueError(
                 f"Default prompt name '{self.default_prompt_name}' not found in the configured prompts "
                 f"dictionary with keys {list(self.prompts.keys())!r}."
             )
 
         if self.prompts:
-            logger.info(f"{len(self.prompts)} prompts are loaded, with the keys: {list(self.prompts.keys())}")
+            logger.info(
+                f"{len(self.prompts)} prompts are loaded, with the keys: {list(self.prompts.keys())}"
+            )
         if self.default_prompt_name:
             logger.warning(
                 f"Default prompt name is set to '{self.default_prompt_name}'. "
@@ -370,14 +402,24 @@ class ColBERT(nn.Sequential, FitMixin):
         # that would be a breaking change for users currently using the InstructorEmbedding project.
         # So, instead we hardcode setting it for the main INSTRUCTOR models, and otherwise give a warning if we
         # suspect the user is using an INSTRUCTOR model.
-        if model_name_or_path in ("hkunlp/instructor-base", "hkunlp/instructor-large", "hkunlp/instructor-xl"):
+        if model_name_or_path in (
+            "hkunlp/instructor-base",
+            "hkunlp/instructor-large",
+            "hkunlp/instructor-xl",
+        ):
             self.set_pooling_include_prompt(include_prompt=False)
         elif (
             model_name_or_path
             and "/" in model_name_or_path
             and "instructor" in model_name_or_path.split("/")[1].lower()
         ):
-            if any([module.include_prompt for module in self if isinstance(module, Pooling)]):
+            if any(
+                [
+                    module.include_prompt
+                    for module in self
+                    if isinstance(module, Pooling)
+                ]
+            ):
                 logger.warning(
                     "Instructor models require `include_prompt=False` in the pooling configuration. "
                     "Either update the model configuration or call `model.set_pooling_include_prompt(False)` after loading the model."
@@ -386,11 +428,12 @@ class ColBERT(nn.Sequential, FitMixin):
         # Pass the model to the model card data for later use in generating a model card upon saving this model
         self.model_card_data.register_model(self)
 
-        self.document_prefix_id = self.tokenizer.convert_tokens_to_ids(self.document_prefix)
+        self.document_prefix_id = self.tokenizer.convert_tokens_to_ids(
+            self.document_prefix
+        )
         self.query_prefix_id = self.tokenizer.convert_tokens_to_ids(self.query_prefix)
         # We are using the mask token as the padding token for padding queries
-        self.tokenizer.pad_token_id = self.tokenizer.mask_token_id 
-
+        self.tokenizer.pad_token_id = self.tokenizer.mask_token_id
 
     def encode(
         self,
@@ -404,7 +447,7 @@ class ColBERT(nn.Sequential, FitMixin):
         convert_to_numpy: bool = True,
         convert_to_tensor: bool = False,
         device: str = None,
-        normalize_embeddings: bool = True, # Normalize the embedding to compute cosine similarity
+        normalize_embeddings: bool = True,  # Normalize the embedding to compute cosine similarity
         is_query: bool = True,
     ) -> Union[List[Tensor], ndarray, Tensor]:
         """
@@ -470,13 +513,14 @@ class ColBERT(nn.Sequential, FitMixin):
         self.eval()
         if show_progress_bar is None:
             show_progress_bar = (
-                logger.getEffectiveLevel() == logging.INFO or logger.getEffectiveLevel() == logging.DEBUG
+                logger.getEffectiveLevel() == logging.INFO
+                or logger.getEffectiveLevel() == logging.DEBUG
             )
 
         if convert_to_tensor:
             convert_to_numpy = False
 
-        #TODO: We cannot convert to tensor/numpy for token embeddings as they are not the same size
+        # TODO: We cannot convert to tensor/numpy for token embeddings as they are not the same size
         # if output_value != "sentence_embedding":
         # convert_to_tensor = False
         # convert_to_numpy = False
@@ -513,7 +557,9 @@ class ColBERT(nn.Sequential, FitMixin):
             # Tracking the prompt length allow us to remove the prompt during pooling
             tokenized_prompt = self.tokenize([prompt])
             if "input_ids" in tokenized_prompt:
-                extra_features["prompt_length"] = tokenized_prompt["input_ids"].shape[-1] - 1
+                extra_features["prompt_length"] = (
+                    tokenized_prompt["input_ids"].shape[-1] - 1
+                )
 
         if device is None:
             device = self.device
@@ -523,26 +569,37 @@ class ColBERT(nn.Sequential, FitMixin):
         all_embeddings = []
         length_sorted_idx = np.argsort([-self._text_length(sen) for sen in sentences])
         sentences_sorted = [sentences[idx] for idx in length_sorted_idx]
-        
-        for start_index in trange(0, len(sentences), batch_size, desc="Batches", disable=not show_progress_bar):
+
+        for start_index in trange(
+            0, len(sentences), batch_size, desc="Batches", disable=not show_progress_bar
+        ):
             sentences_batch = sentences_sorted[start_index : start_index + batch_size]
             features = self.tokenize(sentences_batch, is_query=is_query)
-            
+
             if self.device.type == "hpu":
                 if "input_ids" in features:
                     curr_tokenize_len = features["input_ids"].shape
-                    additional_pad_len = 2 ** math.ceil(math.log2(curr_tokenize_len[1])) - curr_tokenize_len[1]
+                    additional_pad_len = (
+                        2 ** math.ceil(math.log2(curr_tokenize_len[1]))
+                        - curr_tokenize_len[1]
+                    )
                     features["input_ids"] = torch.cat(
                         (
                             features["input_ids"],
-                            torch.ones((curr_tokenize_len[0], additional_pad_len), dtype=torch.int8),
+                            torch.ones(
+                                (curr_tokenize_len[0], additional_pad_len),
+                                dtype=torch.int8,
+                            ),
                         ),
                         -1,
                     )
                     features["attention_mask"] = torch.cat(
                         (
                             features["attention_mask"],
-                            torch.zeros((curr_tokenize_len[0], additional_pad_len), dtype=torch.int8),
+                            torch.zeros(
+                                (curr_tokenize_len[0], additional_pad_len),
+                                dtype=torch.int8,
+                            ),
                         ),
                         -1,
                     )
@@ -550,7 +607,10 @@ class ColBERT(nn.Sequential, FitMixin):
                         features["token_type_ids"] = torch.cat(
                             (
                                 features["token_type_ids"],
-                                torch.zeros((curr_tokenize_len[0], additional_pad_len), dtype=torch.int8),
+                                torch.zeros(
+                                    (curr_tokenize_len[0], additional_pad_len),
+                                    dtype=torch.int8,
+                                ),
                             ),
                             -1,
                         )
@@ -559,7 +619,7 @@ class ColBERT(nn.Sequential, FitMixin):
             features.update(extra_features)
 
             with torch.no_grad():
-                #TODO: add the truncate/sliding window logic here
+                # TODO: add the truncate/sliding window logic here
                 out_features = self.forward(features)
                 if self.device.type == "hpu":
                     out_features = copy.deepcopy(out_features)
@@ -568,16 +628,19 @@ class ColBERT(nn.Sequential, FitMixin):
                 #     out_features["sentence_embedding"], self.truncate_dim
                 # )
 
-            
                 embeddings = []
-                for token_emb, attention in zip(out_features["token_embeddings"], out_features["attention_mask"]):
+                for token_emb, attention in zip(
+                    out_features["token_embeddings"], out_features["attention_mask"]
+                ):
                     last_mask_id = len(attention) - 1
-                    #TODO: isn't torch.sum(attention) better?
+                    # TODO: isn't torch.sum(attention) better?
                     while last_mask_id > 0 and attention[last_mask_id].item() == 0:
                         last_mask_id -= 1
-                    #TODO: normalize at the list level/use the module Normalize?
+                    # TODO: normalize at the list level/use the module Normalize?
                     if normalize_embeddings:
-                        token_emb = torch.nn.functional.normalize(token_emb[0 : last_mask_id + 1], p=2, dim=1)
+                        token_emb = torch.nn.functional.normalize(
+                            token_emb[0 : last_mask_id + 1], p=2, dim=1
+                        )
                     embeddings.append(token_emb[0 : last_mask_id + 1])
                 # elif output_value is None:  # Return all outputs
                 #     embeddings = []
@@ -587,12 +650,12 @@ class ColBERT(nn.Sequential, FitMixin):
                 # else:  # Sentence embeddings
                 #     embeddings = out_features[output_value]
                 #     embeddings = embeddings.detach()
-                    # if normalize_embeddings:
-                    #     embeddings = torch.nn.functional.normalize(embeddings, p=2, dim=1)
+                # if normalize_embeddings:
+                #     embeddings = torch.nn.functional.normalize(embeddings, p=2, dim=1)
 
                 # fixes for #522 and #487 to avoid oom problems on gpu with large datasets
                 if convert_to_numpy:
-                    #TODO: convert to tensor to do all .cpu() at once?
+                    # TODO: convert to tensor to do all .cpu() at once?
                     embeddings = [emb.cpu() for emb in embeddings]
                     # embeddings = embeddings.cpu()
 
@@ -614,11 +677,15 @@ class ColBERT(nn.Sequential, FitMixin):
         elif convert_to_numpy:
             if not isinstance(all_embeddings, np.ndarray):
                 if all_embeddings[0].dtype == torch.bfloat16:
-                    all_embeddings = np.asarray([emb.float().numpy() for emb in all_embeddings])
+                    all_embeddings = np.asarray(
+                        [emb.float().numpy() for emb in all_embeddings]
+                    )
                 else:
                     all_embeddings = np.asarray([emb.numpy() for emb in all_embeddings])
         elif isinstance(all_embeddings, np.ndarray):
-            all_embeddings = [torch.from_numpy(embedding) for embedding in all_embeddings]
+            all_embeddings = [
+                torch.from_numpy(embedding) for embedding in all_embeddings
+            ]
 
         if input_was_string:
             all_embeddings = all_embeddings[0]
@@ -648,7 +715,9 @@ class ColBERT(nn.Sequential, FitMixin):
 
         if value is not None:
             self._similarity = SimilarityFunction.to_similarity_fn(value)
-            self._similarity_pairwise = SimilarityFunction.to_similarity_pairwise_fn(value)
+            self._similarity_pairwise = SimilarityFunction.to_similarity_pairwise_fn(
+                value
+            )
 
     @overload
     def similarity(self, embeddings1: Tensor, embeddings2: Tensor) -> Tensor: ...
@@ -657,7 +726,9 @@ class ColBERT(nn.Sequential, FitMixin):
     def similarity(self, embeddings1: ndarray, embeddings2: ndarray) -> Tensor: ...
 
     @property
-    def similarity(self) -> Callable[[Union[Tensor, ndarray], Union[Tensor, ndarray]], Tensor]:
+    def similarity(
+        self,
+    ) -> Callable[[Union[Tensor, ndarray], Union[Tensor, ndarray]], Tensor]:
         """
         Compute the similarity between two collections of embeddings. The output will be a matrix with the similarity
         scores between all embeddings from the first parameter and all embeddings from the second parameter. This
@@ -700,13 +771,19 @@ class ColBERT(nn.Sequential, FitMixin):
         return self._similarity
 
     @overload
-    def similarity_pairwise(self, embeddings1: Tensor, embeddings2: Tensor) -> Tensor: ...
+    def similarity_pairwise(
+        self, embeddings1: Tensor, embeddings2: Tensor
+    ) -> Tensor: ...
 
     @overload
-    def similarity_pairwise(self, embeddings1: ndarray, embeddings2: ndarray) -> Tensor: ...
+    def similarity_pairwise(
+        self, embeddings1: ndarray, embeddings2: ndarray
+    ) -> Tensor: ...
 
     @property
-    def similarity_pairwise(self) -> Callable[[Union[Tensor, ndarray], Union[Tensor, ndarray]], Tensor]:
+    def similarity_pairwise(
+        self,
+    ) -> Callable[[Union[Tensor, ndarray], Union[Tensor, ndarray]], Tensor]:
         """
         Compute the similarity between two collections of embeddings. The output will be a vector with the similarity
         scores between each pair of embeddings.
@@ -741,7 +818,9 @@ class ColBERT(nn.Sequential, FitMixin):
             self.similarity_fn_name = SimilarityFunction.COSINE
         return self._similarity_pairwise
 
-    def start_multi_process_pool(self, target_devices: List[str] = None) -> Dict[str, Any]:
+    def start_multi_process_pool(
+        self, target_devices: List[str] = None
+    ) -> Dict[str, Any]:
         """
         Starts a multi-process pool to process the encoding with several independent processes
         via :meth:`SentenceTransformer.encode_multi_process <sentence_transformers.SentenceTransformer.encode_multi_process>`.
@@ -761,14 +840,22 @@ class ColBERT(nn.Sequential, FitMixin):
         """
         if target_devices is None:
             if torch.cuda.is_available():
-                target_devices = ["cuda:{}".format(i) for i in range(torch.cuda.device_count())]
+                target_devices = [
+                    "cuda:{}".format(i) for i in range(torch.cuda.device_count())
+                ]
             elif is_torch_npu_available():
-                target_devices = ["npu:{}".format(i) for i in range(torch.npu.device_count())]
+                target_devices = [
+                    "npu:{}".format(i) for i in range(torch.npu.device_count())
+                ]
             else:
                 logger.info("CUDA/NPU is not available. Starting 4 CPU workers")
                 target_devices = ["cpu"] * 4
 
-        logger.info("Start multi-process pool on devices: {}".format(", ".join(map(str, target_devices))))
+        logger.info(
+            "Start multi-process pool on devices: {}".format(
+                ", ".join(map(str, target_devices))
+            )
+        )
 
         self.to("cpu")
         self.share_memory()
@@ -872,9 +959,13 @@ class ColBERT(nn.Sequential, FitMixin):
         """
 
         if chunk_size is None:
-            chunk_size = min(math.ceil(len(sentences) / len(pool["processes"]) / 10), 5000)
+            chunk_size = min(
+                math.ceil(len(sentences) / len(pool["processes"]) / 10), 5000
+            )
 
-        logger.debug(f"Chunk data into {math.ceil(len(sentences) / chunk_size)} packages of size {chunk_size}")
+        logger.debug(
+            f"Chunk data into {math.ceil(len(sentences) / chunk_size)} packages of size {chunk_size}"
+        )
 
         input_queue = pool["input"]
         last_chunk_id = 0
@@ -884,30 +975,58 @@ class ColBERT(nn.Sequential, FitMixin):
             chunk.append(sentence)
             if len(chunk) >= chunk_size:
                 input_queue.put(
-                    [last_chunk_id, batch_size, chunk, prompt_name, prompt, precision, normalize_embeddings]
+                    [
+                        last_chunk_id,
+                        batch_size,
+                        chunk,
+                        prompt_name,
+                        prompt,
+                        precision,
+                        normalize_embeddings,
+                    ]
                 )
                 last_chunk_id += 1
                 chunk = []
 
         if len(chunk) > 0:
-            input_queue.put([last_chunk_id, batch_size, chunk, prompt_name, prompt, precision, normalize_embeddings])
+            input_queue.put(
+                [
+                    last_chunk_id,
+                    batch_size,
+                    chunk,
+                    prompt_name,
+                    prompt,
+                    precision,
+                    normalize_embeddings,
+                ]
+            )
             last_chunk_id += 1
 
         output_queue = pool["output"]
-        results_list = sorted([output_queue.get() for _ in range(last_chunk_id)], key=lambda x: x[0])
+        results_list = sorted(
+            [output_queue.get() for _ in range(last_chunk_id)], key=lambda x: x[0]
+        )
         embeddings = np.concatenate([result[1] for result in results_list])
         return embeddings
 
     @staticmethod
-    def _encode_multi_process_worker(target_device: str, model, input_queue, results_queue):
+    def _encode_multi_process_worker(
+        target_device: str, model, input_queue, results_queue
+    ):
         """
         Internal working process to encode sentences in multi-process setup
         """
         while True:
             try:
-                chunk_id, batch_size, sentences, prompt_name, prompt, precision, normalize_embeddings = (
-                    input_queue.get()
-                )
+                (
+                    chunk_id,
+                    batch_size,
+                    sentences,
+                    prompt_name,
+                    prompt,
+                    precision,
+                    normalize_embeddings,
+                ) = input_queue.get()
                 embeddings = model.encode(
                     sentences,
                     prompt_name=prompt_name,
@@ -954,7 +1073,11 @@ class ColBERT(nn.Sequential, FitMixin):
 
         return None
 
-    def tokenize(self, texts: Union[List[str], List[Dict], List[Tuple[str, str]]], is_query: Optional[bool] = True) -> Dict[str, Tensor]:
+    def tokenize(
+        self,
+        texts: Union[List[str], List[Dict], List[Tuple[str, str]]],
+        is_query: Optional[bool] = True,
+    ) -> Dict[str, Tensor]:
         """
         Tokenizes the texts.
 
@@ -965,19 +1088,23 @@ class ColBERT(nn.Sequential, FitMixin):
             Dict[str, Tensor]: A dictionary of tensors with the tokenized texts. Common keys are "input_ids",
                 "attention_mask", and "token_type_ids".
         """
-        #TODO: add the skiplist
+        # TODO: add the skiplist
         # Add placeholder for the document/query prefix
         texts = [". " + text for text in texts]
-        if(is_query):
+        if is_query:
             features = self._first_module().tokenize(texts, padding="max_length")
             # Remplace the second token by the query prefix
-            #TODO: Do this in a prettier way. Okay we cannot directly add the text in the string, but this is not robust (multiple ids, ...)
-            #e.g : # features["input_ids"] = torch.cat((features["input_ids"][:, :1], self.document_query_id, ids[:, 1:]), dim=1) ; features["attention_mask"] = torch.cat((features["attention_mask"][:, :1], torch.ones((features["attention_mask"].shape[0], 1), dtype=torch.int8), features["attention_mask"][:, 1:]), dim=1)
+            # TODO: Do this in a prettier way. Okay we cannot directly add the text in the string, but this is not robust (multiple ids, ...)
+            # e.g : # features["input_ids"] = torch.cat((features["input_ids"][:, :1], self.document_query_id, ids[:, 1:]), dim=1) ; features["attention_mask"] = torch.cat((features["attention_mask"][:, :1], torch.ones((features["attention_mask"].shape[0], 1), dtype=torch.int8), features["attention_mask"][:, 1:]), dim=1)
             features["input_ids"][:, 1] = self.query_prefix_id
             # Since we cannot feed a target size to the tokenize function, truncate to query_max_seq_length
-            features["input_ids"] = features["input_ids"][:, :self.query_length]
-            features["attention_mask"] = features["attention_mask"][:, :self.query_length]
-            features["token_type_ids"] = features["token_type_ids"][:, :self.query_length]
+            features["input_ids"] = features["input_ids"][:, : self.query_length]
+            features["attention_mask"] = features["attention_mask"][
+                :, : self.query_length
+            ]
+            features["token_type_ids"] = features["token_type_ids"][
+                :, : self.query_length
+            ]
             # Fill the attention mask with ones (we attend to "padding" tokens)
             features["attention_mask"].fill_(1)
             # features["attention_mask"] = torch.ones_like(features["attention_mask"])
@@ -1001,7 +1128,9 @@ class ColBERT(nn.Sequential, FitMixin):
         """
         output_dim = None
         for mod in reversed(self._modules.values()):
-            sent_embedding_dim_method = getattr(mod, "get_sentence_embedding_dimension", None)
+            sent_embedding_dim_method = getattr(
+                mod, "get_sentence_embedding_dimension", None
+            )
             if callable(sent_embedding_dim_method):
                 output_dim = sent_embedding_dim_method()
                 break
@@ -1098,7 +1227,9 @@ class ColBERT(nn.Sequential, FitMixin):
         # Save modules
         for idx, name in enumerate(self._modules):
             module = self._modules[name]
-            if idx == 0 and isinstance(module, Transformer):  # Save transformer model in the main folder
+            if idx == 0 and isinstance(
+                module, Transformer
+            ):  # Save transformer model in the main folder
                 model_path = path + "/"
             else:
                 model_path = os.path.join(path, str(idx) + "_" + type(module).__name__)
@@ -1110,7 +1241,12 @@ class ColBERT(nn.Sequential, FitMixin):
                 module.save(model_path)
 
             modules_config.append(
-                {"idx": idx, "name": name, "path": os.path.basename(model_path), "type": type(module).__module__}
+                {
+                    "idx": idx,
+                    "name": name,
+                    "path": os.path.basename(model_path),
+                    "type": type(module).__module__,
+                }
             )
 
         with open(os.path.join(path, "modules.json"), "w") as fOut:
@@ -1149,7 +1285,10 @@ class ColBERT(nn.Sequential, FitMixin):
         )
 
     def _create_model_card(
-        self, path: str, model_name: Optional[str] = None, train_datasets: Optional[List[str]] = "deprecated"
+        self,
+        path: str,
+        model_name: Optional[str] = None,
+        train_datasets: Optional[List[str]] = "deprecated",
     ):
         """
         Create an automatic model and stores it in the specified path. If no training was done and the loaded model
@@ -1291,11 +1430,15 @@ class ColBERT(nn.Sequential, FitMixin):
         self.model_card_data.set_model_id(repo_id)
         if local_model_path:
             folder_url = api.upload_folder(
-                repo_id=repo_id, folder_path=local_model_path, commit_message=commit_message
+                repo_id=repo_id,
+                folder_path=local_model_path,
+                commit_message=commit_message,
             )
         else:
             with tempfile.TemporaryDirectory() as tmp_dir:
-                create_model_card = replace_model_card or not os.path.exists(os.path.join(tmp_dir, "README.md"))
+                create_model_card = replace_model_card or not os.path.exists(
+                    os.path.join(tmp_dir, "README.md")
+                )
                 self.save(
                     tmp_dir,
                     model_name=repo_url.repo_id,
@@ -1303,7 +1446,9 @@ class ColBERT(nn.Sequential, FitMixin):
                     train_datasets=train_datasets,
                     safe_serialization=safe_serialization,
                 )
-                folder_url = api.upload_folder(repo_id=repo_id, folder_path=tmp_dir, commit_message=commit_message)
+                folder_url = api.upload_folder(
+                    repo_id=repo_id, folder_path=tmp_dir, commit_message=commit_message
+                )
 
         refs = api.list_repo_refs(repo_id=repo_id)
         for branch in refs.branches:
@@ -1382,9 +1527,19 @@ class ColBERT(nn.Sequential, FitMixin):
             "revision": revision,
             "local_files_only": local_files_only,
         }
-        model_kwargs = shared_kwargs if model_kwargs is None else {**shared_kwargs, **model_kwargs}
-        tokenizer_kwargs = shared_kwargs if tokenizer_kwargs is None else {**shared_kwargs, **tokenizer_kwargs}
-        config_kwargs = shared_kwargs if config_kwargs is None else {**shared_kwargs, **config_kwargs}
+        model_kwargs = (
+            shared_kwargs if model_kwargs is None else {**shared_kwargs, **model_kwargs}
+        )
+        tokenizer_kwargs = (
+            shared_kwargs
+            if tokenizer_kwargs is None
+            else {**shared_kwargs, **tokenizer_kwargs}
+        )
+        config_kwargs = (
+            shared_kwargs
+            if config_kwargs is None
+            else {**shared_kwargs, **config_kwargs}
+        )
 
         transformer_model = Transformer(
             model_name_or_path,
@@ -1444,21 +1599,27 @@ class ColBERT(nn.Sequential, FitMixin):
             if (
                 "__version__" in self._model_config
                 and "sentence_transformers" in self._model_config["__version__"]
-                and self._model_config["__version__"]["sentence_transformers"] > __version__
+                and self._model_config["__version__"]["sentence_transformers"]
+                > __version__
             ):
                 logger.warning(
                     "You try to use a model that was created with version {}, however, your version is {}. This might cause unexpected behavior or errors. In that case, try to update to the latest version.\n\n\n".format(
-                        self._model_config["__version__"]["sentence_transformers"], __version__
+                        self._model_config["__version__"]["sentence_transformers"],
+                        __version__,
                     )
                 )
 
             # Set score functions & prompts if not already overridden by the __init__ calls
             if self.similarity_fn_name is None:
-                self.similarity_fn_name = self._model_config.get("similarity_fn_name", None)
+                self.similarity_fn_name = self._model_config.get(
+                    "similarity_fn_name", None
+                )
             if not self.prompts:
                 self.prompts = self._model_config.get("prompts", {})
             if not self.default_prompt_name:
-                self.default_prompt_name = self._model_config.get("default_prompt_name", None)
+                self.default_prompt_name = self._model_config.get(
+                    "default_prompt_name", None
+                )
             # Loading the query/document prefixes and query_length
             if "query_prefix" in self._model_config:
                 self.query_prefix = self._model_config["query_prefix"]
@@ -1466,7 +1627,6 @@ class ColBERT(nn.Sequential, FitMixin):
                 self.document_prefix = self._model_config["document_prefix"]
             if "query_length" in self._model_config:
                 self.query_length = self._model_config["query_length"]
-
 
         # Check if a readme exists
         model_card_path = load_file_path(
@@ -1524,11 +1684,20 @@ class ColBERT(nn.Sequential, FitMixin):
                         with open(config_path) as fIn:
                             kwargs = json.load(fIn)
                             # Don't allow configs to set trust_remote_code
-                            if "model_args" in kwargs and "trust_remote_code" in kwargs["model_args"]:
+                            if (
+                                "model_args" in kwargs
+                                and "trust_remote_code" in kwargs["model_args"]
+                            ):
                                 kwargs["model_args"].pop("trust_remote_code")
-                            if "tokenizer_args" in kwargs and "trust_remote_code" in kwargs["tokenizer_args"]:
+                            if (
+                                "tokenizer_args" in kwargs
+                                and "trust_remote_code" in kwargs["tokenizer_args"]
+                            ):
                                 kwargs["tokenizer_args"].pop("trust_remote_code")
-                            if "config_args" in kwargs and "trust_remote_code" in kwargs["config_args"]:
+                            if (
+                                "config_args" in kwargs
+                                and "trust_remote_code" in kwargs["config_args"]
+                            ):
                                 kwargs["config_args"].pop("trust_remote_code")
                         break
 
@@ -1559,7 +1728,9 @@ class ColBERT(nn.Sequential, FitMixin):
                 if config_kwargs:
                     kwargs["config_args"].update(config_kwargs)
 
-                module = Transformer(model_name_or_path, cache_dir=cache_folder, **kwargs)
+                module = Transformer(
+                    model_name_or_path, cache_dir=cache_folder, **kwargs
+                )
             else:
                 # Normalize does not require any files to be loaded
                 if module_class == Normalize:
@@ -1584,7 +1755,11 @@ class ColBERT(nn.Sequential, FitMixin):
                     revision = revision_path_part
         self.model_card_data.set_base_model(model_name_or_path, revision=revision)
         # We only keep the Transformer/LinearProjection modules in case of sentence_transformers model to prune the potential PoolingLayer
-        modules = [module for module in modules.values() if isinstance(module, Transformer) or isinstance(module, LinearProjection)]
+        modules = [
+            module
+            for module in modules.values()
+            if isinstance(module, Transformer) or isinstance(module, LinearProjection)
+        ]
         return modules
 
     @staticmethod
@@ -1603,7 +1778,9 @@ class ColBERT(nn.Sequential, FitMixin):
             # For nn.DataParallel compatibility in PyTorch 1.5
 
             def find_tensor_attributes(module: nn.Module) -> List[Tuple[str, Tensor]]:
-                tuples = [(k, v) for k, v in module.__dict__.items() if torch.is_tensor(v)]
+                tuples = [
+                    (k, v) for k, v in module.__dict__.items() if torch.is_tensor(v)
+                ]
                 return tuples
 
             gen = self._named_members(get_members_fn=find_tensor_attributes)
@@ -1661,7 +1838,9 @@ class ColBERT(nn.Sequential, FitMixin):
         return self.device
 
     @_target_device.setter
-    def _target_device(self, device: Optional[Union[int, str, torch.device]] = None) -> None:
+    def _target_device(
+        self, device: Optional[Union[int, str, torch.device]] = None
+    ) -> None:
         self.to(device)
 
     @property

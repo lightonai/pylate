@@ -37,9 +37,13 @@ class ColBERTDataCollator:
         for column in columns:
             # We tokenize the query differently than the documents, TODO: define a parameter "query_column"
             if "query" in column or "anchor" in column:
-                tokenized = self.tokenize_fn([row[column] for row in features], is_query=True)
+                tokenized = self.tokenize_fn(
+                    [row[column] for row in features], is_query=True
+                )
             else:
-                tokenized = self.tokenize_fn([row[column] for row in features], is_query=False)
+                tokenized = self.tokenize_fn(
+                    [row[column] for row in features], is_query=False
+                )
             for key, value in tokenized.items():
                 batch[f"{column}_{key}"] = value
         return batch
