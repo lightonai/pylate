@@ -14,7 +14,7 @@ class ColBERTSimilarityMetric(Enum):
         # a num_queries, s queries_seqlen, h hidden_size, b num_documents, t documents_seqlen
         # Take make along the t axis (get max similarity for each query tokens), then sum over all the query tokens
         simis = torch.einsum("ash,bth->abst", x, y)
-        # Masking out the padding tokens using broadcasting
+        # Masking out the padding tokens using broadcasting (original mask has shape (b, t) -> (1, b, 1, t))
         simis = simis * mask.unsqueeze(0).unsqueeze(2)
         return simis.max(axis=3).values.sum(axis=2)
 
