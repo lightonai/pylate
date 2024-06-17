@@ -29,7 +29,7 @@ class BaseIndex:
         pass
     @abstractmethod 
     
-    def get_doc_embeddings(self, doc_ids: List[str]) -> List[List[Union[int, float]]]:
+    def get_doc_embeddings(self, doc_ids: List[List[str]]) -> List[List[List[Union[int, float]]]]:
         pass
 
  
