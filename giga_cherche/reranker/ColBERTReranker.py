@@ -22,6 +22,7 @@ class ColBERTReranker:
         # documents_embeddings = [self.index.get_doc_embeddings(query_doc_ids) for query_doc_ids in doc_ids]
         reranked_doc_ids = []
         reranked_scores = []
+        # We do not batch queries to prevent memory overhead (computing the scores could be intensive), prevent unecessary padding of documents to the largest documents in the batch and also because the number of documents per query is not fixed.
         for query, query_documents_embeddings, query_doc_ids in zip(
             queries, batch_documents_embeddings, batch_doc_ids
         ):
