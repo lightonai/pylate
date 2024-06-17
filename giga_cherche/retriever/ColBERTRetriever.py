@@ -1,10 +1,10 @@
+from typing import List, Union
+
+import numpy as np
+from torch import Tensor
+
 from giga_cherche.indexes.BaseIndex import BaseIndex
 from giga_cherche.reranker.ColBERTReranker import ColBERTReranker
-from giga_cherche.util import colbert_score
-from typing import Optional, List, Union
-import torch
-from torch import Tensor
-import numpy as np
 
 
 # TODO: define Retriever metaclass
