@@ -84,15 +84,10 @@ class WeaviateIndex(BaseIndex):
                 for token_embedding in tokens_embeddings
             ]
             vector_index.data.insert_many(data_objects)
-            aggregation = vector_index.aggregate.over_all(total_count=True)
-            print(aggregation.total_count)
 
     def remove_documents(self, doc_ids: List[str]) -> None:
         with weaviate.connect_to_local(host=self.host, port=self.port) as client:
             vector_index = client.collections.get(self.name)
-            # vector_index.data.delete_many(
-            #     where=wvc.query.Filter.by_property("doc_id").equal(doc_ids)
-            # )
             vector_index.data.delete_many(
                 where=wvc.query.Filter.by_property("doc_id").contains_any(doc_ids)
             )
@@ -134,54 +129,40 @@ class WeaviateIndex(BaseIndex):
                 [[o.vector["default"] for o in obj.objects] for obj in res_query]
                 for res_query in res_queries
             ]
-            res["doc_id"] = [
+            res["doc_ids"] = [
                 [[o.properties["doc_id"] for o in obj.objects] for obj in res_query]
                 for res_query in res_queries
             ]
 
-            res["distance"] = [
+            res["distances"] = [
                 [[o.metadata.distance for o in obj.objects] for obj in res_query]
                 for res_query in res_queries
             ]
             return res
         
 
-    def get_doc_embeddings(self, doc_ids: List[str]) -> List[List[Union[int, float]]]:
+    def get_doc_embeddings(self, doc_ids: List[List[str]]) -> List[List[List[Union[int, float]]]]:
         with weaviate.connect_to_local(host=self.host, port=self.port) as client:
             vector_index = client.collections.get(self.name)
-            # res_fetch = [
-            #     vector_index.query.fetch_objects(
-            #     filters=wvc.query.Filter.by_property("doc_id").equal(doc_id),
-            #     include_vector=True
-            #     ) for doc_id in doc_ids
-            # ]
-
-            # doc_embeddings = [[doc.vector["default"] for doc in document.objects] for document in res_fetch]
-            
+    
+            # TODO: batch fetch if possible
             doc_embeddings = [
-                [doc.vector["default"] for doc in document.objects]
-                for document in [
-                    vector_index.query.fetch_objects(
-                        filters=wvc.query.Filter.by_property("doc_id").equal(doc_id),
-                        include_vector=True,
-                        limit=512,
-                        #TODO: fix limit using model max seqlen or define as no limit
-                    )
-                    for doc_id in doc_ids
+                [
+                    [doc.vector["default"] for doc in document.objects]
+                    for document in [
+                        vector_index.query.fetch_objects(
+                            filters=wvc.query.Filter.by_property("doc_id").equal(doc_id),
+                            include_vector=True,
+                            limit=512,
+                            #TODO: fix limit using model max seqlen or define as no limit
+                        )
+                        for doc_id in query_doc_ids
+                    ]
                 ]
+                for query_doc_ids in doc_ids 
             ]
             #TODO: yield exception when doc not found?
-
-            # TODO: batch fetch
-            # doc_embeddings = [
-            #     [doc.vector["default"] for doc in document.objects]
-            #     for document in 
-            #         vector_index.query.fetch_objects(
-            #             filters=wvc.query.Filter.by_property("doc_id").contains_any(doc_ids),
-            #             include_vector=True,
-            #         )
-            # ]
-            
+     
             return doc_embeddings
 
  
