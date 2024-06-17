@@ -1,11 +1,10 @@
 from enum import Enum
 from typing import Dict, Iterable
 
+import torch
 import torch.nn.functional as F
-from torch import Tensor, nn
-import torch 
-
 from sentence_transformers.SentenceTransformer import SentenceTransformer
+from torch import Tensor, nn
 
 
 class ColBERTSimilarityMetric(Enum):
@@ -21,9 +20,8 @@ class ColBERTSimilarityMetric(Enum):
         # Masking out the padding tokens
         simis[expanded_mask == 0] = 0
         return simis.max(axis=3).values.sum(axis=2)
-   
-        return torch.einsum("ash,bth->abst", x, y).max(axis=3).values.sum(axis=2)
 
+        return torch.einsum("ash,bth->abst", x, y).max(axis=3).values.sum(axis=2)
 
 
 class ColBERTLoss(nn.Module):
@@ -95,20 +93,38 @@ class ColBERTLoss(nn.Module):
                 distance_metric_name = "ColBERTSimilarityMetric.{}".format(name)
                 break
 
-        return {"distance_metric": distance_metric_name, "size_average": self.size_average}
+        return {
+            "distance_metric": distance_metric_name,
+            "size_average": self.size_average,
+        }
 
     def forward(self, sentence_features: Iterable[Dict[str, Tensor]], labels: Tensor):
-        reps = [torch.nn.functional.normalize(self.model(sentence_feature)["token_embeddings"], p=2, dim=-1) for sentence_feature in sentence_features]
-        masks = [sentence_feature["attention_mask"] for sentence_feature in sentence_features]
+        reps = [
+            torch.nn.functional.normalize(
+                self.model(sentence_feature)["token_embeddings"], p=2, dim=-1
+            )
+            for sentence_feature in sentence_features
+        ]
+        masks = [
+            sentence_feature["attention_mask"] for sentence_feature in sentence_features
+        ]
         # rep_anchor, rep_pos, rep_neg = reps
         # distances = self.distance_metric(rep_anchor, (torch.cat((rep_pos, rep_neg))))
         # Compute the distances between the anchor (0) and the positives (1) as well as the negatives (2)
-        distances = torch.cat([self.distance_metric(reps[0], rep, mask) for rep, mask in zip(reps[1:], masks[1:])], dim=1)
+        distances = torch.cat(
+            [
+                self.distance_metric(reps[0], rep, mask)
+                for rep, mask in zip(reps[1:], masks[1:])
+            ],
+            dim=1,
+        )
         # create corresponding labels
         # labels = torch.arange(0, rep_anchor.size(0), device=rep_anchor.device)
         labels = torch.arange(0, reps[0].size(0), device=reps[0].device)
         # compute contrastive loss using cross-entropy over the distances
-        loss = F.cross_entropy(distances, labels, reduction="mean" if self.size_average else "sum")
+        loss = F.cross_entropy(
+            distances, labels, reduction="mean" if self.size_average else "sum"
+        )
 
         return loss
 
