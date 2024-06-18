@@ -1,3 +1,4 @@
+import asyncio
 import os
 import time
 from typing import List, Optional, Union
@@ -95,36 +96,31 @@ class WeaviateIndex(BaseIndex):
             )
 
     # TODO: add return type
-    def query(self, queries_embeddings: List[List[Union[int, float]]], k: int = 5):
-        with weaviate.connect_to_local(host=self.host, port=self.port) as client:
+    async def query_embedding(self, vector_index, query_embedding, k):
+        return vector_index.query.near_vector(
+            near_vector=query_embedding,
+            limit=k,
+            include_vector=True,
+            return_metadata=wvc.query.MetadataQuery(distance=True),
+        )
+
+    async def query_embeddings(self, vector_index, query_embeddings, k):
+        tasks = [
+            self.query_embedding(vector_index, query_embedding, k)
+            for query_embedding in query_embeddings
+        ]
+        return await asyncio.gather(*tasks)
+
+    async def query_all_embeddings(
+        self, queries_embeddings: List[List[Union[int, float]]], k: int = 5
+    ):
+        async with weaviate.use_async_with_local() as client:
             vector_index = client.collections.get(self.name)
-
-            # res_queries = []
-            # for query_embeddings in queries_embeddings:
-            #     res_query = []
-            #     for query_embedding in query_embeddings:
-            #         res_query.append(
-            #             vector_index.query.near_vector(
-            #                 near_vector=query_embedding,
-            #                 limit=k,
-            #                 include_vector=True,
-            #                 return_metadata=wvc.query.MetadataQuery(distance=True),
-            #             )
-            #         )
-            #     res_queries.append(res_query)
-
-            res_queries = [
-                [
-                    vector_index.query.near_vector(
-                        near_vector=query_embedding,
-                        limit=k,
-                        include_vector=True,
-                        return_metadata=wvc.query.MetadataQuery(distance=True),
-                    )
-                    for query_embedding in query_embeddings
-                ]
+            tasks = [
+                self.query_embeddings(vector_index, query_embeddings, k)
                 for query_embeddings in queries_embeddings
             ]
+            res_queries = await asyncio.gather(*tasks)
             res = {}
 
             res["embeddings"] = [
@@ -141,6 +137,9 @@ class WeaviateIndex(BaseIndex):
                 for res_query in res_queries
             ]
             return res
+
+    def query(self, queries_embeddings: List[List[Union[int, float]]], k: int = 5):
+        return asyncio.run(self.query_all_embeddings(queries_embeddings, k))
 
     def get_doc_embeddings(
         self, doc_ids: List[List[str]]
