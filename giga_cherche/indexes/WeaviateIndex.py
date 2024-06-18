@@ -1,8 +1,10 @@
 import os
+import time
+from typing import List, Optional, Union
+
 import weaviate
 import weaviate.classes as wvc
-import time
-from typing import Optional, List, Union
+
 from giga_cherche.indexes.BaseIndex import BaseIndex
 
 
@@ -139,30 +141,31 @@ class WeaviateIndex(BaseIndex):
                 for res_query in res_queries
             ]
             return res
-        
 
-    def get_doc_embeddings(self, doc_ids: List[List[str]]) -> List[List[List[Union[int, float]]]]:
+    def get_doc_embeddings(
+        self, doc_ids: List[List[str]]
+    ) -> List[List[List[Union[int, float]]]]:
         with weaviate.connect_to_local(host=self.host, port=self.port) as client:
             vector_index = client.collections.get(self.name)
-    
+
             # TODO: batch fetch if possible
             doc_embeddings = [
                 [
                     [doc.vector["default"] for doc in document.objects]
                     for document in [
                         vector_index.query.fetch_objects(
-                            filters=wvc.query.Filter.by_property("doc_id").equal(doc_id),
+                            filters=wvc.query.Filter.by_property("doc_id").equal(
+                                doc_id
+                            ),
                             include_vector=True,
                             limit=512,
-                            #TODO: fix limit using model max seqlen or define as no limit
+                            # TODO: fix limit using model max seqlen or define as no limit
                         )
                         for doc_id in query_doc_ids
                     ]
                 ]
-                for query_doc_ids in doc_ids 
+                for query_doc_ids in doc_ids
             ]
-            #TODO: yield exception when doc not found?
-     
-            return doc_embeddings
+            # TODO: yield exception when doc not found?
 
- 
+            return doc_embeddings

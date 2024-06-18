@@ -22,6 +22,7 @@ class ColBERTReranker:
         # documents_embeddings = [self.index.get_doc_embeddings(query_doc_ids) for query_doc_ids in doc_ids]
         reranked_doc_ids = []
         reranked_scores = []
+        res = []
         # We do not batch queries to prevent memory overhead (computing the scores could be intensive), prevent unecessary padding of documents to the largest documents in the batch and also because the number of documents per query is not fixed.
         for query, query_documents_embeddings, query_doc_ids in zip(
             queries, batch_documents_embeddings, batch_doc_ids
@@ -42,7 +43,16 @@ class ColBERTReranker:
             reranked_query_doc_ids = [
                 query_doc_ids[idx] for idx in sorted_indices.tolist()
             ]
+            # TODO: create the return during reordering
+            res.append(
+                [
+                    {"id": doc_id, "similarity": score.item()}
+                    for doc_id, score in zip(
+                        reranked_query_doc_ids, reranked_query_scores
+                    )
+                ]
+            )
             reranked_doc_ids.append(reranked_query_doc_ids)
             reranked_scores.append(reranked_query_scores.cpu().tolist())
 
-        return {"doc_ids": reranked_doc_ids, "scores": reranked_scores}
+        return res
