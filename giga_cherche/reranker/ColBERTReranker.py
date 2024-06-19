@@ -18,7 +18,7 @@ class ColBERTReranker:
         queries: List[Union[list, np.ndarray, Tensor]],
         batch_doc_ids: List[List[str]],
     ) -> List[List[str]]:
-        batch_documents_embeddings = self.index.get_doc_embeddings(batch_doc_ids)
+        batch_documents_embeddings = self.index.get_docs_embeddings(batch_doc_ids)
         # documents_embeddings = [self.index.get_doc_embeddings(query_doc_ids) for query_doc_ids in doc_ids]
         reranked_doc_ids = []
         reranked_scores = []
@@ -54,5 +54,4 @@ class ColBERTReranker:
             )
             reranked_doc_ids.append(reranked_query_doc_ids)
             reranked_scores.append(reranked_query_scores.cpu().tolist())
-
         return res

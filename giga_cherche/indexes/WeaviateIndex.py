@@ -35,6 +35,10 @@ class WeaviateIndex(BaseIndex):
                         print(f"Collection {self.name} exists, recreating it.")
                         client.collections.delete(self.name)
                         self.create_collection(self.name)
+                    else:
+                        print(
+                            f"Loaded collection with {client.collections.get(self.name).aggregate.over_all(total_count=True).total_count} vectors",
+                        )
 
                     break
             except Exception as e:
@@ -51,7 +55,10 @@ class WeaviateIndex(BaseIndex):
         with weaviate.connect_to_local(host=self.host, port=self.port) as client:
             client.collections.create(
                 name=name,
-                vector_index_config=wvc.config.Configure.VectorIndex.flat(
+                # vector_index_config=wvc.config.Configure.VectorIndex.flat(
+                #     distance_metric=wvc.config.VectorDistances.COSINE
+                # ),
+                vector_index_config=wvc.config.Configure.VectorIndex.hnsw(
                     distance_metric=wvc.config.VectorDistances.COSINE
                 ),
                 properties=[
@@ -78,7 +85,7 @@ class WeaviateIndex(BaseIndex):
             #                 vector=token_embedding,
             #             )
             #         )
-
+            # TODO: use dynamic batching insert
             data_objects = [
                 wvc.data.DataObject(
                     properties={"doc_id": doc_id}, vector=token_embedding
@@ -97,7 +104,7 @@ class WeaviateIndex(BaseIndex):
 
     # TODO: add return type
     async def query_embedding(self, vector_index, query_embedding, k):
-        return vector_index.query.near_vector(
+        return await vector_index.query.near_vector(
             near_vector=query_embedding,
             limit=k,
             include_vector=True,
@@ -141,30 +148,40 @@ class WeaviateIndex(BaseIndex):
     def query(self, queries_embeddings: List[List[Union[int, float]]], k: int = 5):
         return asyncio.run(self.query_all_embeddings(queries_embeddings, k))
 
-    def get_doc_embeddings(
-        self, doc_ids: List[List[str]]
-    ) -> List[List[List[Union[int, float]]]]:
-        with weaviate.connect_to_local(host=self.host, port=self.port) as client:
-            vector_index = client.collections.get(self.name)
+    async def get_doc_embeddings(self, vector_index, doc_id: str):
+        return await vector_index.query.fetch_objects(
+            filters=wvc.query.Filter.by_property("doc_id").equal(doc_id),
+            include_vector=True,
+            limit=512,
+            # TODO: fix limit using model max seqlen or define as no limit
+        )
 
-            # TODO: batch fetch if possible
-            doc_embeddings = [
-                [
-                    [doc.vector["default"] for doc in document.objects]
-                    for document in [
-                        vector_index.query.fetch_objects(
-                            filters=wvc.query.Filter.by_property("doc_id").equal(
-                                doc_id
-                            ),
-                            include_vector=True,
-                            limit=512,
-                            # TODO: fix limit using model max seqlen or define as no limit
-                        )
-                        for doc_id in query_doc_ids
-                    ]
-                ]
+    async def get_query_doc_embeddings(self, vector_index, query_doc_ids: List[str]):
+        tasks = [
+            self.get_doc_embeddings(vector_index, doc_id) for doc_id in query_doc_ids
+        ]
+        return await asyncio.gather(*tasks)
+
+    async def get_all_doc_embeddings(self, doc_ids: List[List[str]]):
+        # for query_doc_ids in doc_ids:
+        #     for doc_id in query_doc_ids:
+        #         print(doc_id)
+        async with weaviate.use_async_with_local() as client:
+            vector_index = client.collections.get(self.name)
+            tasks = [
+                self.get_query_doc_embeddings(vector_index, query_doc_ids)
                 for query_doc_ids in doc_ids
             ]
-            # TODO: yield exception when doc not found?
+            res_docs = await asyncio.gather(*tasks)
+            return [
+                [
+                    [doc.vector["default"] for doc in document.objects]
+                    for document in res_doc
+                ]
+                for res_doc in res_docs
+            ]
 
-            return doc_embeddings
+    def get_docs_embeddings(
+        self, doc_ids: List[List[str]]
+    ) -> List[List[List[Union[int, float]]]]:
+        return asyncio.run(self.get_all_doc_embeddings(doc_ids))
