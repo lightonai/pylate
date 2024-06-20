@@ -139,7 +139,9 @@ class ColBERT(nn.Sequential, FitMixin):
         truncation
             Truncate the inputs to the encoder max lengths or use sliding window encoding.
         query_length
-            The length of the query to pad to with mask tokens.
+            The length of the query to truncate / pad to with mask tokens.
+        document_length
+            The max length of the document to truncate.
         attend_to_expansion_tokens
             Whether to attend to the expansion tokens in the attention layers model. If False, the original tokens will not only attend to the expansion tokens, only the expansion tokens will attend to the original tokens. (Default was False in original ColBERT codebase)
 
@@ -194,6 +196,7 @@ class ColBERT(nn.Sequential, FitMixin):
         add_special_tokens: Optional[bool] = True,
         truncation: Optional[bool] = True,
         query_length: Optional[int] = 32,
+        document_length: Optional[int] = 180,
         attend_to_expansion_tokens: Optional[bool] = False,
     ):
         # Note: self._load_sbert_model can also update `self.prompts` and `self.default_prompt_name`
@@ -208,6 +211,7 @@ class ColBERT(nn.Sequential, FitMixin):
         self.query_prefix = query_prefix
         self.document_prefix = document_prefix
         self.query_length = query_length
+        self.document_length = document_length
         self.attend_to_expansion_tokens = attend_to_expansion_tokens
         if use_auth_token is not None:
             warnings.warn(
@@ -1164,25 +1168,20 @@ class ColBERT(nn.Sequential, FitMixin):
         # Add placeholder for the document/query prefix
         texts = [". " + text for text in texts]
         if is_query:
+            # TODO: This is a hack to asymetrically set the max_seq_length for the query/document, change it once the Transformer module tokenize function expose a max_length argument
+            self._first_module().max_seq_length = self.query_length
             features = self._first_module().tokenize(texts, padding="max_length")
             # Remplace the second token by the query prefix
             # TODO: Do this in a prettier way. Okay we cannot directly add the text in the string, but this is not robust (multiple ids, ...)
             # e.g : # features["input_ids"] = torch.cat((features["input_ids"][:, :1], self.document_query_id, ids[:, 1:]), dim=1) ; features["attention_mask"] = torch.cat((features["attention_mask"][:, :1], torch.ones((features["attention_mask"].shape[0], 1), dtype=torch.int8), features["attention_mask"][:, 1:]), dim=1)
             features["input_ids"][:, 1] = self.query_prefix_id
-            # Since we cannot feed a target size to the tokenize function, truncate to query_max_seq_length
-            features["input_ids"] = features["input_ids"][:, : self.query_length]
-            features["attention_mask"] = features["attention_mask"][
-                :, : self.query_length
-            ]
-            features["token_type_ids"] = features["token_type_ids"][
-                :, : self.query_length
-            ]
             # In the original ColBERT, the original tokens do not attend to the expansion tokens (but the expansion tokens attend to original tokens)
             if self.attend_to_expansion_tokens:
                 # Fill the attention mask with ones (we attend to "padding" tokens used for expansion)
                 features["attention_mask"].fill_(1)
             return features
         else:
+            self._first_module().max_seq_length = self.document_length
             features = self._first_module().tokenize(texts)
             # Remplace the second token by the document prefix
             features["input_ids"][:, 1] = self.document_prefix_id
@@ -1294,6 +1293,7 @@ class ColBERT(nn.Sequential, FitMixin):
             config["query_prefix"] = self.query_prefix
             config["document_prefix"] = self.document_prefix
             config["query_length"] = self.query_length
+            config["document_length"] = self.document_length
             config["attend_to_expansion_tokens"] = self.attend_to_expansion_tokens
             json.dump(config, fOut, indent=2)
 
@@ -1700,6 +1700,8 @@ class ColBERT(nn.Sequential, FitMixin):
                 self.document_prefix = self._model_config["document_prefix"]
             if "query_length" in self._model_config:
                 self.query_length = self._model_config["query_length"]
+            if "document_length" in self._model_config:
+                self.document_length = self._model_config["document_length"]
             if "attend_to_expansion_tokens" in self._model_config:
                 self.attend_to_expansion_tokens = self._model_config[
                     "attend_to_expansion_tokens"
