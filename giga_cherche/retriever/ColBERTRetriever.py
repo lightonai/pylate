@@ -28,7 +28,10 @@ class ColBERTRetriever:
                         for doc_id in token_doc_ids
                     ]
                 )
-            )[:k]
+            )
             for query_doc_ids in retrieved_elements["doc_ids"]
         ]
-        return self.reranker.rerank(queries, batch_doc_ids)
+        reranking_results = self.reranker.rerank(queries, batch_doc_ids)
+        # Only keep the top-k elements for each query
+        reranking_results = [query_results[:k] for query_results in reranking_results]
+        return reranking_results
