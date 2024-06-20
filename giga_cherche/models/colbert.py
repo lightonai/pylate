@@ -5,6 +5,7 @@ import logging
 import math
 import os
 import queue
+import string
 import tempfile
 import traceback
 import warnings
@@ -443,6 +444,14 @@ class ColBERT(nn.Sequential, FitMixin):
         self.query_prefix_id = self.tokenizer.convert_tokens_to_ids(self.query_prefix)
         # We are using the mask token as the padding token for padding queries
         self.tokenizer.pad_token_id = self.tokenizer.mask_token_id
+        self.skiplist = {
+            w: True
+            for symbol in string.punctuation
+            for w in [
+                symbol,
+                self.tokenizer.encode(symbol, add_special_tokens=False)[0],
+            ]
+        }
 
     def encode(
         self,
@@ -640,6 +649,19 @@ class ColBERT(nn.Sequential, FitMixin):
                 # out_features["sentence_embedding"] = truncate_embeddings(
                 #     out_features["sentence_embedding"], self.truncate_dim
                 # )
+                if not is_query:
+                    # TODO: remove the masked tokens embeddings instead of just masking them
+                    out_features["token_embeddings"] = (
+                        out_features["token_embeddings"]
+                        * torch.tensor(
+                            self.skiplist_mask(
+                                features["input_ids"], skiplist=self.skiplist
+                            ),
+                            device=self.device,
+                        )
+                        .unsqueeze(2)
+                        .float()
+                    )
 
                 embeddings = []
                 for token_emb, attention in zip(
@@ -767,6 +789,13 @@ class ColBERT(nn.Sequential, FitMixin):
             pooled_embeddings.append(torch.stack(document_pooled_embeddings))
 
         return pooled_embeddings
+
+    def skiplist_mask(self, input_ids, skiplist):
+        mask = [
+            [(x not in skiplist) and (x != self.tokenizer.pad_token) for x in d]
+            for d in input_ids.cpu().tolist()
+        ]
+        return mask
 
     @property
     def similarity_fn_name(self) -> Optional[str]:
