@@ -444,14 +444,10 @@ class ColBERT(nn.Sequential, FitMixin):
         self.query_prefix_id = self.tokenizer.convert_tokens_to_ids(self.query_prefix)
         # We are using the mask token as the padding token for padding queries
         self.tokenizer.pad_token_id = self.tokenizer.mask_token_id
-        self.skiplist = {
-            w: True
+        self.skiplist = [
+            self.tokenizer.convert_tokens_to_ids(symbol)
             for symbol in string.punctuation
-            for w in [
-                symbol,
-                self.tokenizer.encode(symbol, add_special_tokens=False)[0],
-            ]
-        }
+        ]
 
     def encode(
         self,
@@ -653,11 +649,8 @@ class ColBERT(nn.Sequential, FitMixin):
                     # TODO: remove the masked tokens embeddings instead of just masking them
                     out_features["token_embeddings"] = (
                         out_features["token_embeddings"]
-                        * torch.tensor(
-                            self.skiplist_mask(
-                                features["input_ids"], skiplist=self.skiplist
-                            ),
-                            device=self.device,
+                        * self.skiplist_mask(
+                            features["input_ids"], skiplist=self.skiplist
                         )
                         .unsqueeze(2)
                         .float()
@@ -791,10 +784,31 @@ class ColBERT(nn.Sequential, FitMixin):
         return pooled_embeddings
 
     def skiplist_mask(self, input_ids, skiplist):
-        mask = [
-            [(x not in skiplist) and (x != self.tokenizer.pad_token) for x in d]
-            for d in input_ids.cpu().tolist()
-        ]
+        skiplist = torch.tensor(skiplist, dtype=torch.long, device=input_ids.device)
+
+        # Create a tensor of ones with the same shape as input_ids
+        mask = torch.ones_like(input_ids, dtype=torch.long)
+
+        # Iterate over the token_ids_to_mask and update the mask
+        for token_id in skiplist:
+            mask = torch.where(
+                input_ids == token_id,
+                torch.tensor(0, dtype=torch.long, device=input_ids.device),
+                mask,
+            )
+
+        return mask
+
+        # Create a boolean mask indicating which tokens to mask
+        mask = torch.isin(input_ids, skiplist)
+
+        # Create the final mask tensor
+        mask = torch.where(
+            mask,
+            torch.tensor(0, dtype=torch.long, device=input_ids.device),
+            torch.tensor(1, dtype=torch.long, device=input_ids.device),
+        )
+
         return mask
 
     @property
