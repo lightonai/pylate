@@ -646,33 +646,35 @@ class ColBERT(nn.Sequential, FitMixin):
                 #     out_features["sentence_embedding"], self.truncate_dim
                 # )
                 if not is_query:
-                    # TODO: remove the masked tokens embeddings instead of just masking them
-                    out_features["token_embeddings"] = (
-                        out_features["token_embeddings"]
-                        * self.skiplist_mask(
-                            features["input_ids"], skiplist=self.skiplist
-                        )
-                        .unsqueeze(2)
-                        .float()
+                    # Compute the mask for the skiplist (punctuation symbols)
+                    skiplist_mask = self.skiplist_mask(
+                        features["input_ids"], skiplist=self.skiplist
+                    ).bool()
+                    masks = torch.logical_and(
+                        skiplist_mask, out_features["attention_mask"]
                     )
+                else:
+                    # We keep all tokens in the query (no skiplist) and we do not want to prune expansion tokens in queries even if we do not attend to them in attention layers
+                    masks = torch.ones_like(out_features["input_ids"]).bool()
 
                 embeddings = []
-                for token_emb, attention in zip(
-                    out_features["token_embeddings"], out_features["attention_mask"]
-                ):
-                    last_mask_id = len(attention) - 1
+                for (
+                    token_emb,
+                    mask,
+                ) in zip(out_features["token_embeddings"], masks):
                     # TODO: isn't torch.sum(attention) better?
                     # We do not want to prune expansion tokens in queries even if we do not attend to them in attention layers
-                    if not is_query:
-                        while last_mask_id > 0 and attention[last_mask_id].item() == 0:
-                            last_mask_id -= 1
+                    token_emb = token_emb[mask]
+                    # if not is_query:
+                    #     last_mask_id = torch.sum(skiplist_mask).item() - 1
+                    #     token_emb = token_emb[skiplist_mask]
+                    # while last_mask_id > 0 and attention[last_mask_id].item() == 0:
+                    #     last_mask_id -= 1
                     # TODO: normalize at the list level/use the module Normalize?
                     if normalize_embeddings:
-                        token_emb = torch.nn.functional.normalize(
-                            token_emb[0 : last_mask_id + 1], p=2, dim=1
-                        )
+                        token_emb = torch.nn.functional.normalize(token_emb, p=2, dim=1)
 
-                    embeddings.append(token_emb[0 : last_mask_id + 1])
+                    embeddings.append(token_emb)
                 # If we are encoding documents and the pool factor is greater than 1, we pool the embeddings
                 if pool_factor > 1 and not is_query:
                     embeddings = self.pool_embeddings_hierarchical(
@@ -798,7 +800,7 @@ class ColBERT(nn.Sequential, FitMixin):
             )
 
         return mask
-
+        # Not working on MPS
         # Create a boolean mask indicating which tokens to mask
         mask = torch.isin(input_ids, skiplist)
 
