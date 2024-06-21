@@ -5,15 +5,17 @@ from giga_cherche.indexes import WeaviateIndex
 from giga_cherche.models import ColBERT
 from giga_cherche.retriever import ColBERTRetriever
 
-model = ColBERT("NohTow/colbertv2_sentence_transformer")
-WeaviateIndex = WeaviateIndex(recreate=True)
+model = ColBERT(
+    "NohTow/colbertv2_sentence_transformer",
+)
+WeaviateIndex = WeaviateIndex(recreate=True, max_doc_length=model.document_length)
 retriever = ColBERTRetriever(WeaviateIndex)
 # Input dataset for evaluation
 documents, queries, qrels = beir.load_beir(
     "scifact",
     split="test",
 )
-batch_size = 100
+batch_size = 500
 i = 0
 pbar = tqdm(total=len(documents))
 while i < len(documents):
@@ -48,7 +50,7 @@ while i < len(queries):
         convert_to_tensor=True,
         is_query=True,
     )
-    res = retriever.retrieve(queries_embeddings, 30)
+    res = retriever.retrieve(queries_embeddings, 10)
     scores.extend(res)
     pbar.update(batch_size)
     i += batch_size

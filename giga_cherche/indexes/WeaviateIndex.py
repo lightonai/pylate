@@ -1,5 +1,4 @@
 import asyncio
-import os
 import time
 from typing import List, Optional, Union
 
@@ -10,15 +9,20 @@ from giga_cherche.indexes.BaseIndex import BaseIndex
 
 
 # TODO: define Index metaclass
+# max_doc_length is used to set a limit in the fetch embeddings method as the speed is dependant on the number of embeddings fetched
 class WeaviateIndex(BaseIndex):
     def __init__(
         self,
+        host: Optional[str] = "localhost",
+        port: Optional[str] = "8080",
         name: Optional[str] = "colbert_collection",
         recreate: Optional[bool] = False,
+        max_doc_length: Optional[int] = 180,
     ) -> None:
-        self.host = os.environ.get("WEAVIATE_HOST", "localhost")
-        self.port = os.environ.get("WEAVIATE_PORT", "8080")
+        self.host = host
+        self.port = port
         self.name = name
+        self.max_doc_length = max_doc_length
         fail_counter = 0
         attempt_number = 5
         retry_delay = 5.0
@@ -55,6 +59,7 @@ class WeaviateIndex(BaseIndex):
         with weaviate.connect_to_local(host=self.host, port=self.port) as client:
             client.collections.create(
                 name=name,
+                # TODO: let the user decide the type of index?
                 # vector_index_config=wvc.config.Configure.VectorIndex.flat(
                 #     distance_metric=wvc.config.VectorDistances.COSINE
                 # ),
@@ -152,8 +157,7 @@ class WeaviateIndex(BaseIndex):
         return await vector_index.query.fetch_objects(
             filters=wvc.query.Filter.by_property("doc_id").equal(doc_id),
             include_vector=True,
-            limit=512,
-            # TODO: fix limit using model max seqlen or define as no limit
+            limit=self.max_doc_length,
         )
 
     async def get_query_doc_embeddings(self, vector_index, query_doc_ids: List[str]):
