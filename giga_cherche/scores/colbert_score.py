@@ -24,6 +24,7 @@ def colbert_score(
     """
     a = _convert_to_batch_tensor(a)
     b = _convert_to_batch_tensor(b)
+    # We do not use explicit mask as padding tokens are full of zeros, thus will yield zero similarity
     # a num_queries, s queries_seqlen, h hidden_size, b num_documents, t documents_seqlen
     # Take make along the t axis (get max similarity for each query tokens), then sum over all the query tokens
     return torch.einsum("ash,bth->abst", a, b).max(axis=3).values.sum(axis=2)

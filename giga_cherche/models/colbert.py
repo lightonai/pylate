@@ -5,6 +5,7 @@ import logging
 import math
 import os
 import queue
+import string
 import tempfile
 import traceback
 import warnings
@@ -53,7 +54,7 @@ from torch import Tensor, device, nn
 from tqdm.autonotebook import trange
 from transformers import is_torch_npu_available
 
-from .linear_projection import LinearProjection
+from .LinearProjection import LinearProjection
 
 logger = logging.getLogger(__name__)
 
@@ -139,7 +140,9 @@ class ColBERT(nn.Sequential, FitMixin):
         truncation
             Truncate the inputs to the encoder max lengths or use sliding window encoding.
         query_length
-            The length of the query to pad to with mask tokens.
+            The length of the query to truncate / pad to with mask tokens. If set, will override the config value. Default to 32.
+        document_length
+            The max length of the document to truncate. If set, will override the config value. Default to 180.
         attend_to_expansion_tokens
             Whether to attend to the expansion tokens in the attention layers model. If False, the original tokens will not only attend to the expansion tokens, only the expansion tokens will attend to the original tokens. (Default was False in original ColBERT codebase)
 
@@ -193,7 +196,8 @@ class ColBERT(nn.Sequential, FitMixin):
         document_prefix: Optional[str] = "[D] ",
         add_special_tokens: Optional[bool] = True,
         truncation: Optional[bool] = True,
-        query_length: Optional[int] = 32,
+        query_length: Optional[int] = None,
+        document_length: Optional[int] = None,
         attend_to_expansion_tokens: Optional[bool] = False,
     ):
         # Note: self._load_sbert_model can also update `self.prompts` and `self.default_prompt_name`
@@ -208,6 +212,7 @@ class ColBERT(nn.Sequential, FitMixin):
         self.query_prefix = query_prefix
         self.document_prefix = document_prefix
         self.query_length = query_length
+        self.document_length = document_length
         self.attend_to_expansion_tokens = attend_to_expansion_tokens
         if use_auth_token is not None:
             warnings.warn(
@@ -439,6 +444,21 @@ class ColBERT(nn.Sequential, FitMixin):
         self.query_prefix_id = self.tokenizer.convert_tokens_to_ids(self.query_prefix)
         # We are using the mask token as the padding token for padding queries
         self.tokenizer.pad_token_id = self.tokenizer.mask_token_id
+        self.skiplist = [
+            self.tokenizer.convert_tokens_to_ids(symbol)
+            for symbol in string.punctuation
+        ]
+
+        # We override the config values with the ones provided by the user
+        if document_length is not None:
+            self.document_length = document_length
+        if query_length is not None:
+            self.query_length = query_length
+        # If no values are provided and there is no value in the config, use default values
+        if self.document_length is None:
+            self.document_length = 180
+        if self.query_length is None:
+            self.query_length = 32
 
     def encode(
         self,
@@ -636,24 +656,28 @@ class ColBERT(nn.Sequential, FitMixin):
                 # out_features["sentence_embedding"] = truncate_embeddings(
                 #     out_features["sentence_embedding"], self.truncate_dim
                 # )
+                if not is_query:
+                    # Compute the mask for the skiplist (punctuation symbols)
+                    skiplist_mask = self.skiplist_mask(
+                        features["input_ids"], skiplist=self.skiplist
+                    )
+                    masks = torch.logical_and(
+                        skiplist_mask, out_features["attention_mask"]
+                    )
+                else:
+                    # We keep all tokens in the query (no skiplist) and we do not want to prune expansion tokens in queries even if we do not attend to them in attention layers
+                    masks = torch.ones_like(out_features["input_ids"], dtype=torch.bool)
 
                 embeddings = []
-                for token_emb, attention in zip(
-                    out_features["token_embeddings"], out_features["attention_mask"]
-                ):
-                    last_mask_id = len(attention) - 1
-                    # TODO: isn't torch.sum(attention) better?
-                    # We do not want to prune expansion tokens in queries even if we do not attend to them in attention layers
-                    if not is_query:
-                        while last_mask_id > 0 and attention[last_mask_id].item() == 0:
-                            last_mask_id -= 1
+                for (
+                    token_emb,
+                    mask,
+                ) in zip(out_features["token_embeddings"], masks):
+                    token_emb = token_emb[mask]
                     # TODO: normalize at the list level/use the module Normalize?
                     if normalize_embeddings:
-                        token_emb = torch.nn.functional.normalize(
-                            token_emb[0 : last_mask_id + 1], p=2, dim=1
-                        )
-
-                    embeddings.append(token_emb[0 : last_mask_id + 1])
+                        token_emb = torch.nn.functional.normalize(token_emb, p=2, dim=1)
+                    embeddings.append(token_emb)
                 # If we are encoding documents and the pool factor is greater than 1, we pool the embeddings
                 if pool_factor > 1 and not is_query:
                     embeddings = self.pool_embeddings_hierarchical(
@@ -763,6 +787,34 @@ class ColBERT(nn.Sequential, FitMixin):
             pooled_embeddings.append(torch.stack(document_pooled_embeddings))
 
         return pooled_embeddings
+
+    def skiplist_mask(self, input_ids, skiplist):
+        skiplist = torch.tensor(skiplist, dtype=torch.long, device=input_ids.device)
+
+        # Create a tensor of ones with the same shape as input_ids
+        mask = torch.ones_like(input_ids, dtype=torch.bool)
+
+        # Iterate over the token_ids_to_mask and update the mask
+        for token_id in skiplist:
+            mask = torch.where(
+                input_ids == token_id,
+                torch.tensor(0, dtype=torch.bool, device=input_ids.device),
+                mask,
+            )
+
+        return mask
+        # Not working on MPS
+        # Create a boolean mask indicating which tokens to mask
+        mask = torch.isin(input_ids, skiplist)
+
+        # Create the final mask tensor
+        mask = torch.where(
+            mask,
+            torch.tensor(0, dtype=torch.long, device=input_ids.device),
+            torch.tensor(1, dtype=torch.long, device=input_ids.device),
+        )
+
+        return mask
 
     @property
     def similarity_fn_name(self) -> Optional[str]:
@@ -1164,25 +1216,20 @@ class ColBERT(nn.Sequential, FitMixin):
         # Add placeholder for the document/query prefix
         texts = [". " + text for text in texts]
         if is_query:
+            # TODO: This is a hack to asymetrically set the max_seq_length for the query/document, change it once the Transformer module tokenize function expose a max_length argument
+            self._first_module().max_seq_length = self.query_length
             features = self._first_module().tokenize(texts, padding="max_length")
             # Remplace the second token by the query prefix
             # TODO: Do this in a prettier way. Okay we cannot directly add the text in the string, but this is not robust (multiple ids, ...)
             # e.g : # features["input_ids"] = torch.cat((features["input_ids"][:, :1], self.document_query_id, ids[:, 1:]), dim=1) ; features["attention_mask"] = torch.cat((features["attention_mask"][:, :1], torch.ones((features["attention_mask"].shape[0], 1), dtype=torch.int8), features["attention_mask"][:, 1:]), dim=1)
             features["input_ids"][:, 1] = self.query_prefix_id
-            # Since we cannot feed a target size to the tokenize function, truncate to query_max_seq_length
-            features["input_ids"] = features["input_ids"][:, : self.query_length]
-            features["attention_mask"] = features["attention_mask"][
-                :, : self.query_length
-            ]
-            features["token_type_ids"] = features["token_type_ids"][
-                :, : self.query_length
-            ]
             # In the original ColBERT, the original tokens do not attend to the expansion tokens (but the expansion tokens attend to original tokens)
             if self.attend_to_expansion_tokens:
                 # Fill the attention mask with ones (we attend to "padding" tokens used for expansion)
                 features["attention_mask"].fill_(1)
             return features
         else:
+            self._first_module().max_seq_length = self.document_length
             features = self._first_module().tokenize(texts)
             # Remplace the second token by the document prefix
             features["input_ids"][:, 1] = self.document_prefix_id
@@ -1294,6 +1341,7 @@ class ColBERT(nn.Sequential, FitMixin):
             config["query_prefix"] = self.query_prefix
             config["document_prefix"] = self.document_prefix
             config["query_length"] = self.query_length
+            config["document_length"] = self.document_length
             config["attend_to_expansion_tokens"] = self.attend_to_expansion_tokens
             json.dump(config, fOut, indent=2)
 
@@ -1700,6 +1748,8 @@ class ColBERT(nn.Sequential, FitMixin):
                 self.document_prefix = self._model_config["document_prefix"]
             if "query_length" in self._model_config:
                 self.query_length = self._model_config["query_length"]
+            if "document_length" in self._model_config:
+                self.document_length = self._model_config["document_length"]
             if "attend_to_expansion_tokens" in self._model_config:
                 self.attend_to_expansion_tokens = self._model_config[
                     "attend_to_expansion_tokens"

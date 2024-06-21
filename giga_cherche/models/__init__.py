@@ -1,4 +1,4 @@
 from .colbert import ColBERT
-from .linear_projection import LinearProjection
+from .LinearProjection import LinearProjection
 
 __all__ = ["ColBERT", "LinearProjection"]

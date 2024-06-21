@@ -100,12 +100,29 @@ class ColBERTLoss(nn.Module):
             )
             for sentence_feature in sentence_features
         ]
-        masks = [
+
+        attention_masks = [
             sentence_feature["attention_mask"] for sentence_feature in sentence_features
         ]
-        # rep_anchor, rep_pos, rep_neg = reps
-        # distances = self.distance_metric(rep_anchor, (torch.cat((rep_pos, rep_neg))))
+        # We are not applying skiplist mask to the queries
+        skiplist_masks = [
+            torch.ones_like(sentence_features[0]["input_ids"], dtype=torch.bool)
+        ]
+        skiplist_masks.extend(
+            [
+                self.model.skiplist_mask(
+                    sentence_feature["input_ids"], skiplist=self.model.skiplist
+                )
+                for sentence_feature in sentence_features[1:]
+            ]
+        )
+
+        masks = [
+            torch.logical_and(skiplist_mask, attention_mask)
+            for skiplist_mask, attention_mask in zip(skiplist_masks, attention_masks)
+        ]
         # Compute the distances between the anchor (0) and the positives (1) as well as the negatives (2)
+        # Note: the queries mask is not used, if added, take care that the expansion tokens are not masked from scoring (because they might be masked during encoding). We might not need to compute the mask for queries but I let the logic there for now
         distances = torch.cat(
             [
                 self.distance_metric(reps[0], rep, mask)
