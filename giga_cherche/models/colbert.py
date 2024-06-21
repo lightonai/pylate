@@ -649,13 +649,13 @@ class ColBERT(nn.Sequential, FitMixin):
                     # Compute the mask for the skiplist (punctuation symbols)
                     skiplist_mask = self.skiplist_mask(
                         features["input_ids"], skiplist=self.skiplist
-                    ).bool()
+                    )
                     masks = torch.logical_and(
                         skiplist_mask, out_features["attention_mask"]
                     )
                 else:
                     # We keep all tokens in the query (no skiplist) and we do not want to prune expansion tokens in queries even if we do not attend to them in attention layers
-                    masks = torch.ones_like(out_features["input_ids"]).bool()
+                    masks = torch.ones_like(out_features["input_ids"], dtype=torch.bool)
 
                 embeddings = []
                 for (
@@ -781,13 +781,13 @@ class ColBERT(nn.Sequential, FitMixin):
         skiplist = torch.tensor(skiplist, dtype=torch.long, device=input_ids.device)
 
         # Create a tensor of ones with the same shape as input_ids
-        mask = torch.ones_like(input_ids, dtype=torch.long)
+        mask = torch.ones_like(input_ids, dtype=torch.bool)
 
         # Iterate over the token_ids_to_mask and update the mask
         for token_id in skiplist:
             mask = torch.where(
                 input_ids == token_id,
-                torch.tensor(0, dtype=torch.long, device=input_ids.device),
+                torch.tensor(0, dtype=torch.bool, device=input_ids.device),
                 mask,
             )
 
