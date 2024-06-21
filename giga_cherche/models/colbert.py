@@ -140,9 +140,9 @@ class ColBERT(nn.Sequential, FitMixin):
         truncation
             Truncate the inputs to the encoder max lengths or use sliding window encoding.
         query_length
-            The length of the query to truncate / pad to with mask tokens.
+            The length of the query to truncate / pad to with mask tokens. If set, will override the config value. Default to 32.
         document_length
-            The max length of the document to truncate.
+            The max length of the document to truncate. If set, will override the config value. Default to 180.
         attend_to_expansion_tokens
             Whether to attend to the expansion tokens in the attention layers model. If False, the original tokens will not only attend to the expansion tokens, only the expansion tokens will attend to the original tokens. (Default was False in original ColBERT codebase)
 
@@ -196,8 +196,8 @@ class ColBERT(nn.Sequential, FitMixin):
         document_prefix: Optional[str] = "[D] ",
         add_special_tokens: Optional[bool] = True,
         truncation: Optional[bool] = True,
-        query_length: Optional[int] = 32,
-        document_length: Optional[int] = 180,
+        query_length: Optional[int] = None,
+        document_length: Optional[int] = None,
         attend_to_expansion_tokens: Optional[bool] = False,
     ):
         # Note: self._load_sbert_model can also update `self.prompts` and `self.default_prompt_name`
@@ -448,6 +448,17 @@ class ColBERT(nn.Sequential, FitMixin):
             self.tokenizer.convert_tokens_to_ids(symbol)
             for symbol in string.punctuation
         ]
+
+        # We override the config values with the ones provided by the user
+        if document_length is not None:
+            self.document_length = document_length
+        if query_length is not None:
+            self.query_length = query_length
+        # If no values are provided and there is no value in the config, use default values
+        if self.document_length is None:
+            self.document_length = 180
+        if self.query_length is None:
+            self.query_length = 32
 
     def encode(
         self,
