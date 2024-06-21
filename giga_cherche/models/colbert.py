@@ -662,18 +662,10 @@ class ColBERT(nn.Sequential, FitMixin):
                     token_emb,
                     mask,
                 ) in zip(out_features["token_embeddings"], masks):
-                    # TODO: isn't torch.sum(attention) better?
-                    # We do not want to prune expansion tokens in queries even if we do not attend to them in attention layers
                     token_emb = token_emb[mask]
-                    # if not is_query:
-                    #     last_mask_id = torch.sum(skiplist_mask).item() - 1
-                    #     token_emb = token_emb[skiplist_mask]
-                    # while last_mask_id > 0 and attention[last_mask_id].item() == 0:
-                    #     last_mask_id -= 1
                     # TODO: normalize at the list level/use the module Normalize?
                     if normalize_embeddings:
                         token_emb = torch.nn.functional.normalize(token_emb, p=2, dim=1)
-
                     embeddings.append(token_emb)
                 # If we are encoding documents and the pool factor is greater than 1, we pool the embeddings
                 if pool_factor > 1 and not is_query:
