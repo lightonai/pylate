@@ -9,7 +9,7 @@ base_packages = [
     "sentence-transformers >= 3.0.1",
     "datasets >= 2.20.0",
     "accelerate >= 0.31.0",
-    "weaviate-client >= 4.6.4",
+    "weaviate-client >= 4.7.0b0",
 ]
 
 dev = ["ruff >= 0.4.9"]
