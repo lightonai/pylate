@@ -9,12 +9,15 @@ base_packages = [
     "sentence-transformers >= 3.0.1",
     "datasets >= 2.20.0",
     "accelerate >= 0.31.0",
-    "weaviate-client >= 4.7.0b0",
 ]
 
 dev = ["ruff >= 0.4.9"]
 
 eval = ["ranx >= 0.3.16", "beir >= 2.0.0"]
+
+index = [
+    "weaviate-client >= 4.7.0b0",
+]
 
 setuptools.setup(
     name="giga_cherche",
