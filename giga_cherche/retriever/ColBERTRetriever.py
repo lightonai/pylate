@@ -18,7 +18,7 @@ class ColBERTRetriever:
     ) -> List[List[str]]:
         # if(isinstance(queries, Tensor)):
         #     queries = queries.cpu().tolist()
-        retrieved_elements = self.index.query(queries.cpu().tolist(), int(k / 2))
+        retrieved_elements = self.index.query(queries, int(k / 2))
         batch_doc_ids = [
             list(
                 set(

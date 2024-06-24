@@ -93,7 +93,7 @@ class WeaviateIndex(BaseIndex):
             # TODO: use dynamic batching insert
             data_objects = [
                 wvc.data.DataObject(
-                    properties={"doc_id": doc_id}, vector=token_embedding
+                    properties={"doc_id": doc_id}, vector=token_embedding.tolist()
                 )
                 for doc_id, tokens_embeddings in zip(doc_ids, doc_embeddings)
                 for token_embedding in tokens_embeddings
@@ -110,7 +110,7 @@ class WeaviateIndex(BaseIndex):
     # TODO: add return type
     async def query_embedding(self, vector_index, query_embedding, k):
         return await vector_index.query.near_vector(
-            near_vector=query_embedding,
+            near_vector=query_embedding.tolist(),
             limit=k,
             include_vector=True,
             return_metadata=wvc.query.MetadataQuery(distance=True),
