@@ -186,7 +186,7 @@ class ColBERTTripletEvaluator(SentenceEvaluator):
                 is_query=False,
             )
 
-        # TODO: do the padding in encode()?
+        # TODO: we added the option to do the padding in encode, but it returns a list of tensors for consistency, so would require to do list -> tensor -> list -> tensor
         # We do not need masking as padding with zeros vectors yields 0 cosine similarity
         embeddings_positives = torch.nn.utils.rnn.pad_sequence(
             embeddings_positives, batch_first=True, padding_value=0
