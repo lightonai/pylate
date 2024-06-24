@@ -118,7 +118,9 @@ similarity_scores = colbert_score(query_embeddings, document_embeddings)
 
 # Indexing
 
-We provide a ColBERT index based on the [Weaviate vectordb](https://weaviate.io/). To speed-up the processing, the latest async client is used and the document candidates are generated using an HNSW index, which replace the IVF index from the original ColBERT.
+We provide a ColBERT index based on the [Weaviate vectordb](https://weaviate.io/). To speed-up the processing, the latest async client is used and the document candidates are generated using an HNSW index, which replace the IVF index from the original ColBERT. 
+
+Before being able to create and use an index, you need to need to launch the Weaviate server using Docker (```docker compose up```).
 
 To populate an index, simply create it and then add the computed embeddings with their corresponding ids:
 ````
