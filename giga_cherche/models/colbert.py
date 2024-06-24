@@ -131,6 +131,8 @@ class ColBERT(nn.Sequential, FitMixin):
         model_card_data (:class:`~sentence_transformers.model_card.SentenceTransformerModelCardData`, optional): A model
             card data object that contains information about the model. This is used to generate a model card when saving
             the model. If not set, a default model card data object is created.
+        embedding_size
+            The output size of the projection layer. Default to 128.
         query_prefix
             Prefix to add to the queries.
         document_prefix
