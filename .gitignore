@@ -141,3 +141,9 @@ test.ipynb
 
 # wandb logs
 wandb/
+
+# output models
+output_models/
+
+# datasets
+evaluation_datasets/
