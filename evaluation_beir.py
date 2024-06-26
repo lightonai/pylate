@@ -23,13 +23,9 @@ while i < len(documents):
     batch = documents[i:end_batch]
     documents_embeddings = model.encode(
         [doc["text"] for doc in batch],
-        convert_to_numpy=False,
+        convert_to_numpy=True,
         is_query=False,
     )
-    documents_embeddings = [
-        document_embeddings.cpu().tolist()
-        for document_embeddings in documents_embeddings
-    ]
     doc_ids = [doc["id"] for doc in batch]
     WeaviateIndex.add_documents(
         doc_ids=doc_ids,
@@ -47,7 +43,7 @@ while i < len(queries):
     batch = queries[i:end_batch]
     queries_embeddings = model.encode(
         queries[i:end_batch],
-        convert_to_tensor=True,
+        convert_to_numpy=True,
         is_query=True,
     )
     res = retriever.retrieve(queries_embeddings, 10)

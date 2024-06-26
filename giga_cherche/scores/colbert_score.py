@@ -9,6 +9,15 @@ from torch import Tensor
 logger = logging.getLogger(__name__)
 
 
+def convert_to_tensor(data):
+    if not isinstance(data, Tensor):
+        if isinstance(data[0], np.ndarray):
+            data = torch.from_numpy(np.array(data, dtype=np.float32))
+        else:
+            data = torch.stack(data)
+    return data
+
+
 def colbert_score(
     a: Union[list, np.ndarray, Tensor], b: Union[list, np.ndarray, Tensor]
 ) -> Tensor:
@@ -22,8 +31,8 @@ def colbert_score(
     Returns:
         Tensor: Matrix with res[i][j] = colbert_score(a[i], b[j])
     """
-    a = _convert_to_batch_tensor(a)
-    b = _convert_to_batch_tensor(b)
+    a = convert_to_tensor(a)
+    b = convert_to_tensor(b)
     # We do not use explicit mask as padding tokens are full of zeros, thus will yield zero similarity
     # a num_queries, s queries_seqlen, h hidden_size, b num_documents, t documents_seqlen
     # Take make along the t axis (get max similarity for each query tokens), then sum over all the query tokens

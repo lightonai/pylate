@@ -479,6 +479,7 @@ class ColBERT(nn.Sequential, FitMixin):
         precision: Literal["float32", "int8", "uint8", "binary", "ubinary"] = "float32",
         convert_to_numpy: bool = True,
         convert_to_tensor: bool = False,
+        padding: bool = False,
         device: str = None,
         normalize_embeddings: bool = True,  # Normalize the embedding to compute cosine similarity
         is_query: bool = True,
@@ -709,6 +710,14 @@ class ColBERT(nn.Sequential, FitMixin):
                     # embeddings = embeddings.cpu()
 
                 all_embeddings.extend(embeddings)
+        # TODO: right now we are casting the embeddings to a list of tensors for consistency, but this results in an useless overhead to convert them back to a tensor afterwards.
+        if padding:
+            # This will pad the documents to the same length, queries are already the same lengths
+            all_embeddings = torch.nn.utils.rnn.pad_sequence(
+                all_embeddings, batch_first=True, padding_value=0
+            )
+            # We create a list of tensor from the big padded tensor
+            all_embeddings = torch.split(all_embeddings, 1, dim=0)
 
         all_embeddings = [all_embeddings[idx] for idx in np.argsort(length_sorted_idx)]
 
@@ -717,24 +726,20 @@ class ColBERT(nn.Sequential, FitMixin):
 
         if convert_to_tensor:
             if len(all_embeddings):
+                # We return a list of tensors and not a big tensor because we cannot guarantee all element have the same sequence length
                 if isinstance(all_embeddings, np.ndarray):
-                    all_embeddings = torch.from_numpy(all_embeddings)
-                else:
-                    all_embeddings = torch.stack(all_embeddings)
+                    all_embeddings = [
+                        torch.from_numpy(embedding) for embedding in all_embeddings
+                    ]
+                # Else, we already have a list of tensors, the expected output
             else:
                 all_embeddings = torch.Tensor()
         elif convert_to_numpy:
-            if not isinstance(all_embeddings, np.ndarray):
-                if all_embeddings[0].dtype == torch.bfloat16:
-                    all_embeddings = np.asarray(
-                        [emb.float().numpy() for emb in all_embeddings]
-                    )
-                else:
-                    all_embeddings = np.asarray([emb.numpy() for emb in all_embeddings])
-        elif isinstance(all_embeddings, np.ndarray):
-            all_embeddings = [
-                torch.from_numpy(embedding) for embedding in all_embeddings
-            ]
+            # We return a list of numpy arrays and not a big numpy array because we cannot guarantee all element have the same sequence length
+            if all_embeddings[0].dtype == torch.bfloat16:
+                all_embeddings = [emb.float().numpy() for emb in all_embeddings]
+            else:
+                all_embeddings = [emb.numpy() for emb in all_embeddings]
 
         if input_was_string:
             all_embeddings = all_embeddings[0]

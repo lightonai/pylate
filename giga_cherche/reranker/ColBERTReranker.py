@@ -23,12 +23,15 @@ class ColBERTReranker:
         reranked_doc_ids = []
         reranked_scores = []
         res = []
+        # If fed a list of numpy arrays, convert them to tensors
+        if not isinstance(queries[0], Tensor):
+            queries = torch.from_numpy(np.array(queries, dtype=np.float32))
         # We do not batch queries to prevent memory overhead (computing the scores could be intensive), prevent unecessary padding of documents to the largest documents in the batch and also because the number of documents per query is not fixed.
         for query, query_documents_embeddings, query_doc_ids in zip(
             queries, batch_documents_embeddings, batch_doc_ids
         ):
             documents_embeddings = [
-                torch.tensor(embeddings, dtype=torch.float32, device=queries.device)
+                torch.tensor(embeddings, dtype=torch.float32, device=query.device)
                 for embeddings in query_documents_embeddings
             ]
             documents_embeddings = torch.nn.utils.rnn.pad_sequence(
