@@ -1,9 +1,10 @@
 import json
 import os
-from typing import Dict
 
 import torch
-from torch import Tensor, nn
+from torch import nn
+
+__all__ = ["LinearProjection"]
 
 
 # This is a linear projection layer, very similar to the Dense layer without a non-linearity and could be merged to it
@@ -33,8 +34,8 @@ class LinearProjection(nn.Module):
         in_features: int,
         out_features: int,
         bias: bool = True,
-        init_weight: Tensor = None,
-        init_bias: Tensor = None,
+        init_weight: torch.Tensor = None,
+        init_bias: torch.Tensor = None,
     ):
         super(LinearProjection, self).__init__()
         self.in_features = in_features
@@ -48,7 +49,7 @@ class LinearProjection(nn.Module):
         if init_bias is not None:
             self.linear.bias = nn.Parameter(init_bias)
 
-    def forward(self, features: Dict[str, Tensor]):
+    def forward(self, features: dict[str, torch.Tensor]):
         token_embeddings = features["token_embeddings"]
 
         # Linear projection

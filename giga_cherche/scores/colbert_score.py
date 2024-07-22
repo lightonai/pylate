@@ -1,16 +1,16 @@
 import logging
-from typing import Union
 
 import numpy as np
 import torch
 from sentence_transformers.util import _convert_to_batch_tensor
-from torch import Tensor
 
 logger = logging.getLogger(__name__)
 
+__all__ = ["colbert_score", "colbert_pairwise_score"]
+
 
 def convert_to_tensor(data):
-    if not isinstance(data, Tensor):
+    if not isinstance(data, torch.Tensor):
         if isinstance(data[0], np.ndarray):
             data = torch.from_numpy(np.array(data, dtype=np.float32))
         else:
@@ -19,8 +19,8 @@ def convert_to_tensor(data):
 
 
 def colbert_score(
-    a: Union[list, np.ndarray, Tensor], b: Union[list, np.ndarray, Tensor]
-) -> Tensor:
+    a: list | np.ndarray | torch.Tensor, b: list | np.ndarray | torch.Tensor
+) -> torch.Tensor:
     """
     Computes the ColBERT score for all pairs of vectors in a and b.
 
@@ -40,7 +40,7 @@ def colbert_score(
 
 
 # TODO: only compute the diagonal
-def colbert_pairwise_score(a: Tensor, b: Tensor) -> Tensor:
+def colbert_pairwise_score(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
     """
     Computes the pairwise ColBERT score colbert_score(a[i], b[i]).
     Args:

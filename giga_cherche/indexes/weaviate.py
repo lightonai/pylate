@@ -1,23 +1,24 @@
 import asyncio
 import time
-from typing import List, Optional, Union
 
 import weaviate
 import weaviate.classes as wvc
 
-from giga_cherche.indexes.BaseIndex import BaseIndex
+from .base import Base
+
+__all__ = ["Weaviate"]
 
 
 # TODO: define Index metaclass
 # max_doc_length is used to set a limit in the fetch embeddings method as the speed is dependant on the number of embeddings fetched
-class WeaviateIndex(BaseIndex):
+class Weaviate(Base):
     def __init__(
         self,
-        host: Optional[str] = "localhost",
-        port: Optional[str] = "8080",
-        name: Optional[str] = "colbert_collection",
-        recreate: Optional[bool] = False,
-        max_doc_length: Optional[int] = 180,
+        host: str | None = "localhost",
+        port: str | None = "8080",
+        name: str | None = "colbert_collection",
+        recreate: bool = False,
+        max_doc_length: int | None = 180,
     ) -> None:
         self.host = host
         self.port = port
@@ -75,7 +76,7 @@ class WeaviateIndex(BaseIndex):
 
     # TODO: embeddings could be a list of numpy array
     def add_documents(
-        self, doc_ids: List[str], doc_embeddings: List[List[List[Union[int, float]]]]
+        self, doc_ids: list[str], doc_embeddings: list[list[list[int | float]]]
     ) -> None:
         # assert we have the same number of doc_ids and doc_embeddings
         assert len(doc_ids) == len(doc_embeddings)
@@ -100,7 +101,7 @@ class WeaviateIndex(BaseIndex):
             ]
             vector_index.data.insert_many(data_objects)
 
-    def remove_documents(self, doc_ids: List[str]) -> None:
+    def remove_documents(self, doc_ids: list[str]) -> None:
         with weaviate.connect_to_local(host=self.host, port=self.port) as client:
             vector_index = client.collections.get(self.name)
             vector_index.data.delete_many(
@@ -116,20 +117,24 @@ class WeaviateIndex(BaseIndex):
             return_metadata=wvc.query.MetadataQuery(distance=True),
         )
 
-    async def query_embeddings(self, vector_index, query_embeddings, k):
+    async def query_embeddings(self, vector_index, query_embeddings, k) -> list:
         tasks = [
-            self.query_embedding(vector_index, query_embedding, k)
+            self.query_embedding(
+                vector_index=vector_index, query_embedding=query_embedding, k=k
+            )
             for query_embedding in query_embeddings
         ]
         return await asyncio.gather(*tasks)
 
     async def query_all_embeddings(
-        self, queries_embeddings: List[List[Union[int, float]]], k: int = 5
-    ):
+        self, queries_embeddings: list[list[int, float]], k: int = 5
+    ) -> dict:
         async with weaviate.use_async_with_local() as client:
             vector_index = client.collections.get(self.name)
             tasks = [
-                self.query_embeddings(vector_index, query_embeddings, k)
+                self.query_embeddings(
+                    vector_index=vector_index, query_embeddings=query_embeddings, k=k
+                )
                 for query_embeddings in queries_embeddings
             ]
             res_queries = await asyncio.gather(*tasks)
@@ -150,7 +155,7 @@ class WeaviateIndex(BaseIndex):
             ]
             return res
 
-    def query(self, queries_embeddings: List[List[Union[int, float]]], k: int = 5):
+    def query(self, queries_embeddings: list[list[int | float]], k: int = 5):
         return asyncio.run(self.query_all_embeddings(queries_embeddings, k))
 
     async def get_doc_embeddings(self, vector_index, doc_id: str):
@@ -160,13 +165,17 @@ class WeaviateIndex(BaseIndex):
             limit=self.max_doc_length,
         )
 
-    async def get_query_doc_embeddings(self, vector_index, query_doc_ids: List[str]):
+    async def get_query_doc_embeddings(
+        self, vector_index, query_doc_ids: list[str]
+    ) -> list:
         tasks = [
             self.get_doc_embeddings(vector_index, doc_id) for doc_id in query_doc_ids
         ]
         return await asyncio.gather(*tasks)
 
-    async def get_all_doc_embeddings(self, doc_ids: List[List[str]]):
+    async def get_all_doc_embeddings(
+        self, doc_ids: list[list[str]]
+    ) -> list[list[list]]:
         # for query_doc_ids in doc_ids:
         #     for doc_id in query_doc_ids:
         #         print(doc_id)
@@ -186,6 +195,6 @@ class WeaviateIndex(BaseIndex):
             ]
 
     def get_docs_embeddings(
-        self, doc_ids: List[List[str]]
-    ) -> List[List[List[Union[int, float]]]]:
+        self, doc_ids: list[list[str]]
+    ) -> list[list[list[int | float]]]:
         return asyncio.run(self.get_all_doc_embeddings(doc_ids))

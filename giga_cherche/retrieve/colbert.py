@@ -1,24 +1,25 @@
-from typing import List, Union
-
 import numpy as np
-from torch import Tensor
+import torch
 
-from giga_cherche.indexes.BaseIndex import BaseIndex
-from giga_cherche.reranker.ColBERTReranker import ColBERTReranker
+from ..indexes import Base as BaseIndex
+from ..rerank import ColBERT as ColBERTReranker
+
+__all__ = ["ColBERT"]
 
 
 # TODO: define Retriever metaclass
-class ColBERTRetriever:
+class ColBERT:
     def __init__(self, index: BaseIndex) -> None:
         self.index = index
-        self.reranker = ColBERTReranker(index)
+        self.reranker = ColBERTReranker(index=index)
 
     def retrieve(
-        self, queries: List[Union[list, np.ndarray, Tensor]], k: int
-    ) -> List[List[str]]:
+        self, queries: list[list | np.ndarray | torch.Tensor], k: int
+    ) -> list[list[str]]:
         # if(isinstance(queries, Tensor)):
         #     queries = queries.cpu().tolist()
-        retrieved_elements = self.index.query(queries, int(k / 2))
+        retrieved_elements = self.index.query(queries_embeddings=queries, k=k // 2)
+
         batch_doc_ids = [
             list(
                 set(
@@ -31,7 +32,12 @@ class ColBERTRetriever:
             )
             for query_doc_ids in retrieved_elements["doc_ids"]
         ]
-        reranking_results = self.reranker.rerank(queries, batch_doc_ids)
+
+        reranking_results = self.reranker.rerank(
+            queries=queries, batch_doc_ids=batch_doc_ids
+        )
+
         # Only keep the top-k elements for each query
         reranking_results = [query_results[:k] for query_results in reranking_results]
+
         return reranking_results

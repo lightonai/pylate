@@ -1,3 +1,3 @@
-from .colbert_loss import ColBERTLoss
+from .colbert import ColBERTLoss
 
 __all__ = ["ColBERTLoss"]

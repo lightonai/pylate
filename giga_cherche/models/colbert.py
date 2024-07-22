@@ -13,11 +13,8 @@ from collections import OrderedDict
 from contextlib import contextmanager
 from pathlib import Path
 from typing import (
-    Any,
     Callable,
-    Dict,
     Iterable,
-    List,
     Literal,
     Optional,
     Tuple,
@@ -50,7 +47,7 @@ from sentence_transformers.util import (
     load_file_path,
     save_to_hub_args_decorator,
 )
-from torch import Tensor, device, nn
+from torch import nn
 from tqdm.autonotebook import trange
 from transformers import is_torch_npu_available
 
@@ -75,7 +72,7 @@ class ColBERT(nn.Sequential, FitMixin):
             SentenceTransformer models from scratch.
         device (str, optional): Device (like "cuda", "cpu", "mps", "npu") that should be used for computation. If None, checks if a GPU
             can be used.
-        prompts (Dict[str, str], optional): A dictionary with prompts for the model. The key is the prompt name, the value is the prompt text.
+        prompts (dict[str, str], optional): A dictionary with prompts for the model. The key is the prompt name, the value is the prompt text.
             The prompt text will be prepended before any text to encode. For example:
             `{"query": "query: ", "passage": "passage: "}` or `{"clustering": "Identify the main category based on the
             titles in "}`.
@@ -95,7 +92,7 @@ class ColBERT(nn.Sequential, FitMixin):
         use_auth_token (bool or str, optional): Deprecated argument. Please use `token` instead.
         truncate_dim (int, optional): The dimension to truncate sentence embeddings to. `None` does no truncation. Truncation is
             only applicable during inference when :meth:`SentenceTransformer.encode` is called.
-        model_kwargs (Dict[str, Any], optional): Additional model configuration parameters to be passed to the Huggingface Transformers model.
+        model_kwargs (dict, optional): Additional model configuration parameters to be passed to the Huggingface Transformers model.
             Particularly useful options are:
 
             - ``torch_dtype``: Override the default `torch.dtype` and load the model under a specific `dtype`.
@@ -120,11 +117,11 @@ class ColBERT(nn.Sequential, FitMixin):
             See the `PreTrainedModel.from_pretrained
             <https://huggingface.co/docs/transformers/en/main_classes/model#transformers.PreTrainedModel.from_pretrained>`_
             documentation for more details.
-        tokenizer_kwargs (Dict[str, Any], optional): Additional tokenizer configuration parameters to be passed to the Huggingface Transformers tokenizer.
+        tokenizer_kwargs (dict, optional): Additional tokenizer configuration parameters to be passed to the Huggingface Transformers tokenizer.
             See the `AutoTokenizer.from_pretrained
             <https://huggingface.co/docs/transformers/en/model_doc/auto#transformers.AutoTokenizer.from_pretrained>`_
             documentation for more details.
-        config_kwargs (Dict[str, Any], optional): Additional model configuration parameters to be passed to the Huggingface Transformers config.
+        config_kwargs (dict, optional): Additional model configuration parameters to be passed to the Huggingface Transformers config.
             See the `AutoConfig.from_pretrained
             <https://huggingface.co/docs/transformers/en/model_doc/auto#transformers.AutoConfig.from_pretrained>`_
             documentation for more details.
@@ -176,32 +173,32 @@ class ColBERT(nn.Sequential, FitMixin):
 
     def __init__(
         self,
-        model_name_or_path: Optional[str] = None,
+        model_name_or_path: str | None = None,
         modules: Optional[Iterable[nn.Module]] = None,
-        device: Optional[str] = None,
-        prompts: Optional[Dict[str, str]] = None,
-        default_prompt_name: Optional[str] = None,
+        device: str | None = None,
+        prompts: dict[str, str] | None = None,
+        default_prompt_name: str | None = None,
         similarity_fn_name: Optional[Union[str, SimilarityFunction]] = None,
-        cache_folder: Optional[str] = None,
+        cache_folder: str | None = None,
         trust_remote_code: bool = False,
-        revision: Optional[str] = None,
+        revision: str | None = None,
         local_files_only: bool = False,
-        token: Optional[Union[bool, str]] = None,
-        use_auth_token: Optional[Union[bool, str]] = None,
-        truncate_dim: Optional[int] = None,
-        model_kwargs: Optional[Dict[str, Any]] = None,
-        tokenizer_kwargs: Optional[Dict[str, Any]] = None,
-        config_kwargs: Optional[Dict[str, Any]] = None,
+        token: bool | str | None = None,
+        use_auth_token: bool | str | None = None,
+        truncate_dim: int | None = None,
+        model_kwargs: dict | None = None,
+        tokenizer_kwargs: dict | None = None,
+        config_kwargs: dict | None = None,
         model_card_data: Optional[SentenceTransformerModelCardData] = None,
-        embedding_size: Optional[int] = 128,
-        query_prefix: Optional[str] = "[Q] ",
-        document_prefix: Optional[str] = "[D] ",
-        add_special_tokens: Optional[bool] = True,
-        truncation: Optional[bool] = True,
-        query_length: Optional[int] = None,
-        document_length: Optional[int] = None,
-        attend_to_expansion_tokens: Optional[bool] = False,
-        skiplist_words: Optional[List[str]] = None,
+        embedding_size: int | None = 128,
+        query_prefix: str | None = "[Q] ",
+        document_prefix: str | None = "[D] ",
+        add_special_tokens: bool = True,
+        truncation: bool = True,
+        query_length: int | None = None,
+        document_length: int | None = None,
+        attend_to_expansion_tokens: bool = False,
+        skiplist_words: list[str] | None = None,
     ):
         # Note: self._load_sbert_model can also update `self.prompts` and `self.default_prompt_name`
         self.prompts = prompts or {}
@@ -470,12 +467,11 @@ class ColBERT(nn.Sequential, FitMixin):
 
     def encode(
         self,
-        sentences: Union[str, List[str]],
-        prompt_name: Optional[str] = None,
-        prompt: Optional[str] = None,
+        sentences: str | list[str],
+        prompt_name: str | None = None,
+        prompt: str | None = None,
         batch_size: int = 32,
         show_progress_bar: bool = None,
-        # output_value: Optional[Literal["sentence_embedding", "token_embeddings"]] = "sentence_embedding",
         precision: Literal["float32", "int8", "uint8", "binary", "ubinary"] = "float32",
         convert_to_numpy: bool = True,
         convert_to_tensor: bool = False,
@@ -485,18 +481,18 @@ class ColBERT(nn.Sequential, FitMixin):
         is_query: bool = True,
         pool_factor: int = 1,
         protected_tokens: int = 1,
-    ) -> Union[List[Tensor], ndarray, Tensor]:
+    ) -> Union[list[torch.Tensor], ndarray, torch.Tensor]:
         """
         Computes sentence embeddings.
 
         Args:
-            sentences (Union[str, List[str]]): The sentences to embed.
-            prompt_name (Optional[str], optional): The name of the prompt to use for encoding. Must be a key in the `prompts` dictionary,
+            sentences (Union[str, list[str]]): The sentences to embed.
+            prompt_name (str | None, optional): The name of the prompt to use for encoding. Must be a key in the `prompts` dictionary,
                 which is either set in the constructor or loaded from the model configuration. For example if
                 ``prompt_name`` is "query" and the ``prompts`` is {"query": "query: ", ...}, then the sentence "What
                 is the capital of France?" will be encoded as "query: What is the capital of France?" because the sentence
                 is appended to the prompt. If ``prompt`` is also set, this argument is ignored. Defaults to None.
-            prompt (Optional[str], optional): The prompt to use for encoding. For example, if the prompt is "query: ", then the
+            prompt (str | None, optional): The prompt to use for encoding. For example, if the prompt is "query: ", then the
                 sentence "What is the capital of France?" will be encoded as "query: What is the capital of France?"
                 because the sentence is appended to the prompt. If ``prompt`` is set, ``prompt_name`` is ignored. Defaults to None.
             batch_size (int, optional): The batch size used for the computation. Defaults to 32.
@@ -520,9 +516,9 @@ class ColBERT(nn.Sequential, FitMixin):
             protected_tokens (int, optional): The number of tokens at the beginning of the sequence that should not be pooled. Defaults to 1 (CLS token).
 
         Returns:
-            Union[List[Tensor], ndarray, Tensor]: By default, a 2d numpy array with shape [num_inputs, output_dimension] is returned.
+            Union[list[torch.Tensor], ndarray, torch.Tensor]: By default, a 2d numpy array with shape [num_inputs, output_dimension] is returned.
             If only one string input is provided, then the output is a 1d array with shape [output_dimension]. If ``convert_to_tensor``,
-            a torch Tensor is returned instead. If ``self.truncate_dim <= output_dimension`` then output_dimension is ``self.truncate_dim``.
+            a torch torch.Tensor is returned instead. If ``self.truncate_dim <= output_dimension`` then output_dimension is ``self.truncate_dim``.
 
         Example:
             ::
@@ -733,7 +729,7 @@ class ColBERT(nn.Sequential, FitMixin):
                     ]
                 # Else, we already have a list of tensors, the expected output
             else:
-                all_embeddings = torch.Tensor()
+                all_embeddings = torch.torch.Tensor()
         elif convert_to_numpy:
             # We return a list of numpy arrays and not a big numpy array because we cannot guarantee all element have the same sequence length
             if all_embeddings[0].dtype == torch.bfloat16:
@@ -751,20 +747,20 @@ class ColBERT(nn.Sequential, FitMixin):
         Computes sentence embeddings.
 
         Args:
-            documents_embeddings (List[Tensor]): The embeddings of the documents to pool.
+            documents_embeddings (list[torch.Tensor]): The embeddings of the documents to pool.
             pool_factor (int, optional): The factor by which to pool the documents embeddings, resulting in 1/pool_factor of the original token. If set to 1, no pooling is done, 2 keep only 50% of the tokens, 3, 33%, ... Defaults to 1.
             protected_tokens (int, optional): The number of tokens at the beginning of the sequence that should not be pooled. Defaults to 1 (CLS token).
 
         Returns:
-            List[Tensor]: The list of pooled embeddings.
+            list[torch.Tensor]: The list of pooled embeddings.
         """
 
     def pool_embeddings_hierarchical(
         self,
-        documents_embeddings: List[Tensor],
+        documents_embeddings: list[torch.Tensor],
         pool_factor: int = 1,
         protected_tokens: int = 1,
-    ) -> List[Tensor]:
+    ) -> list[torch.Tensor]:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         pooled_embeddings = []
         for document_embeddings in documents_embeddings:
@@ -830,11 +826,11 @@ class ColBERT(nn.Sequential, FitMixin):
         return mask
 
     @property
-    def similarity_fn_name(self) -> Optional[str]:
+    def similarity_fn_name(self) -> str | None:
         """Return the name of the similarity function used by :meth:`SentenceTransformer.similarity` and :meth:`SentenceTransformer.similarity_pairwise`.
 
         Returns:
-            Optional[str]: The name of the similarity function. Can be None if not set, in which case any uses of
+            str | None: The name of the similarity function. Can be None if not set, in which case any uses of
             :meth:`SentenceTransformer.similarity` and :meth:`SentenceTransformer.similarity_pairwise` default to "cosine".
 
         Example:
@@ -857,26 +853,32 @@ class ColBERT(nn.Sequential, FitMixin):
             )
 
     @overload
-    def similarity(self, embeddings1: Tensor, embeddings2: Tensor) -> Tensor: ...
+    def similarity(
+        self, embeddings1: torch.Tensor, embeddings2: torch.Tensor
+    ) -> torch.Tensor: ...
 
     @overload
-    def similarity(self, embeddings1: ndarray, embeddings2: ndarray) -> Tensor: ...
+    def similarity(
+        self, embeddings1: ndarray, embeddings2: ndarray
+    ) -> torch.Tensor: ...
 
     @property
     def similarity(
         self,
-    ) -> Callable[[Union[Tensor, ndarray], Union[Tensor, ndarray]], Tensor]:
+    ) -> Callable[
+        [Union[torch.Tensor, ndarray], Union[torch.Tensor, ndarray]], torch.Tensor
+    ]:
         """
         Compute the similarity between two collections of embeddings. The output will be a matrix with the similarity
         scores between all embeddings from the first parameter and all embeddings from the second parameter. This
         differs from `similarity_pairwise` which computes the similarity between each pair of embeddings.
 
         Args:
-            embeddings1 (Union[Tensor, ndarray]): [num_embeddings_1, embedding_dim] or [embedding_dim]-shaped numpy array or torch tensor.
-            embeddings2 (Union[Tensor, ndarray]): [num_embeddings_2, embedding_dim] or [embedding_dim]-shaped numpy array or torch tensor.
+            embeddings1 (Union[torch.Tensor, ndarray]): [num_embeddings_1, embedding_dim] or [embedding_dim]-shaped numpy array or torch tensor.
+            embeddings2 (Union[torch.Tensor, ndarray]): [num_embeddings_2, embedding_dim] or [embedding_dim]-shaped numpy array or torch tensor.
 
         Returns:
-            Tensor: A [num_embeddings_1, num_embeddings_2]-shaped torch tensor with similarity scores.
+            torch.Tensor: A [num_embeddings_1, num_embeddings_2]-shaped torch tensor with similarity scores.
 
         Example:
             ::
@@ -909,28 +911,30 @@ class ColBERT(nn.Sequential, FitMixin):
 
     @overload
     def similarity_pairwise(
-        self, embeddings1: Tensor, embeddings2: Tensor
-    ) -> Tensor: ...
+        self, embeddings1: torch.Tensor, embeddings2: torch.Tensor
+    ) -> torch.Tensor: ...
 
     @overload
     def similarity_pairwise(
         self, embeddings1: ndarray, embeddings2: ndarray
-    ) -> Tensor: ...
+    ) -> torch.Tensor: ...
 
     @property
     def similarity_pairwise(
         self,
-    ) -> Callable[[Union[Tensor, ndarray], Union[Tensor, ndarray]], Tensor]:
+    ) -> Callable[
+        [Union[torch.Tensor, ndarray], Union[torch.Tensor, ndarray]], torch.Tensor
+    ]:
         """
         Compute the similarity between two collections of embeddings. The output will be a vector with the similarity
         scores between each pair of embeddings.
 
         Args:
-            embeddings1 (Union[Tensor, ndarray]): [num_embeddings, embedding_dim] or [embedding_dim]-shaped numpy array or torch tensor.
-            embeddings2 (Union[Tensor, ndarray]): [num_embeddings, embedding_dim] or [embedding_dim]-shaped numpy array or torch tensor.
+            embeddings1 (Union[torch.Tensor, ndarray]): [num_embeddings, embedding_dim] or [embedding_dim]-shaped numpy array or torch tensor.
+            embeddings2 (Union[torch.Tensor, ndarray]): [num_embeddings, embedding_dim] or [embedding_dim]-shaped numpy array or torch tensor.
 
         Returns:
-            Tensor: A [num_embeddings]-shaped torch tensor with pairwise similarity scores.
+            torch.Tensor: A [num_embeddings]-shaped torch tensor with pairwise similarity scores.
 
         Example:
             ::
@@ -955,9 +959,7 @@ class ColBERT(nn.Sequential, FitMixin):
             self.similarity_fn_name = SimilarityFunction.COSINE
         return self._similarity_pairwise
 
-    def start_multi_process_pool(
-        self, target_devices: List[str] = None
-    ) -> Dict[str, Any]:
+    def start_multi_process_pool(self, target_devices: list[str] = None) -> dict:
         """
         Starts a multi-process pool to process the encoding with several independent processes
         via :meth:`SentenceTransformer.encode_multi_process <sentence_transformers.SentenceTransformer.encode_multi_process>`.
@@ -967,13 +969,13 @@ class ColBERT(nn.Sequential, FitMixin):
         and stop_multi_process_pool.
 
         Args:
-            target_devices (List[str], optional): PyTorch target devices, e.g. ["cuda:0", "cuda:1", ...],
+            target_devices (list[str], optional): PyTorch target devices, e.g. ["cuda:0", "cuda:1", ...],
                 ["npu:0", "npu:1", ...], or ["cpu", "cpu", "cpu", "cpu"]. If target_devices is None and CUDA/NPU
                 is available, then all available CUDA/NPU devices will be used. If target_devices is None and
                 CUDA/NPU is not available, then 4 CPU devices will be used.
 
         Returns:
-            Dict[str, Any]: A dictionary with the target processes, an input queue, and an output queue.
+            dict: A dictionary with the target processes, an input queue, and an output queue.
         """
         if target_devices is None:
             if torch.cuda.is_available():
@@ -1018,7 +1020,7 @@ class ColBERT(nn.Sequential, FitMixin):
         Stops all processes started with start_multi_process_pool.
 
         Args:
-            pool (Dict[str, object]): A dictionary containing the input queue, output queue, and process list.
+            pool (dict[str, object]): A dictionary containing the input queue, output queue, and process list.
 
         Returns:
             None
@@ -1035,10 +1037,10 @@ class ColBERT(nn.Sequential, FitMixin):
 
     def encode_multi_process(
         self,
-        sentences: List[str],
-        pool: Dict[str, object],
-        prompt_name: Optional[str] = None,
-        prompt: Optional[str] = None,
+        sentences: list[str],
+        pool: dict[str, object],
+        prompt_name: str | None = None,
+        prompt: str | None = None,
         batch_size: int = 32,
         chunk_size: int = None,
         precision: Literal["float32", "int8", "uint8", "binary", "ubinary"] = "float32",
@@ -1051,14 +1053,14 @@ class ColBERT(nn.Sequential, FitMixin):
         GPUs or CPUs. This method is only suitable for encoding large sets of sentences.
 
         Args:
-            sentences (List[str]): List of sentences to encode.
-            pool (Dict[str, object]): A pool of workers started with SentenceTransformer.start_multi_process_pool.
-            prompt_name (Optional[str], optional): The name of the prompt to use for encoding. Must be a key in the `prompts` dictionary,
+            sentences (list[str]): List of sentences to encode.
+            pool (dict[str, object]): A pool of workers started with SentenceTransformer.start_multi_process_pool.
+            prompt_name (str | None, optional): The name of the prompt to use for encoding. Must be a key in the `prompts` dictionary,
                 which is either set in the constructor or loaded from the model configuration. For example if
                 ``prompt_name`` is "query" and the ``prompts`` is {"query": "query: ", ...}, then the sentence "What
                 is the capital of France?" will be encoded as "query: What is the capital of France?" because the sentence
                 is appended to the prompt. If ``prompt`` is also set, this argument is ignored. Defaults to None.
-            prompt (Optional[str], optional): The prompt to use for encoding. For example, if the prompt is "query: ", then the
+            prompt (str | None, optional): The prompt to use for encoding. For example, if the prompt is "query: ", then the
                 sentence "What is the capital of France?" will be encoded as "query: What is the capital of France?"
                 because the sentence is appended to the prompt. If ``prompt`` is set, ``prompt_name`` is ignored. Defaults to None.
             batch_size (int): Encode sentences with batch size. (default: 32)
@@ -1198,12 +1200,12 @@ class ColBERT(nn.Sequential, FitMixin):
                 module.include_prompt = include_prompt
                 break
 
-    def get_max_seq_length(self) -> Optional[int]:
+    def get_max_seq_length(self) -> int | None:
         """
         Returns the maximal sequence length that the model accepts. Longer inputs will be truncated.
 
         Returns:
-            Optional[int]: The maximal sequence length that the model accepts, or None if it is not defined.
+            int | None: The maximal sequence length that the model accepts, or None if it is not defined.
         """
         if hasattr(self._first_module(), "max_seq_length"):
             return self._first_module().max_seq_length
@@ -1212,17 +1214,17 @@ class ColBERT(nn.Sequential, FitMixin):
 
     def tokenize(
         self,
-        texts: Union[List[str], List[Dict], List[Tuple[str, str]]],
-        is_query: Optional[bool] = True,
-    ) -> Dict[str, Tensor]:
+        texts: Union[list[str], list[dict], list[tuple[str, str]]],
+        is_query: bool = True,
+    ) -> dict[str, torch.Tensor]:
         """
         Tokenizes the texts.
 
         Args:
-            texts (Union[List[str], List[Dict], List[Tuple[str, str]]]): A list of texts to be tokenized.
+            texts (Union[list[str], list[dict], list[tuple[str, str]]]): A list of texts to be tokenized.
 
         Returns:
-            Dict[str, Tensor]: A dictionary of tensors with the tokenized texts. Common keys are "input_ids",
+            dict[str, torch.Tensor]: A dictionary of tensors with the tokenized texts. Common keys are "input_ids",
                 "attention_mask", and "token_type_ids".
         """
         # TODO: add the skiplist
@@ -1251,12 +1253,12 @@ class ColBERT(nn.Sequential, FitMixin):
     def get_sentence_features(self, *features):
         return self._first_module().get_sentence_features(*features)
 
-    def get_sentence_embedding_dimension(self) -> Optional[int]:
+    def get_sentence_embedding_dimension(self) -> int | None:
         """
         Returns the number of dimensions in the output of :meth:`SentenceTransformer.encode <sentence_transformers.SentenceTransformer.encode>`.
 
         Returns:
-            Optional[int]: The number of dimensions in the output of `encode`. If it's not known, it's `None`.
+            int | None: The number of dimensions in the output of `encode`. If it's not known, it's `None`.
         """
         output_dim = None
         for mod in reversed(self._modules.values()):
@@ -1273,7 +1275,7 @@ class ColBERT(nn.Sequential, FitMixin):
         return output_dim
 
     @contextmanager
-    def truncate_sentence_embeddings(self, truncate_dim: Optional[int]):
+    def truncate_sentence_embeddings(self, truncate_dim: int | None):
         """
         In this context, :meth:`SentenceTransformer.encode <sentence_transformers.SentenceTransformer.encode>` outputs
         sentence embeddings truncated at dimension ``truncate_dim``.
@@ -1313,9 +1315,9 @@ class ColBERT(nn.Sequential, FitMixin):
     def save(
         self,
         path: str,
-        model_name: Optional[str] = None,
+        model_name: str | None = None,
         create_model_card: bool = True,
-        train_datasets: Optional[List[str]] = None,
+        train_datasets: list[str] | None = None,
         safe_serialization: bool = True,
     ):
         """
@@ -1326,7 +1328,7 @@ class ColBERT(nn.Sequential, FitMixin):
             path (str): Path on disc where the model will be saved.
             model_name (str, optional): Optional model name.
             create_model_card (bool, optional): If True, create a README.md with basic information about this model.
-            train_datasets (List[str], optional): Optional list with the names of the datasets used to train the model.
+            train_datasets (list[str], optional): Optional list with the names of the datasets used to train the model.
             safe_serialization (bool, optional): If True, save the model using safetensors. If False, save the model
                 the traditional (but unsafe) PyTorch way.
         """
@@ -1394,9 +1396,9 @@ class ColBERT(nn.Sequential, FitMixin):
     def save_pretrained(
         self,
         path: str,
-        model_name: Optional[str] = None,
+        model_name: str | None = None,
         create_model_card: bool = True,
-        train_datasets: Optional[List[str]] = None,
+        train_datasets: list[str] | None = None,
         safe_serialization: bool = True,
     ):
         """
@@ -1407,7 +1409,7 @@ class ColBERT(nn.Sequential, FitMixin):
             path (str): Path on disc where the model will be saved.
             model_name (str, optional): Optional model name.
             create_model_card (bool, optional): If True, create a README.md with basic information about this model.
-            train_datasets (List[str], optional): Optional list with the names of the datasets used to train the model.
+            train_datasets (list[str], optional): Optional list with the names of the datasets used to train the model.
             safe_serialization (bool, optional): If True, save the model using safetensors. If False, save the model
                 the traditional (but unsafe) PyTorch way.
         """
@@ -1422,8 +1424,8 @@ class ColBERT(nn.Sequential, FitMixin):
     def _create_model_card(
         self,
         path: str,
-        model_name: Optional[str] = None,
-        train_datasets: Optional[List[str]] = "deprecated",
+        model_name: str | None = None,
+        train_datasets: list[str] | None = "deprecated",
     ):
         """
         Create an automatic model and stores it in the specified path. If no training was done and the loaded model
@@ -1431,8 +1433,8 @@ class ColBERT(nn.Sequential, FitMixin):
 
         Args:
             path (str): The path where the model card will be stored.
-            model_name (Optional[str], optional): The name of the model. Defaults to None.
-            train_datasets (Optional[List[str]], optional): Deprecated argument. Defaults to "deprecated".
+            model_name (str | None, optional): The name of the model. Defaults to None.
+            train_datasets (list[str] | None, optional): Deprecated argument. Defaults to "deprecated".
 
         Returns:
             None
@@ -1464,15 +1466,15 @@ class ColBERT(nn.Sequential, FitMixin):
     def save_to_hub(
         self,
         repo_id: str,
-        organization: Optional[str] = None,
-        token: Optional[str] = None,
+        organization: str | None = None,
+        token: str | None = None,
         private: Optional[bool] = None,
         safe_serialization: bool = True,
         commit_message: str = "Add new SentenceTransformer model.",
-        local_model_path: Optional[str] = None,
+        local_model_path: str | None = None,
         exist_ok: bool = False,
         replace_model_card: bool = False,
-        train_datasets: Optional[List[str]] = None,
+        train_datasets: list[str] | None = None,
     ) -> str:
         """
         DEPRECATED, use `push_to_hub` instead.
@@ -1488,7 +1490,7 @@ class ColBERT(nn.Sequential, FitMixin):
             local_model_path (str, optional): Path of the model locally. If set, this file path will be uploaded. Otherwise, the current model will be uploaded
             exist_ok (bool, optional): If true, saving to an existing repository is OK. If false, saving only to a new repository is possible
             replace_model_card (bool, optional): If true, replace an existing model card in the hub with the automatically created model card
-            train_datasets (List[str], optional): Datasets used to train the model. If set, the datasets will be added to the model card in the Hub.
+            train_datasets (list[str], optional): Datasets used to train the model. If set, the datasets will be added to the model card in the Hub.
 
         Returns:
             str: The url of the commit of your model in the repository on the Hugging Face Hub.
@@ -1528,14 +1530,14 @@ class ColBERT(nn.Sequential, FitMixin):
     def push_to_hub(
         self,
         repo_id: str,
-        token: Optional[str] = None,
+        token: str | None = None,
         private: Optional[bool] = None,
         safe_serialization: bool = True,
         commit_message: str = "Add new SentenceTransformer model.",
-        local_model_path: Optional[str] = None,
+        local_model_path: str | None = None,
         exist_ok: bool = False,
         replace_model_card: bool = False,
-        train_datasets: Optional[List[str]] = None,
+        train_datasets: list[str] | None = None,
     ) -> str:
         """
         Uploads all elements of this Sentence Transformer to a new HuggingFace Hub repository.
@@ -1549,7 +1551,7 @@ class ColBERT(nn.Sequential, FitMixin):
             local_model_path (str, optional): Path of the model locally. If set, this file path will be uploaded. Otherwise, the current model will be uploaded
             exist_ok (bool, optional): If true, saving to an existing repository is OK. If false, saving only to a new repository is possible
             replace_model_card (bool, optional): If true, replace an existing model card in the hub with the automatically created model card
-            train_datasets (List[str], optional): Datasets used to train the model. If set, the datasets will be added to the model card in the Hub.
+            train_datasets (list[str], optional): Datasets used to train the model. If set, the datasets will be added to the model card in the Hub.
 
         Returns:
             str: The url of the commit of your model in the repository on the Hugging Face Hub.
@@ -1592,7 +1594,8 @@ class ColBERT(nn.Sequential, FitMixin):
         # This isn't expected to ever be reached.
         return folder_url
 
-    def _text_length(self, text: Union[List[int], List[List[int]]]):
+    @staticmethod
+    def _text_length(text: list[int] | list[list[int]]):
         """
         Help function to get the length for the input text. Text can be either
         a list of ints (which means a single text as input), or a tuple of list of ints
@@ -1626,31 +1629,31 @@ class ColBERT(nn.Sequential, FitMixin):
     def _load_auto_model(
         self,
         model_name_or_path: str,
-        token: Optional[Union[bool, str]],
-        cache_folder: Optional[str],
-        revision: Optional[str] = None,
+        token: bool | str | None,
+        cache_folder: str | None,
+        revision: str | None = None,
         trust_remote_code: bool = False,
         local_files_only: bool = False,
-        model_kwargs: Optional[Dict[str, Any]] = None,
-        tokenizer_kwargs: Optional[Dict[str, Any]] = None,
-        config_kwargs: Optional[Dict[str, Any]] = None,
-    ) -> List[nn.Module]:
+        model_kwargs: dict | None = None,
+        tokenizer_kwargs: dict | None = None,
+        config_kwargs: dict | None = None,
+    ) -> list[nn.Module]:
         """
         Creates a simple Transformer + Mean Pooling model and returns the modules
 
         Args:
             model_name_or_path (str): The name or path of the pre-trained model.
-            token (Optional[Union[bool, str]]): The token to use for the model.
-            cache_folder (Optional[str]): The folder to cache the model.
-            revision (Optional[str], optional): The revision of the model. Defaults to None.
+            token (bool | str | None): The token to use for the model.
+            cache_folder (str | None): The folder to cache the model.
+            revision (str | None, optional): The revision of the model. Defaults to None.
             trust_remote_code (bool, optional): Whether to trust remote code. Defaults to False.
             local_files_only (bool, optional): Whether to use only local files. Defaults to False.
-            model_kwargs (Optional[Dict[str, Any]], optional): Additional keyword arguments for the model. Defaults to None.
-            tokenizer_kwargs (Optional[Dict[str, Any]], optional): Additional keyword arguments for the tokenizer. Defaults to None.
-            config_kwargs (Optional[Dict[str, Any]], optional): Additional keyword arguments for the config. Defaults to None.
+            model_kwargs (dict | None, optional): Additional keyword arguments for the model. Defaults to None.
+            tokenizer_kwargs (dict | None, optional): Additional keyword arguments for the tokenizer. Defaults to None.
+            config_kwargs (dict | None, optional): Additional keyword arguments for the config. Defaults to None.
 
         Returns:
-            List[nn.Module]: A list containing the transformer model and the pooling model.
+            list[nn.Module]: A list containing the transformer model and the pooling model.
         """
         logger.warning(
             f"No sentence-transformers model found with name {model_name_or_path}. Creating a ColBERT model from base encoder."
@@ -1689,28 +1692,28 @@ class ColBERT(nn.Sequential, FitMixin):
     def _load_sbert_model(
         self,
         model_name_or_path: str,
-        token: Optional[Union[bool, str]],
-        cache_folder: Optional[str],
-        revision: Optional[str] = None,
+        token: bool | str | None,
+        cache_folder: str | None,
+        revision: str | None = None,
         trust_remote_code: bool = False,
         local_files_only: bool = False,
-        model_kwargs: Optional[Dict[str, Any]] = None,
-        tokenizer_kwargs: Optional[Dict[str, Any]] = None,
-        config_kwargs: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, nn.Module]:
+        model_kwargs: dict | None = None,
+        tokenizer_kwargs: dict | None = None,
+        config_kwargs: dict | None = None,
+    ) -> dict[str, nn.Module]:
         """
         Loads a full SentenceTransformer model using the modules.json file.
 
         Args:
             model_name_or_path (str): The name or path of the pre-trained model.
-            token (Optional[Union[bool, str]]): The token to use for the model.
-            cache_folder (Optional[str]): The folder to cache the model.
-            revision (Optional[str], optional): The revision of the model. Defaults to None.
+            token (bool | str | None): The token to use for the model.
+            cache_folder (str | None): The folder to cache the model.
+            revision (str | None, optional): The revision of the model. Defaults to None.
             trust_remote_code (bool, optional): Whether to trust remote code. Defaults to False.
             local_files_only (bool, optional): Whether to use only local files. Defaults to False.
-            model_kwargs (Optional[Dict[str, Any]], optional): Additional keyword arguments for the model. Defaults to None.
-            tokenizer_kwargs (Optional[Dict[str, Any]], optional): Additional keyword arguments for the tokenizer. Defaults to None.
-            config_kwargs (Optional[Dict[str, Any]], optional): Additional keyword arguments for the config. Defaults to None.
+            model_kwargs (dict | None, optional): Additional keyword arguments for the model. Defaults to None.
+            tokenizer_kwargs (dict | None, optional): Additional keyword arguments for the tokenizer. Defaults to None.
+            config_kwargs (dict | None, optional): Additional keyword arguments for the config. Defaults to None.
 
         Returns:
             OrderedDict[str, nn.Module]: An ordered dictionary containing the modules of the model.
@@ -1910,7 +1913,7 @@ class ColBERT(nn.Sequential, FitMixin):
         return ColBERT(input_path)
 
     @property
-    def device(self) -> device:
+    def device(self) -> torch.device:
         """
         Get torch.device from module, assuming that the whole module has one device.
         In case there are no PyTorch parameters, fall back to CPU.
@@ -1920,7 +1923,9 @@ class ColBERT(nn.Sequential, FitMixin):
         except StopIteration:
             # For nn.DataParallel compatibility in PyTorch 1.5
 
-            def find_tensor_attributes(module: nn.Module) -> List[Tuple[str, Tensor]]:
+            def find_tensor_attributes(
+                module: nn.Module,
+            ) -> list[Tuple[str, torch.Tensor]]:
                 tuples = [
                     (k, v) for k, v in module.__dict__.items() if torch.is_tensor(v)
                 ]
@@ -1987,14 +1992,14 @@ class ColBERT(nn.Sequential, FitMixin):
         self.to(device)
 
     @property
-    def _no_split_modules(self) -> List[str]:
+    def _no_split_modules(self) -> list[str]:
         try:
             return self._first_module()._no_split_modules
         except AttributeError:
             return []
 
     @property
-    def _keys_to_ignore_on_save(self) -> List[str]:
+    def _keys_to_ignore_on_save(self) -> list[str]:
         try:
             return self._first_module()._keys_to_ignore_on_save
         except AttributeError:
