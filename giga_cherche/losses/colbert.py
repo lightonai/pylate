@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from sentence_transformers import SentenceTransformer
 from torch import Tensor, nn
 
-__all__ = ["ColBERTLoss", "ColBERTSimilarityMetric"]
+__all__ = ["ColBERTSimilarityMetric", "ColBERTLossv1", "ColBERTLossv2"]
 
 
 class ColBERTSimilarityMetric(Enum):
@@ -20,8 +20,28 @@ class ColBERTSimilarityMetric(Enum):
         simis = simis * mask.unsqueeze(0).unsqueeze(2)
         return simis.max(axis=3).values.sum(axis=2)
 
+    def COLBERT_SIMILARITY_KD(x, y, mask):
+        # x: (a, s, h) where a is num_queries, s is queries_seqlen, h is hidden_size
+        # y: (b, t, h) where b is num_documents, t is documents_seqlen
+        # mask: (b, t)
+        # Reshape x to (a, 1, s, h) and y to (a, docs_per_query, t, h)
+        a, s, h = x.shape
+        b, t, _ = y.shape
 
-class ColBERTLoss(nn.Module):
+        docs_per_query = b // a
+        y = y.view(a, docs_per_query, t, h)
+        # Compute similarities
+        simis = torch.einsum("ash,adth->adst", x, y)
+
+        # Reshape mask to (a, docs_per_query, 1, t) and apply it
+        mask = mask.view(a, docs_per_query, 1, t)
+        simis = simis * mask
+
+        # Compute max along t axis and sum along s axis
+        return simis.max(axis=3).values.sum(axis=2)
+
+
+class ColBERTLossv1(nn.Module):
     def __init__(
         self,
         model: SentenceTransformer,
@@ -78,7 +98,7 @@ class ColBERTLoss(nn.Module):
                 )
                 trainer.train()
         """
-        super(ColBERTLoss, self).__init__()
+        super(ColBERTLossv1, self).__init__()
         self.distance_metric = distance_metric
         self.model = model
         self.size_average = size_average
@@ -132,6 +152,115 @@ class ColBERTLoss(nn.Module):
             ],
             dim=1,
         )
+        # create corresponding labels
+        # labels = torch.arange(0, rep_anchor.size(0), device=rep_anchor.device)
+        labels = torch.arange(0, reps[0].size(0), device=reps[0].device)
+        # compute contrastive loss using cross-entropy over the distances
+        loss = F.cross_entropy(
+            distances, labels, reduction="mean" if self.size_average else "sum"
+        )
+
+        return loss
+
+    @property
+    def citation(self) -> str:
+        return """
+    @inproceedings{santhanam-etal-2022-colbertv2,
+        title = "{C}ol{BERT}v2: Effective and Efficient Retrieval via Lightweight Late Interaction",
+        author = "Santhanam, Keshav  and
+        Khattab, Omar  and
+        Saad-Falcon, Jon  and
+        Potts, Christopher  and
+        Zaharia, Matei",
+        editor = "Carpuat, Marine  and
+        de Marneffe, Marie-Catherine  and
+        Meza Ruiz, Ivan Vladimir",
+        booktitle = "Proceedings of the 2022 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies",
+        month = jul,
+        year = "2022",
+        address = "Seattle, United States",
+        publisher = "Association for Computational Linguistics",
+        url = "https://aclanthology.org/2022.naacl-main.272",
+        doi = "10.18653/v1/2022.naacl-main.272",
+        pages = "3715--3734",
+        abstract = "Neural information retrieval (IR) has greatly advanced search and other knowledge-intensive language tasks. While many neural IR methods encode queries and documents into single-vector representations, late interaction models produce multi-vector representations at the granularity of each token and decompose relevance modeling into scalable token-level computations. This decomposition has been shown to make late interaction more effective, but it inflates the space footprint of these models by an order of magnitude. In this work, we introduce ColBERTv2, a retriever that couples an aggressive residual compression mechanism with a denoised supervision strategy to simultaneously improve the quality and space footprint of late interaction. We evaluate ColBERTv2 across a wide range of benchmarks, establishing state-of-the-art quality within and outside the training domain while reducing the space footprint of late interaction models by 6{--}10x.",
+    }
+"""
+
+
+class ColBERTLossv2(nn.Module):
+    def __init__(
+        self,
+        model: SentenceTransformer,
+        distance_metric=ColBERTSimilarityMetric.COLBERT_SIMILARITY_KD,
+        size_average: bool = True,
+    ):
+        """
+
+        Args:
+            model: SentenceTransformer model
+            distance_metric: Function that returns a distance between
+                two embeddings. The class ColBERTDistanceMetric contains
+                pre-defined metrices that can be used
+            size_average: Average by the size of the mini-batch.
+
+        Requirements:
+            1. query, list of documents, teacher scores
+
+        """
+        super(ColBERTLossv2, self).__init__()
+        self.distance_metric = distance_metric
+        self.model = model
+        self.size_average = size_average
+
+    def get_config_dict(self):
+        distance_metric_name = self.distance_metric.__name__
+        for name, value in vars(ColBERTSimilarityMetric).items():
+            if value == self.distance_metric:
+                distance_metric_name = "ColBERTSimilarityMetric.{}".format(name)
+                break
+
+        return {
+            "distance_metric": distance_metric_name,
+            "size_average": self.size_average,
+        }
+
+    def forward(self, sentence_features: Iterable[dict[str, Tensor]], labels: Tensor):
+        reps = [
+            torch.nn.functional.normalize(
+                self.model(sentence_feature)["token_embeddings"], p=2, dim=-1
+            )
+            for sentence_feature in sentence_features
+        ]
+
+        attention_masks = [
+            sentence_feature["attention_mask"] for sentence_feature in sentence_features
+        ]
+        # We are not applying skiplist mask to the queries
+        skiplist_masks = [
+            torch.ones_like(sentence_features[0]["input_ids"], dtype=torch.bool)
+        ]
+        skiplist_masks.extend(
+            [
+                self.model.skiplist_mask(
+                    sentence_feature["input_ids"], skiplist=self.model.skiplist
+                )
+                for sentence_feature in sentence_features[1:]
+            ]
+        )
+
+        masks = [
+            torch.logical_and(skiplist_mask, attention_mask)
+            for skiplist_mask, attention_mask in zip(skiplist_masks, attention_masks)
+        ]
+        # Compute the distances between the anchor (0) and the positives (1) as well as the negatives (2)
+        # Note: the queries mask is not used, if added, take care that the expansion tokens are not masked from scoring (because they might be masked during encoding). We might not need to compute the mask for queries but I let the logic there for now
+        documents = torch.stack(reps[1:])
+        documents_mask = torch.stack(masks[1:])
+        distances = torch.cat(
+            self.distance_metric(reps[0], documents, documents_mask),
+        )
+
         # create corresponding labels
         # labels = torch.arange(0, rep_anchor.size(0), device=rep_anchor.device)
         labels = torch.arange(0, reps[0].size(0), device=reps[0].device)

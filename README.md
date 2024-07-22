@@ -28,7 +28,7 @@ The following parameters can be passed to the constructor to set different prope
 - ```attend_to_expansion_tokens```, whether queries tokens should attend to MASK expansion tokens (original ColBERT did not)
 - ```skiplist_words```, a list of words to ignore in documents during scoring (default to punctuation)
 
-# Training
+## Training
 
 Given that giga-cherche ColBERT models are sentence-transformers models, we can benefit from all the bells and whistles from the latest update, including multi-gpu and BF16 training.
 For now, you can train ColBERT models using triplets dataset (datasets containing a positive and a negative for each query). The syntax is the same as sentence-transformers, using the specific elements adapted to ColBERT from giga-cherche:
@@ -81,6 +81,23 @@ trainer = SentenceTransformerTrainer(
 )
 
 trainer.train()
+```
+
+## Tokenization
+
+```
+import ast 
+
+def add_queries_and_documents(example: dict) -> dict:
+    """Add queries and documents text to the examples."""
+    scores = ast.literal_eval(node_or_string=example["scores"])
+    processed_example = {"scores": scores, "query": queries[example["query_id"]]}
+
+    n_scores = len(scores)
+    for i in range(n_scores):
+        processed_example[f"document_{i}"] = documents[example[f"document_id_{i}"]]
+    
+    return processed_example
 ```
 
 ##  Inference

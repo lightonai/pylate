@@ -14,7 +14,7 @@ class ColBERT:
     """
 
     tokenize_fn: Callable
-    valid_label_columns: list[str] = field(default_factory=lambda: ["label", "score"])
+    valid_label_columns: list[str] = field(default_factory=lambda: ["label", "scores"])
 
     def __call__(self, features: list[dict]) -> dict[str, torch.Tensor]:
         """Collate a list of features into a batch."""
@@ -40,7 +40,9 @@ class ColBERT:
             is_query = "query" in column or "anchor" in column
 
             tokenized = self.tokenize_fn(
-                [row[column] for row in features], is_query=is_query
+                [row[column] for row in features],
+                is_query=is_query,
+                pad_document=True,
             )
 
             for key, value in tokenized.items():

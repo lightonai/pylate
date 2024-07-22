@@ -1,3 +1,3 @@
-from .colbert import ColBERTLoss
+from .colbert import ColBERTLossv1, ColBERTLossv2
 
-__all__ = ["ColBERTLoss"]
+__all__ = ["ColBERTLossv1", "ColBERTLossv2"]

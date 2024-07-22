@@ -29,7 +29,7 @@ eval_dataset = splits["test"]
 MAX_EXAMPLES = 100000
 train_dataset = train_dataset.shuffle(seed=21).select(range(MAX_EXAMPLES))
 
-train_loss = losses.ColBERTLoss(model=model)
+train_loss = losses.ColBERTLossv1(model=model)
 
 # Subsample the evaluation dataset
 # max_samples = 1000
