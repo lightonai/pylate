@@ -77,7 +77,7 @@ trainer = SentenceTransformerTrainer(
     eval_dataset=eval_dataset,
     loss=train_loss,
     evaluator=dev_evaluator,
-    data_collator=data_collator.ColBERTDataCollator(model.tokenize),
+    data_collator=data_collator.ColBERT(model.tokenize),
 )
 
 trainer.train()

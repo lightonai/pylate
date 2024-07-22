@@ -1,7 +1,7 @@
-# from https://github.com/raphaelsty/neural-cherche/blob/main/neural_cherche/utils/evaluate.py
+"""Neural Cherche evaluation module for BEIR datasets."""
+
 import random
 from collections import defaultdict
-from typing import Dict, Union
 
 __all__ = ["evaluate", "load_beir", "get_beir_triples"]
 
@@ -65,7 +65,7 @@ def load_beir(dataset_name: str, split: str = "test") -> tuple[list, list, dict]
 
 def get_beir_triples(
     key: str,
-    on: Union[list[str], str],
+    on: list[str] | str,
     documents: list,
     queries: list[str],
     qrels: dict,
@@ -129,8 +129,8 @@ def evaluate(
     scores: list[list[dict]],
     qrels: dict,
     queries: list[str],
-    metrics: list = [],
-) -> Dict[str, float]:
+    metrics: list | None = None,
+) -> dict[str, float]:
     """Evaluate candidates matchs.
 
     Parameters

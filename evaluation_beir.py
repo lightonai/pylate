@@ -1,59 +1,47 @@
-from tqdm import tqdm
+"""Evaluation script for the SciFact dataset using the Beir library."""
 
-import giga_cherche.evaluation.beir as beir
-from giga_cherche.indexes import WeaviateIndex
-from giga_cherche.models import ColBERT
-from giga_cherche.retriever import ColBERTRetriever
+from giga_cherche import evaluation, indexes, models, retrieve, utils
 
-model = ColBERT(
-    "NohTow/colbertv2_sentence_transformer",
+model = models.ColBERT(
+    model_name_or_path="NohTow/colbertv2_sentence_transformer",
 )
-WeaviateIndex = WeaviateIndex(recreate=True, max_doc_length=model.document_length)
-retriever = ColBERTRetriever(WeaviateIndex)
+index = indexes.Weaviate(recreate=True, max_doc_length=model.document_length)
+
+retriever = retrieve.ColBERT(index=index)
+
 # Input dataset for evaluation
-documents, queries, qrels = beir.load_beir(
-    "scifact",
+documents, queries, qrels = evaluation.load_beir(
+    dataset_name="scifact",
     split="test",
 )
-batch_size = 500
-i = 0
-pbar = tqdm(total=len(documents))
-while i < len(documents):
-    end_batch = min(i + batch_size, len(documents))
-    batch = documents[i:end_batch]
+
+
+for batch in utils.iter_batch(documents, batch_size=500):
     documents_embeddings = model.encode(
-        [doc["text"] for doc in batch],
+        sentences=[document["text"] for document in batch],
         convert_to_numpy=True,
         is_query=False,
     )
-    doc_ids = [doc["id"] for doc in batch]
-    WeaviateIndex.add_documents(
-        doc_ids=doc_ids,
+
+    index.add_documents(
+        doc_ids=[document["id"] for document in batch],
         doc_embeddings=documents_embeddings,
     )
-    i += batch_size
-    pbar.update(batch_size)
 
-i = 0
-pbar = tqdm(total=len(queries))
-batch_size = 5
+
 scores = []
-while i < len(queries):
-    end_batch = min(i + batch_size, len(queries))
-    batch = queries[i:end_batch]
+for batch in utils.iter_batch(queries, batch_size=5):
     queries_embeddings = model.encode(
-        queries[i:end_batch],
+        sentences=[query["text"] for query in batch],
         convert_to_numpy=True,
         is_query=True,
     )
-    res = retriever.retrieve(queries_embeddings, 10)
-    scores.extend(res)
-    pbar.update(batch_size)
-    i += batch_size
+
+    scores.extend(retriever.retrieve(queries=queries_embeddings, k=10))
 
 
 print(
-    beir.evaluate(
+    evaluation.evaluate(
         scores=scores,
         qrels=qrels,
         queries=queries,

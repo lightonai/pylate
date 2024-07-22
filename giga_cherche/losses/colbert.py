@@ -1,10 +1,12 @@
 from enum import Enum
-from typing import Dict, Iterable
+from typing import Iterable
 
 import torch
 import torch.nn.functional as F
-from sentence_transformers.SentenceTransformer import SentenceTransformer
+from sentence_transformers import SentenceTransformer
 from torch import Tensor, nn
+
+__all__ = ["ColBERTLoss", "ColBERTSimilarityMetric"]
 
 
 class ColBERTSimilarityMetric(Enum):
@@ -93,7 +95,7 @@ class ColBERTLoss(nn.Module):
             "size_average": self.size_average,
         }
 
-    def forward(self, sentence_features: Iterable[Dict[str, Tensor]], labels: Tensor):
+    def forward(self, sentence_features: Iterable[dict[str, Tensor]], labels: Tensor):
         reps = [
             torch.nn.functional.normalize(
                 self.model(sentence_feature)["token_embeddings"], p=2, dim=-1

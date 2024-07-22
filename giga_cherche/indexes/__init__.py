@@ -1,4 +1,4 @@
-from .WeaviateIndex import WeaviateIndex
-from .BaseIndex import BaseIndex
+from .base import Base
+from .weaviate import Weaviate
 
-__all__ = ["WeaviateIndex", "BaseIndex"]
+__all__ = ["Base", "Weaviate"]

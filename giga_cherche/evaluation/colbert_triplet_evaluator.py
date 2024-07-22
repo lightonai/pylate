@@ -2,20 +2,19 @@ import csv
 import logging
 import os
 from contextlib import nullcontext
-from typing import TYPE_CHECKING, Dict, List, Optional, Union
 
 import numpy as np
 import torch
 from sentence_transformers.evaluation.SentenceEvaluator import SentenceEvaluator
 from sentence_transformers.readers import InputExample
+from sentence_transformers.SentenceTransformer import SentenceTransformer
 from sentence_transformers.similarity_functions import SimilarityFunction
 
 from giga_cherche.scores.colbert_score import colbert_score
 
-if TYPE_CHECKING:
-    from sentence_transformers.SentenceTransformer import SentenceTransformer
-
 logger = logging.getLogger(__name__)
+
+__all__ = ["ColBERTTripletEvaluator"]
 
 
 class ColBERTTripletEvaluator(SentenceEvaluator):
@@ -59,23 +58,23 @@ class ColBERTTripletEvaluator(SentenceEvaluator):
 
     def __init__(
         self,
-        anchors: List[str],
-        positives: List[str],
-        negatives: List[str],
-        main_distance_function: Optional[Union[str, SimilarityFunction]] = None,
+        anchors: list[str],
+        positives: list[str],
+        negatives: list[str],
+        main_distance_function: str | SimilarityFunction | None = None,
         name: str = "",
         batch_size: int = 16,
         show_progress_bar: bool = False,
         write_csv: bool = True,
-        truncate_dim: Optional[int] = None,
+        truncate_dim: int | None = None,
     ):
         """
         Initializes a TripletEvaluator object.
 
         Args:
-            anchors (List[str]): Sentences to check similarity to. (e.g. a query)
-            positives (List[str]): List of positive sentences
-            negatives (List[str]): List of negative sentences
+            anchors (list[str]): Sentences to check similarity to. (e.g. a query)
+            positives (list[str]): List of positive sentences
+            negatives (list[str]): List of negative sentences
             main_distance_function (Union[str, SimilarityFunction], optional):
                 The distance function to use. If not specified, use cosine similarity,
                 dot product, Euclidean, and Manhattan. Defaults to None.
@@ -123,7 +122,7 @@ class ColBERTTripletEvaluator(SentenceEvaluator):
         self.write_csv = write_csv
 
     @classmethod
-    def from_input_examples(cls, examples: List[InputExample], **kwargs):
+    def from_input_examples(cls, examples: list[InputExample], **kwargs):
         anchors = []
         positives = []
         negatives = []
@@ -141,7 +140,7 @@ class ColBERTTripletEvaluator(SentenceEvaluator):
         output_path: str = None,
         epoch: int = -1,
         steps: int = -1,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         if epoch != -1:
             if steps == -1:
                 out_txt = f" after epoch {epoch}"

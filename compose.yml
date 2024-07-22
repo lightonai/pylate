@@ -1,20 +1,20 @@
 services:
   weaviate:
     command:
-    - --host
-    - 0.0.0.0
-    - --port
-    - '8080'
-    - --scheme
-    - http
+      - --host
+      - 0.0.0.0
+      - --port
+      - '8080'
+      - --scheme
+      - http
     image: cr.weaviate.io/semitechnologies/weaviate:1.24.1
     ports:
-    - 8080:8080
-    - 50051:50051
+      - 8080:8080
+      - 50051:50051
     volumes:
-    - ${HOME}/weaviate:/var/lib/weaviate
-    # It's a pain when I forget to down the container before ending the remote instance
-    # restart: on-failure:0
+      - ${HOME}/weaviate:/var/lib/weaviate
+      # It's a pain when I forget to down the container before ending the remote instance
+      # restart: on-failure:0
     environment:
       QUERY_DEFAULTS_LIMIT: 25
       AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: 'true'
@@ -23,6 +23,3 @@ services:
       DEFAULT_VECTORIZER_MODULE: 'none'
       ENABLE_MODULES: ''
       CLUSTER_HOSTNAME: 'node1'
-    
-
-
