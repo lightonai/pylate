@@ -14,47 +14,42 @@ __all__ = ["Weaviate"]
 class Weaviate(Base):
     def __init__(
         self,
-        host: str | None = "localhost",
-        port: str | None = "8080",
-        name: str | None = "colbert_collection",
-        recreate: bool = False,
-        max_doc_length: int | None = 180,
+        host: str = "localhost",
+        port: str = "8080",
+        name: str = "colbert_collection",
+        override_collection: bool = False,
+        max_doc_length: int = 180,
+        connect_attempt: int = 5,
+        connect_retry_delay: float = 5.0,
     ) -> None:
         self.host = host
         self.port = port
         self.name = name
         self.max_doc_length = max_doc_length
-        fail_counter = 0
-        attempt_number = 5
-        retry_delay = 5.0
-        while fail_counter < attempt_number:
+        self.connect_attempt = connect_attempt
+        self.connect_retry_delay = connect_retry_delay
+
+        for _ in range(connect_attempt):
             try:
                 with weaviate.connect_to_local(
                     host=self.host, port=self.port
                 ) as client:
-                    print("Successful connection to the Weaviate container.")
                     if not client.collections.exists(self.name):
-                        print(f"Collection {self.name} does not exist, creating it.")
-                        self.create_collection(self.name)
-                    elif recreate:
-                        print(f"Collection {self.name} exists, recreating it.")
+                        self.create_collection(name=self.name)
+                    elif override_collection:
                         client.collections.delete(self.name)
-                        self.create_collection(self.name)
+                        self.create_collection(name=self.name)
                     else:
-                        print(
-                            f"Loaded collection with {client.collections.get(self.name).aggregate.over_all(total_count=True).total_count} vectors",
+                        n_vectors = (
+                            client.collections.get(self.name)
+                            .aggregate.over_all(total_count=True)
+                            .total_count
                         )
-
-                    break
-            except Exception as e:
-                print(
-                    f"Could not connect to the Weaviate container, retrying in {retry_delay} secs: {str(e)}"
-                )
-                fail_counter += 1
-                time.sleep(retry_delay)
-
-        if fail_counter >= attempt_number:
-            raise ConnectionError("Could not connect to the Weaviate container")
+                        print(f"Loaded collection with {n_vectors} vectors")
+                        break
+            except Exception:
+                print("Could not connect to the Weaviate container, retrying...")
+                time.sleep(connect_retry_delay)
 
     def create_collection(self, name: str) -> None:
         with weaviate.connect_to_local(host=self.host, port=self.port) as client:
@@ -156,7 +151,9 @@ class Weaviate(Base):
             return res
 
     def query(self, queries_embeddings: list[list[int | float]], k: int = 5):
-        return asyncio.run(self.query_all_embeddings(queries_embeddings, k))
+        return asyncio.run(
+            self.query_all_embeddings(queries_embeddings=queries_embeddings, k=k)
+        )
 
     async def get_doc_embeddings(self, vector_index, doc_id: str):
         return await vector_index.query.fetch_objects(

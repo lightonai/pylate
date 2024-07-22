@@ -67,7 +67,7 @@ class ColBERTTripletEvaluator(SentenceEvaluator):
         show_progress_bar: bool = False,
         write_csv: bool = True,
         truncate_dim: int | None = None,
-    ):
+    ) -> None:
         """
         Initializes a TripletEvaluator object.
 
