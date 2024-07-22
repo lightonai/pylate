@@ -15,7 +15,6 @@ documents, queries, qrels = evaluation.load_beir(
     split="test",
 )
 
-
 for batch in utils.iter_batch(documents, batch_size=500):
     documents_embeddings = model.encode(
         sentences=[document["text"] for document in batch],
@@ -28,8 +27,8 @@ for batch in utils.iter_batch(documents, batch_size=500):
         doc_embeddings=documents_embeddings,
     )
 
-
 scores = []
+
 for batch in utils.iter_batch(queries, batch_size=5):
     queries_embeddings = model.encode(
         sentences=[query["text"] for query in batch],
@@ -38,7 +37,6 @@ for batch in utils.iter_batch(queries, batch_size=5):
     )
 
     scores.extend(retriever.retrieve(queries=queries_embeddings, k=10))
-
 
 print(
     evaluation.evaluate(

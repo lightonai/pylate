@@ -178,7 +178,7 @@ class ColBERT(nn.Sequential, FitMixin):
         device: str | None = None,
         prompts: dict[str, str] | None = None,
         default_prompt_name: str | None = None,
-        similarity_fn_name: Optional[Union[str, SimilarityFunction]] = None,
+        similarity_fn_name: Optional[str | SimilarityFunction] = None,
         cache_folder: str | None = None,
         trust_remote_code: bool = False,
         revision: str | None = None,
