@@ -22,19 +22,12 @@ class ColBERTSimilarityMetric(Enum):
 
     def COLBERT_SIMILARITY_KD(x, y, mask):
         # x: (a, s, h) where a is num_queries, s is queries_seqlen, h is hidden_size
-        # y: (b, t, h) where b is num_documents, t is documents_seqlen
-        # mask: (b, t)
-        # Reshape x to (a, 1, s, h) and y to (a, docs_per_query, t, h)
-        a, s, h = x.shape
-        b, t, _ = y.shape
+        # y: (a, b, t, h) a is number query, where b is num_documents_per_query, t is documents_seqlen and h is hidden_size
+        # mask: (a, b, t)
 
-        docs_per_query = b // a
-        y = y.view(a, docs_per_query, t, h)
         # Compute similarities
-        simis = torch.einsum("ash,adth->adst", x, y)
-
-        # Reshape mask to (a, docs_per_query, 1, t) and apply it
-        mask = mask.view(a, docs_per_query, 1, t)
+        simis = torch.einsum("ash,abth->abst", x, y)
+        mask = mask.unsqueeze(2)
         simis = simis * mask
 
         # Compute max along t axis and sum along s axis
@@ -152,6 +145,7 @@ class ColBERTLossv1(nn.Module):
             ],
             dim=1,
         )
+
         # create corresponding labels
         # labels = torch.arange(0, rep_anchor.size(0), device=rep_anchor.device)
         labels = torch.arange(0, reps[0].size(0), device=reps[0].device)
@@ -255,20 +249,16 @@ class ColBERTLossv2(nn.Module):
         ]
         # Compute the distances between the anchor (0) and the positives (1) as well as the negatives (2)
         # Note: the queries mask is not used, if added, take care that the expansion tokens are not masked from scoring (because they might be masked during encoding). We might not need to compute the mask for queries but I let the logic there for now
-        documents = torch.stack(reps[1:])
-        documents_mask = torch.stack(masks[1:])
-        distances = torch.cat(
-            self.distance_metric(reps[0], documents, documents_mask),
-        )
+        documents = torch.stack(reps[1:], dim=1)
 
-        # create corresponding labels
-        # labels = torch.arange(0, rep_anchor.size(0), device=rep_anchor.device)
-        labels = torch.arange(0, reps[0].size(0), device=reps[0].device)
-        # compute contrastive loss using cross-entropy over the distances
-        loss = F.cross_entropy(
-            distances, labels, reduction="mean" if self.size_average else "sum"
-        )
+        documents_mask = torch.stack(masks[1:], dim=1)
 
+        distances = self.distance_metric(reps[0], documents, documents_mask)
+        target_scores = torch.nn.functional.log_softmax(labels, dim=-1)
+        log_scores = torch.nn.functional.log_softmax(distances, dim=-1)
+        loss = torch.nn.KLDivLoss(reduction="batchmean", log_target=True)(
+            log_scores, target_scores
+        )
         return loss
 
     @property
