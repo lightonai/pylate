@@ -144,6 +144,8 @@ wandb/
 
 # output models
 output_models/
+output/
 
 # datasets
 evaluation_datasets/
+datasets/

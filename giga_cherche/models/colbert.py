@@ -657,7 +657,7 @@ class ColBERT(nn.Sequential, FitMixin):
                     ]
                 # Else, we already have a list of tensors, the expected output
             else:
-                all_embeddings = torch.torch.Tensor()
+                all_embeddings = torch.tensor()
         elif convert_to_numpy:
             # We return a list of numpy arrays and not a big numpy array because we cannot guarantee all element have the same sequence length
             if all_embeddings[0].dtype == torch.bfloat16:
