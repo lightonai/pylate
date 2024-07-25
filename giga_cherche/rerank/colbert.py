@@ -34,13 +34,6 @@ class ColBERT:
         for query, query_documents_embeddings, query_doc_ids in zip(
             queries, batch_documents_embeddings, batch_doc_ids
         ):
-            print(
-                torch.tensor(
-                    query_documents_embeddings[0],
-                    dtype=torch.float32,
-                    device=query.device,
-                ).shape
-            )
             documents_embeddings = [
                 torch.tensor(embeddings, dtype=torch.float32, device=query.device)
                 for embeddings in query_documents_embeddings

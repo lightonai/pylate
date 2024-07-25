@@ -32,7 +32,7 @@ for batch in utils.iter_batch(documents, batch_size=500):
 scores = []
 for batch in utils.iter_batch(queries, batch_size=5):
     queries_embeddings = model.encode(
-        sentences=queries,
+        sentences=batch,
         convert_to_numpy=True,
         is_query=True,
     )
