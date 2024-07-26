@@ -1,3 +1,3 @@
-from .colbert_data_collator import ColBERT
+from .colbert import ColBERT
 
 __all__ = ["ColBERT"]

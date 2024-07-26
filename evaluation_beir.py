@@ -31,7 +31,7 @@ scores = []
 
 for batch in utils.iter_batch(queries, batch_size=5):
     queries_embeddings = model.encode(
-        sentences=[query["text"] for query in batch],
+        sentences=batch,
         convert_to_numpy=True,
         is_query=True,
     )

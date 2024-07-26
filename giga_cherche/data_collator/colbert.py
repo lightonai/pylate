@@ -14,12 +14,11 @@ class ColBERT:
     """
 
     tokenize_fn: Callable
-    valid_label_columns: list[str] = field(default_factory=lambda: ["label", "score"])
+    valid_label_columns: list[str] = field(default_factory=lambda: ["label", "scores"])
 
     def __call__(self, features: list[dict]) -> dict[str, torch.Tensor]:
         """Collate a list of features into a batch."""
         columns = list(features[0].keys())
-
         # We should always be able to return a loss, label or not:
         batch = {"return_loss": True}
 
@@ -36,14 +35,16 @@ class ColBERT:
 
         # Extract the feature columns
         for column in columns:
-            # We tokenize the query differently than the documents, TODO: define a parameter "query_column"
-            is_query = "query" in column or "anchor" in column
-
-            tokenized = self.tokenize_fn(
-                [row[column] for row in features], is_query=is_query
-            )
-
-            for key, value in tokenized.items():
-                batch[f"{column}_{key}"] = value
+            # We do not tokenize columns containing the ids. It would be better to throw them away during the dataset processing (TODO), but this break sentence transformers datasets extraction.
+            if "_id" not in column:
+                # We tokenize the query differently than the documents, TODO: define a parameter "query_column"
+                is_query = "query" in column or "anchor" in column
+                tokenized = self.tokenize_fn(
+                    [row[column] for row in features],
+                    is_query=is_query,
+                    pad_document=True,
+                )
+                for key, value in tokenized.items():
+                    batch[f"{column}_{key}"] = value
 
         return batch

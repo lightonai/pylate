@@ -35,13 +35,15 @@ class ColBERT:
             queries, batch_documents_embeddings, batch_doc_ids
         ):
             documents_embeddings = [
-                torch.torch.Tensor(embeddings, dtype=torch.float32, device=query.device)
+                torch.tensor(embeddings, dtype=torch.float32, device=query.device)
                 for embeddings in query_documents_embeddings
             ]
             documents_embeddings = torch.nn.utils.rnn.pad_sequence(
                 documents_embeddings, batch_first=True, padding_value=0
             )
-            query_scores = colbert_score(query.unsqueeze(0), documents_embeddings)[0]
+            query_scores = colbert_score.colbert_score(
+                query.unsqueeze(0), documents_embeddings
+            )[0]
             reranked_query_scores, sorted_indices = torch.sort(
                 query_scores, descending=True
             )

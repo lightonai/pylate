@@ -17,7 +17,6 @@ from typing import (
     Iterable,
     Literal,
     Optional,
-    Tuple,
     Union,
     overload,
 )
@@ -51,6 +50,7 @@ from torch import nn
 from tqdm.autonotebook import trange
 from transformers import is_torch_npu_available
 
+from ..utils import MODELS_WITHOUT_FAMILY
 from .LinearProjection import LinearProjection
 
 logger = logging.getLogger(__name__)
@@ -245,78 +245,6 @@ class ColBERT(nn.Sequential, FitMixin):
                 "Load pretrained SentenceTransformer: {}".format(model_name_or_path)
             )
 
-            # Old models that don't belong to any organization
-            basic_transformer_models = [
-                "albert-base-v1",
-                "albert-base-v2",
-                "albert-large-v1",
-                "albert-large-v2",
-                "albert-xlarge-v1",
-                "albert-xlarge-v2",
-                "albert-xxlarge-v1",
-                "albert-xxlarge-v2",
-                "bert-base-cased-finetuned-mrpc",
-                "bert-base-cased",
-                "bert-base-chinese",
-                "bert-base-german-cased",
-                "bert-base-german-dbmdz-cased",
-                "bert-base-german-dbmdz-uncased",
-                "bert-base-multilingual-cased",
-                "bert-base-multilingual-uncased",
-                "bert-base-uncased",
-                "bert-large-cased-whole-word-masking-finetuned-squad",
-                "bert-large-cased-whole-word-masking",
-                "bert-large-cased",
-                "bert-large-uncased-whole-word-masking-finetuned-squad",
-                "bert-large-uncased-whole-word-masking",
-                "bert-large-uncased",
-                "camembert-base",
-                "ctrl",
-                "distilbert-base-cased-distilled-squad",
-                "distilbert-base-cased",
-                "distilbert-base-german-cased",
-                "distilbert-base-multilingual-cased",
-                "distilbert-base-uncased-distilled-squad",
-                "distilbert-base-uncased-finetuned-sst-2-english",
-                "distilbert-base-uncased",
-                "distilgpt2",
-                "distilroberta-base",
-                "gpt2-large",
-                "gpt2-medium",
-                "gpt2-xl",
-                "gpt2",
-                "openai-gpt",
-                "roberta-base-openai-detector",
-                "roberta-base",
-                "roberta-large-mnli",
-                "roberta-large-openai-detector",
-                "roberta-large",
-                "t5-11b",
-                "t5-3b",
-                "t5-base",
-                "t5-large",
-                "t5-small",
-                "transfo-xl-wt103",
-                "xlm-clm-ende-1024",
-                "xlm-clm-enfr-1024",
-                "xlm-mlm-100-1280",
-                "xlm-mlm-17-1280",
-                "xlm-mlm-en-2048",
-                "xlm-mlm-ende-1024",
-                "xlm-mlm-enfr-1024",
-                "xlm-mlm-enro-1024",
-                "xlm-mlm-tlm-xnli15-1024",
-                "xlm-mlm-xnli15-1024",
-                "xlm-roberta-base",
-                "xlm-roberta-large-finetuned-conll02-dutch",
-                "xlm-roberta-large-finetuned-conll02-spanish",
-                "xlm-roberta-large-finetuned-conll03-english",
-                "xlm-roberta-large-finetuned-conll03-german",
-                "xlm-roberta-large",
-                "xlnet-base-cased",
-                "xlnet-large-cased",
-            ]
-
             if not os.path.exists(model_name_or_path):
                 # Not a path, load from hub
                 if "\\" in model_name_or_path or model_name_or_path.count("/") > 1:
@@ -324,7 +252,7 @@ class ColBERT(nn.Sequential, FitMixin):
 
                 if (
                     "/" not in model_name_or_path
-                    and model_name_or_path.lower() not in basic_transformer_models
+                    and model_name_or_path.lower() not in MODELS_WITHOUT_FAMILY
                 ):
                     # A model from sentence-transformers
                     model_name_or_path = (
@@ -481,12 +409,12 @@ class ColBERT(nn.Sequential, FitMixin):
         is_query: bool = True,
         pool_factor: int = 1,
         protected_tokens: int = 1,
-    ) -> Union[list[torch.Tensor], ndarray, torch.Tensor]:
+    ) -> list[torch.Tensor] | ndarray | torch.Tensor:
         """
         Computes sentence embeddings.
 
         Args:
-            sentences (Union[str, list[str]]): The sentences to embed.
+            sentences (str | list[str]): The sentences to embed.
             prompt_name (str | None, optional): The name of the prompt to use for encoding. Must be a key in the `prompts` dictionary,
                 which is either set in the constructor or loaded from the model configuration. For example if
                 ``prompt_name`` is "query" and the ``prompts`` is {"query": "query: ", ...}, then the sentence "What
@@ -516,7 +444,7 @@ class ColBERT(nn.Sequential, FitMixin):
             protected_tokens (int, optional): The number of tokens at the beginning of the sequence that should not be pooled. Defaults to 1 (CLS token).
 
         Returns:
-            Union[list[torch.Tensor], ndarray, torch.Tensor]: By default, a 2d numpy array with shape [num_inputs, output_dimension] is returned.
+            list[torch.Tensor] | ndarray | torch.Tensor: By default, a 2d numpy array with shape [num_inputs, output_dimension] is returned.
             If only one string input is provided, then the output is a 1d array with shape [output_dimension]. If ``convert_to_tensor``,
             a torch torch.Tensor is returned instead. If ``self.truncate_dim <= output_dimension`` then output_dimension is ``self.truncate_dim``.
 
@@ -729,7 +657,7 @@ class ColBERT(nn.Sequential, FitMixin):
                     ]
                 # Else, we already have a list of tensors, the expected output
             else:
-                all_embeddings = torch.torch.Tensor()
+                all_embeddings = torch.tensor()
         elif convert_to_numpy:
             # We return a list of numpy arrays and not a big numpy array because we cannot guarantee all element have the same sequence length
             if all_embeddings[0].dtype == torch.bfloat16:
@@ -737,10 +665,7 @@ class ColBERT(nn.Sequential, FitMixin):
             else:
                 all_embeddings = [emb.numpy() for emb in all_embeddings]
 
-        if input_was_string:
-            all_embeddings = all_embeddings[0]
-
-        return all_embeddings
+        return all_embeddings[0] if input_was_string else all_embeddings
 
     # TODO: add typing
     """
@@ -841,7 +766,7 @@ class ColBERT(nn.Sequential, FitMixin):
         return self._similarity_fn_name
 
     @similarity_fn_name.setter
-    def similarity_fn_name(self, value: Union[str, SimilarityFunction]) -> None:
+    def similarity_fn_name(self, value: str | SimilarityFunction) -> None:
         if isinstance(value, SimilarityFunction):
             value = value.value
         self._similarity_fn_name = value
@@ -1216,6 +1141,7 @@ class ColBERT(nn.Sequential, FitMixin):
         self,
         texts: Union[list[str], list[dict], list[tuple[str, str]]],
         is_query: bool = True,
+        pad_document: bool = False,
     ) -> dict[str, torch.Tensor]:
         """
         Tokenizes the texts.
@@ -1245,7 +1171,10 @@ class ColBERT(nn.Sequential, FitMixin):
             return features
         else:
             self._first_module().max_seq_length = self.document_length
-            features = self._first_module().tokenize(texts)
+            extra_parameters = {}
+            if pad_document:
+                extra_parameters["padding"] = "max_length"
+            features = self._first_module().tokenize(texts, **extra_parameters)
             # Remplace the second token by the document prefix
             features["input_ids"][:, 1] = self.document_prefix_id
             return features
@@ -1925,7 +1854,7 @@ class ColBERT(nn.Sequential, FitMixin):
 
             def find_tensor_attributes(
                 module: nn.Module,
-            ) -> list[Tuple[str, torch.Tensor]]:
+            ) -> list[tuple[str, torch.Tensor]]:
                 tuples = [
                     (k, v) for k, v in module.__dict__.items() if torch.is_tensor(v)
                 ]
