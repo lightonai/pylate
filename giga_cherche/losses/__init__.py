@@ -1,3 +1,4 @@
-from .colbert import ColBERTLossv1, ColBERTLossv2
+from .contrastive import Contrastive
+from .distillation import Distillation
 
-__all__ = ["ColBERTLossv1", "ColBERTLossv2"]
+__all__ = ["Contrastive", "Distillation"]

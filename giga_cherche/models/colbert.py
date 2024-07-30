@@ -50,7 +50,7 @@ from torch import nn
 from tqdm.autonotebook import trange
 from transformers import is_torch_npu_available
 
-from ..utils import MODELS_WITHOUT_FAMILY
+from ..utils import HUGGINGFACE_MODELS
 from .LinearProjection import LinearProjection
 
 logger = logging.getLogger(__name__)
@@ -252,7 +252,7 @@ class ColBERT(nn.Sequential, FitMixin):
 
                 if (
                     "/" not in model_name_or_path
-                    and model_name_or_path.lower() not in MODELS_WITHOUT_FAMILY
+                    and model_name_or_path.lower() not in HUGGINGFACE_MODELS
                 ):
                     # A model from sentence-transformers
                     model_name_or_path = (
@@ -722,7 +722,8 @@ class ColBERT(nn.Sequential, FitMixin):
 
         return pooled_embeddings
 
-    def skiplist_mask(self, input_ids, skiplist):
+    @staticmethod
+    def skiplist_mask(input_ids, skiplist):
         skiplist = torch.tensor(skiplist, dtype=torch.long, device=input_ids.device)
 
         # Create a tensor of ones with the same shape as input_ids
@@ -757,11 +758,6 @@ class ColBERT(nn.Sequential, FitMixin):
         Returns:
             str | None: The name of the similarity function. Can be None if not set, in which case any uses of
             :meth:`SentenceTransformer.similarity` and :meth:`SentenceTransformer.similarity_pairwise` default to "cosine".
-
-        Example:
-            >>> model = SentenceTransformer("multi-qa-mpnet-base-dot-v1")
-            >>> model.similarity_fn_name
-            'dot'
         """
         return self._similarity_fn_name
 
@@ -804,31 +800,6 @@ class ColBERT(nn.Sequential, FitMixin):
 
         Returns:
             torch.Tensor: A [num_embeddings_1, num_embeddings_2]-shaped torch tensor with similarity scores.
-
-        Example:
-            ::
-
-                >>> model = SentenceTransformer("all-mpnet-base-v2")
-                >>> sentences = [
-                ...     "The weather is so nice!",
-                ...     "It's so sunny outside.",
-                ...     "He's driving to the movie theater.",
-                ...     "She's going to the cinema.",
-                ... ]
-                >>> embeddings = model.encode(sentences, normalize_embeddings=True)
-                >>> model.similarity(embeddings, embeddings)
-                tensor([[1.0000, 0.7235, 0.0290, 0.1309],
-                        [0.7235, 1.0000, 0.0613, 0.1129],
-                        [0.0290, 0.0613, 1.0000, 0.5027],
-                        [0.1309, 0.1129, 0.5027, 1.0000]])
-                >>> model.similarity_fn_name
-                "cosine"
-                >>> model.similarity_fn_name = "euclidean"
-                >>> model.similarity(embeddings, embeddings)
-                tensor([[-0.0000, -0.7437, -1.3935, -1.3184],
-                        [-0.7437, -0.0000, -1.3702, -1.3320],
-                        [-1.3935, -1.3702, -0.0000, -0.9973],
-                        [-1.3184, -1.3320, -0.9973, -0.0000]])
         """
         if self.similarity_fn_name is None:
             self.similarity_fn_name = SimilarityFunction.COSINE
@@ -860,25 +831,6 @@ class ColBERT(nn.Sequential, FitMixin):
 
         Returns:
             torch.Tensor: A [num_embeddings]-shaped torch tensor with pairwise similarity scores.
-
-        Example:
-            ::
-
-                >>> model = SentenceTransformer("all-mpnet-base-v2")
-                >>> sentences = [
-                ...     "The weather is so nice!",
-                ...     "It's so sunny outside.",
-                ...     "He's driving to the movie theater.",
-                ...     "She's going to the cinema.",
-                ... ]
-                >>> embeddings = model.encode(sentences, normalize_embeddings=True)
-                >>> model.similarity_pairwise(embeddings[::2], embeddings[1::2])
-                tensor([0.7235, 0.5027])
-                >>> model.similarity_fn_name
-                "cosine"
-                >>> model.similarity_fn_name = "euclidean"
-                >>> model.similarity_pairwise(embeddings[::2], embeddings[1::2])
-                tensor([-0.7437, -0.9973])
         """
         if self.similarity_fn_name is None:
             self.similarity_fn_name = SimilarityFunction.COSINE
@@ -1215,16 +1167,6 @@ class ColBERT(nn.Sequential, FitMixin):
         Args:
             truncate_dim (int, optional): The dimension to truncate sentence embeddings to. ``None`` does no truncation.
 
-        Example:
-            ::
-
-                from sentence_transformers import SentenceTransformer
-
-                model = SentenceTransformer("all-mpnet-base-v2")
-
-                with model.truncate_sentence_embeddings(truncate_dim=16):
-                    embeddings_truncated = model.encode(["hello there", "hiya"])
-                assert embeddings_truncated.shape[-1] == 16
         """
         original_output_dim = self.truncate_dim
         try:

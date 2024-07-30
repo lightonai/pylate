@@ -5,7 +5,7 @@ import torch
 
 
 @dataclass
-class ColBERT:
+class ColBERTCollator:
     """Collator for a ColBERT model.
     This encodes the text columns to {column}_input_ids and {column}_attention_mask columns.
     The query and the documents are encoded differently.

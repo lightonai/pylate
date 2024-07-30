@@ -5,7 +5,7 @@ from sentence_transformers import (
 )
 from sentence_transformers.training_args import BatchSamplers
 
-from giga_cherche import data_collator, evaluation, losses, models
+from giga_cherche import evaluation, losses, models, utils
 
 model_name = "NohTow/colbertv2_sentence_transformer"  # "distilroberta-base" # Choose the model you want
 batch_size = 32  # The larger you select this, the better the results (usually). But it requires more GPU memory
@@ -29,7 +29,7 @@ eval_dataset = splits["test"]
 MAX_EXAMPLES = 100000
 train_dataset = train_dataset.shuffle(seed=21).select(range(MAX_EXAMPLES))
 
-train_loss = losses.ColBERTLossv1(model=model)
+train_loss = losses.Contrastive(model=model)
 
 # Subsample the evaluation dataset
 # max_samples = 1000
@@ -77,7 +77,7 @@ trainer = SentenceTransformerTrainer(
     eval_dataset=eval_dataset,
     loss=train_loss,
     evaluator=dev_evaluator,
-    data_collator=data_collator.ColBERT(model.tokenize),
+    data_collator=utils.ColBERTCollator(model.tokenize),
 )
 
 trainer.train()

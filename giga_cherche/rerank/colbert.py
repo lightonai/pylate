@@ -2,17 +2,11 @@ import numpy as np
 import torch
 
 from ..indexes import Base as BaseIndex
-from ..scores import colbert_score
-
-__all__ = ["ColBERT"]
+from ..scores import colbert_scores
 
 
 class ColBERT:
-    """Rerank
-
-    Parameters
-
-    """
+    """ColBERT reranker."""
 
     def __init__(self, index: BaseIndex) -> None:
         self.index = index
@@ -38,12 +32,16 @@ class ColBERT:
                 torch.tensor(embeddings, dtype=torch.float32, device=query.device)
                 for embeddings in query_documents_embeddings
             ]
+
             documents_embeddings = torch.nn.utils.rnn.pad_sequence(
                 documents_embeddings, batch_first=True, padding_value=0
             )
-            query_scores = colbert_score.colbert_score(
-                query.unsqueeze(0), documents_embeddings
+
+            query_scores = colbert_scores(
+                queries_embeddings=query.unsqueeze(0),
+                documents_embeddings=documents_embeddings,
             )[0]
+
             reranked_query_scores, sorted_indices = torch.sort(
                 query_scores, descending=True
             )

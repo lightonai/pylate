@@ -4,11 +4,18 @@ import torch
 from ..indexes import Base as BaseIndex
 from ..rerank import ColBERT as ColBERTReranker
 
-__all__ = ["ColBERT"]
 
-
-# TODO: define Retriever metaclass
 class ColBERT:
+    """ColBERT retriever.
+
+
+    Examples
+    --------
+
+
+
+    """
+
     def __init__(self, index: BaseIndex) -> None:
         self.index = index
         self.reranker = ColBERTReranker(index=index)

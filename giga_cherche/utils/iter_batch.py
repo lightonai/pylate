@@ -1,14 +1,12 @@
 import tqdm
 
-__all__ = ["iter_batch"]
-
 
 def iter_batch(
     X: list[str], batch_size: int, tqdm_bar: bool = True, desc: str = ""
 ) -> list:
     """Iterate over a list of elements by batch.
 
-    Example
+    Examples
     -------
     >>> from giga_cherche import utils
 
