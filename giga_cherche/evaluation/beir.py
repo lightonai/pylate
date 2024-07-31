@@ -3,11 +3,18 @@
 import random
 from collections import defaultdict
 
-__all__ = ["evaluate", "load_beir", "get_beir_triples"]
-
 
 def add_duplicates(queries: list[str], scores: list[list[dict]]) -> list:
-    """Add back duplicates scores to the set of candidates."""
+    """Add back duplicates scores to the set of candidates.
+
+    Parameters
+    ----------
+    queries
+        List of queries.
+    scores
+        Scores of the retrieval model.
+
+    """
     query_counts = defaultdict(int)
     for query in queries:
         query_counts[query] += 1
@@ -31,7 +38,9 @@ def load_beir(dataset_name: str, split: str = "test") -> tuple[list, list, dict]
     Parameters
     ----------
     dataset_name
-        Dataset name: scifact.
+        Name of the beir dataset.
+    split
+        Split to load.
 
     """
     from beir import util
@@ -85,14 +94,14 @@ def get_beir_triples(
 
     Examples
     --------
-    >>> from neural_cherche import utils
+    >>> from giga_cherche import evaluation
 
-    >>> documents, queries, qrels = utils.load_beir(
+    >>> documents, queries, qrels = evaluation.load_beir(
     ...     "scifact",
     ...     split="test",
     ... )
 
-    >>> triples = utils.get_beir_triples(
+    >>> triples = evaluation.get_beir_triples(
     ...     key="id",
     ...     on=["title", "text"],
     ...     documents=documents,
@@ -145,59 +154,6 @@ def evaluate(
         Number of documents to retrieve.
     metrics
         Metrics to compute.
-
-    Examples
-    --------
-    >>> from neural_cherche import models, retrieve, utils
-    >>> import torch
-
-    >>> _ = torch.manual_seed(42)
-
-    >>> model = models.Splade(
-    ...     model_name_or_path="raphaelsty/neural-cherche-sparse-embed",
-    ...     device="cpu",
-    ... )
-
-    >>> documents, queries, qrels = utils.load_beir(
-    ...     "scifact",
-    ...     split="test",
-    ... )
-
-    >>> documents = documents[:10]
-
-    >>> retriever = retrieve.Splade(
-    ...     key="id",
-    ...     on=["title", "text"],
-    ...     model=model
-    ... )
-
-    >>> documents_embeddings = retriever.encode_documents(
-    ...     documents=documents,
-    ...     batch_size=1,
-    ... )
-
-    >>> documents_embeddings = retriever.add(
-    ...     documents_embeddings=documents_embeddings,
-    ... )
-
-    >>> queries_embeddings = retriever.encode_queries(
-    ...     queries=queries,
-    ...     batch_size=1,
-    ... )
-
-    >>> scores = retriever(
-    ...     queries_embeddings=queries_embeddings,
-    ...     k=30,
-    ...     batch_size=1,
-    ... )
-
-    >>> utils.evaluate(
-    ...     scores=scores,
-    ...     qrels=qrels,
-    ...     queries=queries,
-    ...     metrics=["map", "ndcg@10", "ndcg@100", "recall@10", "recall@100"]
-    ... )
-    {'map': 0.0033333333333333335, 'ndcg@10': 0.0033333333333333335, 'ndcg@100': 0.0033333333333333335, 'recall@10': 0.0033333333333333335, 'recall@100': 0.0033333333333333335}
 
     """
     from ranx import Qrels, Run, evaluate

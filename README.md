@@ -15,9 +15,9 @@ For example, to run the BEIR evaluations using giga-cherche indexes:
 # Modeling
 The modeling of giga-cherche is based on sentence-transformers which allow to build a ColBERT model from any encoder available by appending a projection layer applied to the output of the encoders to reduce the embeddings dimension. 
 ```
-from giga_cherche.models import ColBERT
+from giga_cherche import models
 model_name = "bert-base-uncased"
-model = ColBERT(model_name_or_path=model_name)
+model = models.ColBERT(model_name_or_path=model_name)
 ```
 The following parameters can be passed to the constructor to set different properties of the model:
 - ```embedding_size```, the output size of the projection layer and so the dimension of the embeddings
@@ -40,7 +40,7 @@ from sentence_transformers import (
     SentenceTransformerTrainingArguments,
 )
 
-from giga_cherche import losses, models, data_collator, evaluation
+from giga_cherche import losses, models, datasets, evaluation
 
 model_name = "bert-base-uncased"
 batch_size = 32
@@ -77,7 +77,7 @@ trainer = SentenceTransformerTrainer(
     eval_dataset=eval_dataset,
     loss=train_loss,
     evaluator=dev_evaluator,
-    data_collator=data_collator.ColBERT(model.tokenize),
+    data_collator=utils.ColBERTCollator(model.tokenize),
 )
 
 trainer.train()
@@ -88,7 +88,7 @@ trainer.train()
 ```
 import ast 
 
-def add_queries_and_documents(example: dict) -> dict:
+def add_queries_and_documents(Examples dict) -> dict:
     """Add queries and documents text to the examples."""
     scores = ast.literal_eval(node_or_string=example["scores"])
     processed_example = {"scores": scores, "query": queries[example["query_id"]]}
@@ -135,7 +135,7 @@ You can then compute the ColBERT max-sim scores like this:
 
 ```python
 from giga_cherche import scores
-similarity_scores = scores.colbert_score(query_embeddings, document_embeddings)
+similarity_scores = scores.colbert_scores(query_embeddings, document_embeddings)
 ```
 
 ## Indexing

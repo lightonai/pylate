@@ -1,12 +1,13 @@
 import asyncio
 import time
 
-import weaviate
-import weaviate.classes as wvc
+try:
+    import weaviate
+    import weaviate.classes as wvc
+except ImportError:
+    pass
 
 from .base import Base
-
-__all__ = ["Weaviate"]
 
 
 # TODO: define Index metaclass

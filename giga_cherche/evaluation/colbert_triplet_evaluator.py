@@ -10,11 +10,9 @@ from sentence_transformers.readers import InputExample
 from sentence_transformers.SentenceTransformer import SentenceTransformer
 from sentence_transformers.similarity_functions import SimilarityFunction
 
-from giga_cherche.scores.colbert_score import colbert_score
+from ..scores import colbert_scores
 
 logger = logging.getLogger(__name__)
-
-__all__ = ["ColBERTTripletEvaluator"]
 
 
 class ColBERTTripletEvaluator(SentenceEvaluator):
@@ -22,7 +20,7 @@ class ColBERTTripletEvaluator(SentenceEvaluator):
     Evaluate a model based on a triplet: (sentence, positive_example, negative_example).
     Checks if colbert distance(sentence, positive_example) < distance(sentence, negative_example).
 
-    Example:
+    Examples
         ::
 
             from sentence_transformers import SentenceTransformer
@@ -198,15 +196,20 @@ class ColBERTTripletEvaluator(SentenceEvaluator):
         # Colbert distance
         # pos_colbert_distances = colbert_pairwise_score(embeddings_anchors, embeddings_positives)
         # neg_colbert_distances = colbert_pairwise_score(embeddings_anchors, embeddings_negatives)
-        pos_colbert_distances_full = colbert_score(
-            embeddings_anchors, embeddings_positives
+        pos_colbert_distances_full = colbert_scores(
+            queries_embeddings=embeddings_anchors,
+            documents_embeddings=embeddings_positives,
         )
-        neg_colbert_distances_full = colbert_score(
-            embeddings_anchors, embeddings_negatives
+
+        neg_colbert_distances_full = colbert_scores(
+            queries_embeddings=embeddings_anchors,
+            documents_embeddings=embeddings_negatives,
         )
+
         distances_full = torch.cat(
             [pos_colbert_distances_full, neg_colbert_distances_full], dim=1
         )
+
         # print(distances_full.shape)
         labels = np.arange(0, len(embeddings_anchors))
         indices = np.argsort(-distances_full.cpu().numpy(), axis=1)

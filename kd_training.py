@@ -1,10 +1,10 @@
+from datasets import load_dataset
 from sentence_transformers import (
     SentenceTransformerTrainer,
     SentenceTransformerTrainingArguments,
 )
 
-from datasets import load_dataset
-from giga_cherche import data_collator, losses, models, utils
+from giga_cherche import losses, models, utils
 
 train = load_dataset(
     path="./datasets/msmarco_fr_full",
@@ -22,17 +22,8 @@ documents = load_dataset(
 )
 
 train.set_transform(
-    utils.DatasetProcessing(
-        queries=queries, documents=documents
-    ).add_queries_and_documents_transform,
-    # remove_columns=[feature for feature in train["train"].features if "id" in feature],
+    utils.KDProcessing(queries=queries, documents=documents).transform,
 )
-# train = train.map(
-#     utils.DatasetProcessing(
-#         queries=queries, documents=documents
-#     ).add_queries_and_documents,
-#     # remove_columns=[feature for feature in train["train"].features if "id" in feature],
-# )
 
 
 model_name = "bert-base-uncased"
@@ -53,14 +44,14 @@ args = SentenceTransformerTrainingArguments(
     learning_rate=1e-5,
 )
 
-train_loss = losses.ColBERTLossv2(model=model)
+train_loss = losses.Distillation(model=model)
 
 trainer = SentenceTransformerTrainer(
     model=model,
     args=args,
     train_dataset=train,
     loss=train_loss,
-    data_collator=data_collator.ColBERT(tokenize_fn=model.tokenize),
+    data_collator=utils.ColBERTCollator(tokenize_fn=model.tokenize),
 )
 
 trainer.train()

@@ -11,13 +11,12 @@ base_packages = [
     "accelerate >= 0.31.0",
 ]
 
-dev = ["ruff >= 0.4.9"]
+weaviate = ["weaviate-client >= 4.6.7"]
+
+dev = ["ruff >= 0.4.9", "pytest-cov >= 5.0.0", "pytest >= 8.2.1"]
 
 eval = ["ranx >= 0.3.16", "beir >= 2.0.0"]
 
-index = [
-    "weaviate-client >= 4.7.0b0",
-]
 
 setuptools.setup(
     name="giga_cherche",
@@ -30,7 +29,11 @@ setuptools.setup(
     keywords=[],
     packages=setuptools.find_packages(),
     install_requires=base_packages,
-    extras_require={"dev": base_packages + dev + eval, "eval": base_packages + eval},
+    extras_require={
+        "weaviate": weaviate,
+        "eval": base_packages + weaviate + eval,
+        "dev": base_packages + dev + eval,
+    },
     classifiers=[
         "Programming Language :: Python :: 3",
         "Operating System :: OS Independent",

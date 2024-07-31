@@ -1,7 +1,5 @@
 from abc import ABC, abstractmethod
 
-__all__ = ["Base"]
-
 
 class Base(ABC):
     """Base class for all indexes. Indexes are used to store and retrieve embeddings."""
