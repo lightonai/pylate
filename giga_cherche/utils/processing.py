@@ -17,30 +17,30 @@ class KDProcessing:
 
     Examples
     --------
-    from datasets import load_dataset
-    from giga_cherche import utils
+    >>> from datasets import load_dataset
+    >>> from giga_cherche import utils
 
-    train = load_dataset(
-        path="./msmarco_fr",
-        name="train",
-        cache_dir="./msmarco_fr"
-    )
+    ... train = load_dataset(
+    ...    path="./msmarco_fr",
+    ...    name="train",
+    ...    cache_dir="./msmarco_fr"
+    ... )
 
-    queries = load_dataset(
-        path="./msmarco_fr",
-        name="queries",
-        cache_dir="./msmarco_fr"
-    )
+    >>> queries = load_dataset(
+    ...    path="./msmarco_fr",
+    ...    name="queries",
+    ...    cache_dir="./msmarco_fr"
+    ... )
 
-    documents = load_dataset(
-        path="./msmarco_fr", name="documents", cache_dir="./msmarco_fr"
-    )
+    >>> documents = load_dataset(
+    ...    path="./msmarco_fr", name="documents", cache_dir="./msmarco_fr"
+    ... )
 
-    train = train.map(
-        utils.DatasetProcessing(
-            queries=queries, documents=documents
-        ).transform,
-    )
+    >>> train = train.map(
+    ...    utils.DatasetProcessing(
+    ...        queries=queries, documents=documents
+    ...    ).transform,
+    ... )
 
     """
 
@@ -64,7 +64,7 @@ class KDProcessing:
         }
 
     def transform(self, examples: dict) -> dict:
-        """Update examples with queries and documents. Also"""
+        """Update the input dataset with the queries and documents."""
         examples["scores"] = [
             ast.literal_eval(node_or_string=score)[: self.n_ways]
             for score in examples["scores"]

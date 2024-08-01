@@ -2,7 +2,7 @@ import numpy as np
 import torch
 
 from ..indexes import Base as BaseIndex
-from ..rerank import ColBERT as ColBERTReranker
+from ..rank import rerank
 
 
 class ColBERT:
@@ -18,7 +18,7 @@ class ColBERT:
 
     def __init__(self, index: BaseIndex) -> None:
         self.index = index
-        self.reranker = ColBERTReranker(index=index)
+        self.reranker = rerank(index=index)
 
     def retrieve(
         self, queries: list[list | np.ndarray | torch.Tensor], k: int

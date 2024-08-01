@@ -470,6 +470,39 @@ class ColBERT(nn.Sequential, FitMixin):
                 print(embeddings.shape)
                 # (3, 768)
         """
+        if isinstance(sentences, list):
+            # If we have a list of list of sentences, we encode each list separately.
+            if isinstance(sentences[0], list):
+                embeddings = []
+
+                for batch in sentences:
+                    batch_embedings = self.encode(
+                        sentences=batch,
+                        prompt_name=prompt_name,
+                        prompt=prompt,
+                        batch_size=batch_size,
+                        show_progress_bar=show_progress_bar,
+                        precision=precision,
+                        convert_to_numpy=convert_to_numpy,
+                        convert_to_tensor=convert_to_tensor,
+                        padding=padding,
+                        device=device,
+                        normalize_embeddings=normalize_embeddings,
+                        is_query=is_query,
+                        pool_factor=pool_factor,
+                        protected_tokens=protected_tokens,
+                    )
+
+                    batch_embedings = (
+                        torch.stack(batch_embedings)
+                        if convert_to_tensor
+                        else batch_embedings
+                    )
+
+                    embeddings.append(batch_embedings)
+
+                return embeddings
+
         if self.device.type == "hpu" and not self.is_hpu_graph_enabled:
             import habana_frameworks.torch as ht
 

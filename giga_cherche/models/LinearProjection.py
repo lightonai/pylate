@@ -1,5 +1,6 @@
 import json
 import os
+from typing import Any
 
 import torch
 from torch import nn
@@ -7,26 +8,39 @@ from torch import nn
 __all__ = ["LinearProjection"]
 
 
-# This is a linear projection layer, very similar to the Dense layer without a non-linearity and could be merged to it
 class LinearProjection(nn.Module):
-    """
-    Performs linear projection on the token embeddings to a lower dimension.
+    """Performs linear projection on the token embeddings to a lower dimension.
 
-    Args:
-        in_features: Size of the word embeddings
-        out_features: Size of the output embeddings after linear projection
-        init_weight: Initial value for the matrix of the linear layer
-        init_bias: Initial value for the bias of the linear layer
+    Parameters
+    ----------
+    in_features
+        Size of the embeddings in output of the tansformer.
+    out_features
+        Size of the output embeddings after linear projection
+    bias
+        Add a bias vector
+    init_weight
+        Initial value for the matrix of the linear layer
+    init_bias
+        Initial value for the bias of the linear layer.
 
+    Examples
+    --------
+    >>> from giga_cherche import models
 
-    Args:
-        in_features: Size of the input dimension
-        out_features: Output size
-        bias: Add a bias vector
-        activation_function: Pytorch activation function applied on
-            output
-        init_weight: Initial value for the matrix of the linear layer
-        init_bias: Initial value for the bias of the linear layer
+    >>> model = models.LinearProjection(
+    ...     in_features=768,
+    ...     out_features=128,
+    ... )
+
+    >>> features = {
+    ...     "token_embeddings": torch.randn(2, 768),
+    ... }
+
+    >>> projected_features = model(features)
+
+    >>> assert projected_features["token_embeddings"].shape == (2, 128)
+
     """
 
     def __init__(
@@ -36,7 +50,7 @@ class LinearProjection(nn.Module):
         bias: bool = True,
         init_weight: torch.Tensor = None,
         init_bias: torch.Tensor = None,
-    ):
+    ) -> None:
         super(LinearProjection, self).__init__()
         self.in_features = in_features
         self.out_features = out_features
@@ -49,38 +63,39 @@ class LinearProjection(nn.Module):
         if init_bias is not None:
             self.linear.bias = nn.Parameter(init_bias)
 
-    def forward(self, features: dict[str, torch.Tensor]):
-        token_embeddings = features["token_embeddings"]
+    def __repr__(self) -> str:
+        return f"LinearProjection({self.get_config_dict()})"
 
-        # Linear projection
+    def forward(self, features: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
+        """Performs linear projection on the token embeddings."""
+        token_embeddings = features["token_embeddings"]
         projected_embeddings = self.linear_projection(token_embeddings)
-        # TODO: maybe we want to define features["projected_embeddings"] instead of overwriting token_embeddings?
         features["token_embeddings"] = projected_embeddings
         return features
 
     def get_sentence_embedding_dimension(self) -> int:
+        """Returns the dimension of the sentence embeddings."""
         return self.out_features
 
-    def get_config_dict(self):
+    def get_config_dict(self) -> dict[str, Any]:
+        """Returns the configuration of the model."""
         return {
             "in_features": self.in_features,
             "out_features": self.out_features,
             "bias": self.bias,
         }
 
-    def save(self, output_path):
-        with open(os.path.join(output_path, "config.json"), "w") as fOut:
-            json.dump(self.get_config_dict(), fOut)
+    def save(self, output_path: str) -> None:
+        with open(file=os.path.join(output_path, "config.json"), mode="w") as fOut:
+            json.dump(obj=self.get_config_dict(), fp=fOut)
 
         torch.save(self.state_dict(), os.path.join(output_path, "pytorch_model.bin"))
 
-    def __repr__(self):
-        return "LinearProjection({})".format(self.get_config_dict())
-
     @staticmethod
-    def load(input_path):
-        with open(os.path.join(input_path, "config.json")) as fIn:
-            config = json.load(fIn)
+    def load(input_path) -> "LinearProjection":
+        """Load the model from a directory."""
+        with open(file=os.path.join(input_path, "config.json")) as file:
+            config = json.load(file)
 
         model = LinearProjection(**config)
         model.load_state_dict(

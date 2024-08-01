@@ -42,6 +42,24 @@ def load_beir(dataset_name: str, split: str = "test") -> tuple[list, list, dict]
     split
         Split to load.
 
+    Examples
+    --------
+    >>> from giga_cherche import evaluation
+
+    >>> documents, queries, qrels = evaluation.load_beir(
+    ...     "scifact",
+    ...     split="test",
+    ... )
+
+    >>> len(documents)
+    5183
+
+    >>> len(queries)
+    300
+
+    >>> len(qrels)
+    300
+
     """
     from beir import util
     from beir.datasets.data_loader import GenericDataLoader
