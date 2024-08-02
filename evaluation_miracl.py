@@ -1,23 +1,35 @@
-"""Evaluation script for the SciFact dataset using the Beir library."""
+"""Evaluation script for the miracl_fr dataset using the Beir library."""
+
+from beir.datasets.data_loader import GenericDataLoader
 
 from giga_cherche import evaluation, indexes, models, retrieve, utils
 
 model = models.ColBERT(
-    model_name_or_path="NohTow/colbertv2_sentence_transformer",
+    model_name_or_path="NohTow/colbert_xml-r-english",
+    document_length=300,
 )
 index = indexes.Weaviate(override_collection=True, max_doc_length=model.document_length)
-
 retriever = retrieve.ColBERT(index=index)
 
-# Input dataset for evaluation
-documents, queries, qrels = evaluation.load_beir(
-    dataset_name="scifact",
-    split="test",
-)
+documents, queries, qrels = GenericDataLoader("datasets/miracl_fr").load(split="dev")
+
+documents = [
+    {
+        "id": document_id,
+        "title": document["title"],
+        "text": document["text"],
+    }
+    for document_id, document in documents.items()
+]
+
+qrels = {
+    queries[query_id]: query_documents for query_id, query_documents in qrels.items()
+}
+queries = list(qrels.keys())
 
 for batch in utils.iter_batch(documents, batch_size=500):
     documents_embeddings = model.encode(
-        sentences=[document["text"] for document in batch],
+        [document["title"] + " " + document["text"] for document in batch],
         convert_to_numpy=True,
         is_query=False,
     )
