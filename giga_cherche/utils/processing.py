@@ -45,11 +45,11 @@ class KDProcessing:
     """
 
     def __init__(
-        self, queries: datasets.Dataset, documents: datasets.Dataset, n_scores: int = 32
+        self, queries: datasets.Dataset, documents: datasets.Dataset, n_ways: int = 32
     ) -> None:
         self.queries = queries
         self.documents = documents
-        self.n_scores = n_scores
+        self.n_ways = n_ways
 
         self.queries_index = {
             query_id: i
@@ -66,7 +66,7 @@ class KDProcessing:
     def transform(self, examples: dict) -> dict:
         """Update examples with queries and documents. Also"""
         examples["scores"] = [
-            ast.literal_eval(node_or_string=score)[: self.n_scores]
+            ast.literal_eval(node_or_string=score)[: self.n_ways]
             for score in examples["scores"]
         ]
 
@@ -75,9 +75,7 @@ class KDProcessing:
             for query_id in examples["query_id"]
         ]
 
-        n_scores = len(examples["scores"][0])
-
-        for i in range(n_scores):
+        for i in range(self.n_ways):
             documents = []
             for document_id in examples[f"document_id_{i}"]:
                 try:
@@ -92,3 +90,24 @@ class KDProcessing:
             examples[f"document_{i}"] = documents
 
         return examples
+
+    def map(self, example: dict) -> dict:
+        """Add queries and documents text to the examples."""
+        scores = ast.literal_eval(node_or_string=example["scores"])[: self.n_ways]
+
+        processed_example = {
+            "scores": scores,
+            "query": self.queries["train"][self.queries_index[example["query_id"]]][
+                "text"
+            ],
+        }
+
+        for i in range(self.n_ways):
+            try:
+                processed_example[f"document_{i}"] = self.documents["train"][
+                    self.documents_index[example[f"document_id_{i}"]]
+                ]["text"]
+            except KeyError:
+                processed_example[f"document_{i}"] = ""
+                print(f"KeyError: {example[f'document_id_{i}']}")
+        return processed_example
