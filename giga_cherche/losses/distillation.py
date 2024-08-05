@@ -57,6 +57,7 @@ class Distillation(torch.nn.Module):
         model: ColBERT,
         distance_metric: Callable = colbert_kd_scores,
         size_average: bool = True,
+        normalize_scores: bool = True,
     ) -> None:
         super(Distillation, self).__init__()
         self.distance_metric = distance_metric
@@ -64,6 +65,7 @@ class Distillation(torch.nn.Module):
         self.loss_function = torch.nn.KLDivLoss(
             reduction="batchmean" if size_average else "sum", log_target=True
         )
+        self.normalize_scores = normalize_scores
 
     def forward(
         self, sentence_features: Iterable[dict[str, torch.Tensor]], labels: torch.Tensor
@@ -99,7 +101,18 @@ class Distillation(torch.nn.Module):
             positive_negative_embeddings,
             positive_negative_embeddings_mask,
         )
+        if self.normalize_scores:
+            # Compute max and min along the num_scores dimension (dim=1)
+            max_distances, _ = torch.max(distances, dim=1, keepdim=True)
+            min_distances, _ = torch.min(distances, dim=1, keepdim=True)
 
+            # Avoid division by zero by adding a small epsilon
+            epsilon = 1e-8
+
+            # Normalize the scores
+            distances = (distances - min_distances) / (
+                max_distances - min_distances + epsilon
+            )
         return self.loss_function(
             torch.nn.functional.log_softmax(distances, dim=-1),
             torch.nn.functional.log_softmax(labels, dim=-1),
