@@ -17,30 +17,30 @@ class KDProcessing:
 
     Examples
     --------
-    >>> from datasets import load_dataset
-    >>> from giga_cherche import utils
+    from datasets import load_dataset
+    from giga_cherche import utils
 
-    ... train = load_dataset(
-    ...    path="./msmarco_fr",
-    ...    name="train",
-    ...    cache_dir="./msmarco_fr"
-    ... )
+    train = load_dataset(
+        path="./msmarco_fr",
+        name="train",
+        cache_dir="./msmarco_fr"
+    )
 
-    >>> queries = load_dataset(
-    ...    path="./msmarco_fr",
-    ...    name="queries",
-    ...    cache_dir="./msmarco_fr"
-    ... )
+    queries = load_dataset(
+        path="./msmarco_fr",
+        name="queries",
+        cache_dir="./msmarco_fr"
+    )
 
-    >>> documents = load_dataset(
-    ...    path="./msmarco_fr", name="documents", cache_dir="./msmarco_fr"
-    ... )
+    documents = load_dataset(
+        path="./msmarco_fr", name="documents", cache_dir="./msmarco_fr"
+    )
 
-    >>> train = train.map(
-    ...    utils.DatasetProcessing(
-    ...        queries=queries, documents=documents
-    ...    ).transform,
-    ... )
+    train = train.map(
+        utils.DatasetProcessing(
+            queries=queries, documents=documents
+        ).transform,
+    )
 
     """
 
