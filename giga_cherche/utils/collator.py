@@ -1,3 +1,4 @@
+import itertools
 from typing import Callable
 
 import torch
@@ -84,19 +85,20 @@ class ColBERTCollator:
 
         # Tokenize the text.
         for column in columns:
-            if "_id" in column:
-                # Skip the columns that contains _id.
-                continue
-
-            is_query = "query" in column or "anchor" in column
-
-            tokenized = self.tokenize_fn(
-                [row[column] for row in features],
-                is_query=is_query,
-                pad_document=True,
-            )
-
-            for key, value in tokenized.items():
-                batch[f"{column}_{key}"] = value
+            # We do not tokenize columns containing the ids. It would be better to throw them away during the dataset processing (TODO), but this break sentence transformers datasets extraction.
+            if "_id" not in column:
+                # We tokenize the query differently than the documents, TODO: define a parameter "query_column"
+                is_query = "query" in column or "anchor" in column
+                texts = [row[column] for row in features]
+                # Flatten the list of texts if it is a list of lists (e.g, documents)
+                if isinstance(texts[0], list):
+                    texts = list(itertools.chain(*texts))
+                tokenized = self.tokenize_fn(
+                    texts,
+                    is_query=is_query,
+                    pad_document=True,
+                )
+                for key, value in tokenized.items():
+                    batch[f"{column}_{key}"] = value
 
         return batch
