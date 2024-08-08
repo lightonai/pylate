@@ -120,7 +120,9 @@ class Contrastive(nn.Module):
         self.size_average = size_average
 
     def forward(
-        self, sentence_features: Iterable[dict[str, Tensor]], **kwargs
+        self,
+        sentence_features: Iterable[dict[str, Tensor]],
+        labels: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """Compute the Constrastive loss.
 
@@ -157,5 +159,7 @@ class Contrastive(nn.Module):
         # compute constrastive loss using cross-entropy over the distances
 
         return F.cross_entropy(
-            distances, labels, reduction="mean" if self.size_average else "sum"
+            input=distances,
+            target=labels,
+            reduction="mean" if self.size_average else "sum",
         )
