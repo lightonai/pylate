@@ -13,7 +13,7 @@ base_packages = [
 
 weaviate = ["weaviate-client >= 4.6.7"]
 
-dev = ["ruff >= 0.4.9", "pytest-cov >= 5.0.0", "pytest >= 8.2.1"]
+dev = ["ruff >= 0.4.9", "pytest-cov >= 5.0.0", "pytest >= 8.2.1", "pandas >= 2.2.1"]
 
 eval = ["ranx >= 0.3.16", "beir >= 2.0.0"]
 

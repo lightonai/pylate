@@ -65,8 +65,8 @@ def colbert_scores(
 
 
 def colbert_scores_pairwise(
-    queries_embeddings: list | np.ndarray | torch.Tensor,
-    documents_embeddings: list | np.ndarray | torch.Tensor,
+    queries_embeddings: torch.Tensor,
+    documents_embeddings: torch.Tensor,
 ) -> torch.Tensor:
     """Computes the ColBERT score for each query-document pair. The score is computed as the sum of maximum similarities
     between the query and the document for corresponding pairs.
@@ -100,11 +100,26 @@ def colbert_scores_pairwise(
     ... )
 
     >>> scores
-    tensor([ 10., 200., 3000.])
+    tensor([  10.,  200., 3000.])
+
     """
-    return colbert_scores(
-        queries_embeddings=queries_embeddings, documents_embeddings=documents_embeddings
-    ).diagonal()
+    scores = []
+
+    for query_embedding, document_embedding in zip(
+        queries_embeddings, documents_embeddings
+    ):
+        query_embedding = convert_to_tensor(query_embedding)
+        document_embedding = convert_to_tensor(document_embedding)
+
+        query_document_score = torch.einsum(
+            "sh,th->st",
+            query_embedding,
+            document_embedding,
+        )
+
+        scores.append(query_document_score.max(axis=-1).values.sum())
+
+    return torch.stack(scores, dim=0)
 
 
 def colbert_kd_scores(

@@ -3,7 +3,7 @@ import torch
 
 
 def convert_to_tensor(
-    x: torch.Tensor | np.ndarray | list[torch.Tensor | np.ndarray | list],
+    x: torch.Tensor | np.ndarray | list[torch.Tensor | np.ndarray | list | float],
 ) -> torch.Tensor:
     """Converts a list or numpy array to a torch tensor.
 
@@ -17,26 +17,34 @@ def convert_to_tensor(
     >>> import numpy as np
     >>> import torch
 
-    >>> x = [[1., 1., 1.]]
+    >>> x = torch.tensor([[1., 1., 1.], [2., 2., 2.]])
     >>> convert_to_tensor(x)
-    tensor([[1., 1., 1.]])
+    tensor([[1., 1., 1.],
+            [2., 2., 2.]])
 
     >>> x = np.array([[1., 1., 1.], [2., 2., 2.]], dtype=np.float32)
     >>> convert_to_tensor(x)
     tensor([[1., 1., 1.],
             [2., 2., 2.]])
 
+    >>> x = []
+    >>> convert_to_tensor(x)
+    tensor([])
+
+    >>> x = [np.array([1., 1., 1.])]
+    >>> convert_to_tensor(x)
+    tensor([[1., 1., 1.]])
+
+    >>> x = [[1., 1., 1.]]
+    >>> convert_to_tensor(x)
+    tensor([[1., 1., 1.]])
+
     >>> x = [torch.tensor([1., 1., 1.]), torch.tensor([2., 2., 2.])]
     >>> convert_to_tensor(x)
     tensor([[1., 1., 1.],
             [2., 2., 2.]])
 
-    >>> x = torch.tensor([[1., 1., 1.], [2., 2., 2.]])
-    >>> convert_to_tensor(x)
-    tensor([[1., 1., 1.],
-            [2., 2., 2.]])
-
-    >>> x = []
+    >>> x = np.array([], dtype=np.float32)
     >>> convert_to_tensor(x)
     tensor([])
 
@@ -59,5 +67,3 @@ def convert_to_tensor(
 
         if isinstance(x[0], torch.Tensor):
             return torch.stack(x)
-
-    raise Exception("Unsupported data type")

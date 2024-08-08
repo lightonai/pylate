@@ -64,7 +64,7 @@ class KDProcessing:
         }
 
     def transform(self, examples: dict) -> dict:
-        """Update examples with queries and documents. Also"""
+        """Update the input dataset with the queries and documents."""
         examples["scores"] = [
             ast.literal_eval(node_or_string=score)[: self.n_ways]
             for score in examples["scores"]

@@ -3,7 +3,7 @@ __all__ = [
     "indexes",
     "losses",
     "models",
-    "rerank",
+    "rank",
     "retrieve",
     "scores",
     "utils",
