@@ -80,22 +80,26 @@ class Distillation(torch.nn.Module):
             The logits for the distillation loss.
 
         """
-        embeddings = [
-            torch.nn.functional.normalize(
-                self.model(sentence_feature)["token_embeddings"], p=2, dim=-1
-            )
-            for sentence_feature in sentence_features
-        ]
+        anchor_embeddings = torch.nn.functional.normalize(
+            self.model(sentence_features[0])["token_embeddings"], p=2, dim=-1
+        )
+        # Compute the bs * n_ways embeddings
+        positive_negative_embeddings = torch.nn.functional.normalize(
+            self.model(sentence_features[1])["token_embeddings"], p=2, dim=-1
+        )
+
+        # Reshape them to (bs, n_ways)
+        positive_negative_embeddings = positive_negative_embeddings.view(
+            anchor_embeddings.size(0), -1, *positive_negative_embeddings.shape[1:]
+        )
 
         masks = extract_skiplist_mask(
             sentence_features=sentence_features, skiplist=self.model.skiplist
         )
 
-        # Compute the distance between the anchor and positive/negative embeddings.
-        anchor_embeddings = embeddings[0]
-        positive_negative_embeddings = torch.stack(embeddings[1:], dim=1)
-        positive_negative_embeddings_mask = torch.stack(masks[1:], dim=1)
-
+        positive_negative_embeddings_mask = masks[1].view(
+            anchor_embeddings.size(0), -1, *masks[1].shape[1:]
+        )
         distances = self.distance_metric(
             anchor_embeddings,
             positive_negative_embeddings,
