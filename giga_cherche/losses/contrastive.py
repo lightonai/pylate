@@ -74,7 +74,7 @@ class Contrastive(nn.Module):
     ----------
     model
         ColBERT model.
-    distance_metric
+    score_metric
         ColBERT scoring function. Defaults to colbert_scores.
     size_average
         Average by the size of the mini-batch.
@@ -111,11 +111,11 @@ class Contrastive(nn.Module):
     def __init__(
         self,
         model: ColBERT,
-        distance_metric=colbert_scores,
+        score_metric=colbert_scores,
         size_average: bool = True,
     ) -> None:
         super(Contrastive, self).__init__()
-        self.distance_metric = distance_metric
+        self.score_metric = score_metric
         self.model = model
         self.size_average = size_average
 
@@ -145,9 +145,9 @@ class Contrastive(nn.Module):
 
         # Note: the queries mask is not used, if added, take care that the expansion tokens are not masked from scoring (because they might be masked during encoding).
         # We might not need to compute the mask for queries but I let the logic there for now
-        distances = torch.cat(
+        scores = torch.cat(
             [
-                self.distance_metric(embeddings[0], group_embeddings, mask)
+                self.score_metric(embeddings[0], group_embeddings, mask)
                 for group_embeddings, mask in zip(embeddings[1:], masks[1:])
             ],
             dim=1,
@@ -156,10 +156,10 @@ class Contrastive(nn.Module):
         # create corresponding labels
         # labels = torch.arange(0, rep_anchor.size(0), device=rep_anchor.device)
         labels = torch.arange(0, embeddings[0].size(0), device=embeddings[0].device)
-        # compute constrastive loss using cross-entropy over the distances
+        # compute constrastive loss using cross-entropy over the scores
 
         return F.cross_entropy(
-            input=distances,
+            input=scores,
             target=labels,
             reduction="mean" if self.size_average else "sum",
         )
