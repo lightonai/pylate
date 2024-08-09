@@ -62,7 +62,7 @@ class ColBERTCollator:
         self.tokenize_fn = tokenize_fn
 
         if valid_label_columns is None:
-            valid_label_columns = ["label", "score"]
+            valid_label_columns = ["label", "scores"]
 
         self.valid_label_columns = valid_label_columns
 
@@ -70,7 +70,7 @@ class ColBERTCollator:
         """Collate a list of features into a batch."""
         batch = {"return_loss": True}
 
-        columns = set(features[0].keys())
+        columns = list(features[0].keys())
 
         if "dataset_name" in columns:
             columns.remove("dataset_name")
