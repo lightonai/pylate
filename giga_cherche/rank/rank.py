@@ -77,23 +77,24 @@ def rerank(
     """
     results = []
 
-    for query_embedding, query_documents_ids, query_documents_embeddings in zip(
+    for query_embeddings, query_documents_ids, query_documents_embeddings in zip(
         queries_embeddings, documents_ids, documents_embeddings
     ):
-        query_embedding = func_convert_to_tensor(query_embedding)
-        query_documents_embeddings = func_convert_to_tensor(query_documents_embeddings)
-
-        if device is not None:
-            query_embedding = query_embedding.to(device)
-            query_documents_embeddings = query_documents_embeddings.to(device)
-
+        query_embeddings = func_convert_to_tensor(query_embeddings)
+        query_documents_embeddings = [
+            func_convert_to_tensor(query_document_embeddings)
+            for query_document_embeddings in query_documents_embeddings
+        ]
         # Pad the documents embeddings
         query_documents_embeddings = torch.nn.utils.rnn.pad_sequence(
             query_documents_embeddings, batch_first=True, padding_value=0
         )
+        if device is not None:
+            query_embeddings = query_embeddings.to(device)
+            query_documents_embeddings = query_documents_embeddings.to(device)
 
         query_scores = colbert_scores(
-            queries_embeddings=query_embedding.unsqueeze(0),
+            queries_embeddings=query_embeddings.unsqueeze(0),
             documents_embeddings=query_documents_embeddings,
         )[0]
 
