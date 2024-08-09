@@ -69,31 +69,38 @@ class KDProcessing:
             ast.literal_eval(node_or_string=score)[: self.n_ways]
             for score in examples["scores"]
         ]
-
-        examples["query"] = [
-            self.queries["train"][self.queries_index[query_id]]["text"]
-            for query_id in examples["query_id"]
+        examples["document_ids"] = [
+            ast.literal_eval(node_or_string=document_ids)[: self.n_ways]
+            for document_ids in examples["document_ids"]
         ]
 
-        for i in range(self.n_ways):
+        examples["query"] = [
+            [self.queries["train"][self.queries_index[query_id]]["text"]]
+            for query_id in examples["query_id"]
+        ]
+        examples["documents"] = []
+        for doc_ids in examples["document_ids"]:
             documents = []
-            for document_id in examples[f"document_id_{i}"]:
+            for document_id in doc_ids:
                 try:
                     documents.append(
                         self.documents["train"][self.documents_index[document_id]][
                             "text"
                         ]
                     )
-
                 except KeyError:
                     documents.append("")
-            examples[f"document_{i}"] = documents
+                    print(f"KeyError: {document_id}")
+            examples["documents"].append(documents)
 
         return examples
 
     def map(self, example: dict) -> dict:
         """Add queries and documents text to the examples."""
         scores = ast.literal_eval(node_or_string=example["scores"])[: self.n_ways]
+        documents_ids = ast.literal_eval(node_or_string=example["document_ids"])[
+            : self.n_ways
+        ]
 
         processed_example = {
             "scores": scores,
@@ -101,13 +108,14 @@ class KDProcessing:
                 "text"
             ],
         }
-
-        for i in range(self.n_ways):
+        documents = []
+        for document_id in documents_ids:
             try:
-                processed_example[f"document_{i}"] = self.documents["train"][
-                    self.documents_index[example[f"document_id_{i}"]]
-                ]["text"]
+                documents.append(
+                    self.documents["train"][self.documents_index[document_id]]["text"]
+                )
             except KeyError:
-                processed_example[f"document_{i}"] = ""
-                print(f"KeyError: {example[f'document_id_{i}']}")
+                documents.append("")
+                print(f"KeyError: {document_id}")
+        processed_example["documents"] = documents
         return processed_example
