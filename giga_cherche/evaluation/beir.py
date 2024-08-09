@@ -183,7 +183,7 @@ def evaluate(
 
     run_dict = {
         query: {
-            match["id"]: match["similarity"]
+            match["id"]: match["score"]
             for rank, match in enumerate(iterable=query_matchs)
         }
         for query, query_matchs in zip(queries, scores)

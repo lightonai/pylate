@@ -12,13 +12,10 @@ class ColBERT:
     Examples
     --------
 
-
-
     """
 
     def __init__(self, index: BaseIndex) -> None:
         self.index = index
-        self.reranker = rerank(index=index)
 
     def retrieve(
         self, queries: list[list | np.ndarray | torch.Tensor], k: int
@@ -27,7 +24,7 @@ class ColBERT:
         #     queries = queries.cpu().tolist()
         retrieved_elements = self.index.query(queries_embeddings=queries, k=k // 2)
 
-        batch_doc_ids = [
+        batch_documents_ids = [
             list(
                 set(
                     [
@@ -39,9 +36,11 @@ class ColBERT:
             )
             for query_doc_ids in retrieved_elements["doc_ids"]
         ]
-
-        reranking_results = self.reranker.rerank(
-            queries=queries, batch_doc_ids=batch_doc_ids
+        batch_documents_embeddings = self.index.get_docs_embeddings(batch_documents_ids)
+        reranking_results = rerank(
+            documents_ids=batch_documents_ids,
+            queries_embeddings=queries,
+            documents_embeddings=batch_documents_embeddings,
         )
 
         # Only keep the top-k elements for each query
