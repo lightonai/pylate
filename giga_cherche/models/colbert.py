@@ -251,7 +251,7 @@ class ColBERT(SentenceTransformer):
                 f"The checkpoint does not contain a linear projection layer. Adding one with output dimensions ({hidden_size}, {embedding_size})"
             )
             # Add a linear projection layer to the model in order to project the embeddings to the desired size
-            self._modules[f"{len(self._modules) + 1}"] = LinearProjection(
+            self._modules[f"{len(self._modules)}"] = LinearProjection(
                 in_features=hidden_size, out_features=embedding_size, bias=False
             )
 
