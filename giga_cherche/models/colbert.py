@@ -213,6 +213,15 @@ class ColBERT(SentenceTransformer):
         model_kwargs = {} if model_kwargs is None else model_kwargs
         model_kwargs["add_pooling_layer"] = False
 
+        # Note: self._load_sbert_model can also update `self.prompts` and `self.default_prompt_name`
+        self.query_prefix = query_prefix
+        self.document_prefix = document_prefix
+        self.query_length = query_length
+        self.document_length = document_length
+        self.attend_to_expansion_tokens = attend_to_expansion_tokens
+        self.skiplist_words = skiplist_words
+
+        # Init the model (will call the appropriate loading function)
         super(ColBERT, self).__init__(
             model_name_or_path=model_name_or_path,
             modules=modules,
@@ -232,14 +241,6 @@ class ColBERT(SentenceTransformer):
             config_kwargs=config_kwargs,
             model_card_data=model_card_data,
         )
-
-        # Note: self._load_sbert_model can also update `self.prompts` and `self.default_prompt_name`
-        self.query_prefix = query_prefix
-        self.document_prefix = document_prefix
-        self.query_length = query_length
-        self.document_length = document_length
-        self.attend_to_expansion_tokens = attend_to_expansion_tokens
-        self.skiplist_words = skiplist_words
 
         hidden_size = self._modules["0"].get_word_embedding_dimension()
 
