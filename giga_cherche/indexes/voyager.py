@@ -132,13 +132,33 @@ class Voyager(Base):
         doc_id_to_embeddings_ids = SqliteDict(
             f"{self.folder_path}/doc_id_to_embeddings_ids.sqlite", outer_stack=False
         )
+
+        # Store embedding IDs in the original shape
+        embeddings_ids = [
+            [doc_id_to_embeddings_ids[doc_id] for doc_id in doc_ids]
+            for doc_ids in documents_ids
+        ]
+
+        # Flatten the embedding IDs for a single API call
+        all_embedding_ids = list(
+            itertools.chain.from_iterable(itertools.chain.from_iterable(embeddings_ids))
+        )
+
+        # Make a single call to get all embeddings
+        all_embeddings = self.index.get_vectors(all_embedding_ids)
+
+        # Reshape using the original structure
         documents_embeddings = []
-        for document_ids in documents_ids:
+        embedding_index = 0
+        for query_documents_embeddings_ids in embeddings_ids:
             query_documents_embeddings = []
-            for document_id in document_ids:
-                query_documents_embeddings.append(
-                    self.index.get_vectors(doc_id_to_embeddings_ids[document_id])
-                )
+            for query_document_embeddings_ids in query_documents_embeddings_ids:
+                num_embeddings = len(query_document_embeddings_ids)
+                document_embeddings = all_embeddings[
+                    embedding_index : embedding_index + num_embeddings
+                ]
+                query_documents_embeddings.append(document_embeddings)
+                embedding_index += num_embeddings
             documents_embeddings.append(query_documents_embeddings)
 
         doc_id_to_embeddings_ids.close()
