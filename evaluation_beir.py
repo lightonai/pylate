@@ -23,8 +23,8 @@ for batch in utils.iter_batch(documents, batch_size=500):
     )
 
     index.add_documents(
-        doc_ids=[document["id"] for document in batch],
-        doc_embeddings=documents_embeddings,
+        documents_ids=[document["id"] for document in batch],
+        documents_embeddings=documents_embeddings,
     )
 
 scores = []
