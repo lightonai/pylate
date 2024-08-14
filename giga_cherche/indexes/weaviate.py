@@ -72,10 +72,12 @@ class Weaviate(Base):
 
     # TODO: embeddings could be a list of numpy array
     def add_documents(
-        self, doc_ids: list[str], doc_embeddings: list[list[list[int | float]]]
+        self,
+        documents_ids: list[str],
+        documents_embeddings: list[list[list[int | float]]],
     ) -> None:
         # assert we have the same number of doc_ids and doc_embeddings
-        assert len(doc_ids) == len(doc_embeddings)
+        assert len(documents_ids) == len(documents_embeddings)
         with weaviate.connect_to_local(host=self.host, port=self.port) as client:
             vector_index = client.collections.get(self.name)
             # data_objects = []
@@ -90,18 +92,20 @@ class Weaviate(Base):
             # TODO: use dynamic batching insert
             data_objects = [
                 wvc.data.DataObject(
-                    properties={"doc_id": doc_id}, vector=token_embedding.tolist()
+                    properties={"doc_id": document_id}, vector=token_embedding.tolist()
                 )
-                for doc_id, tokens_embeddings in zip(doc_ids, doc_embeddings)
+                for document_id, tokens_embeddings in zip(
+                    documents_ids, documents_embeddings
+                )
                 for token_embedding in tokens_embeddings
             ]
             vector_index.data.insert_many(data_objects)
 
-    def remove_documents(self, doc_ids: list[str]) -> None:
+    def remove_documents(self, documents_ids: list[str]) -> None:
         with weaviate.connect_to_local(host=self.host, port=self.port) as client:
             vector_index = client.collections.get(self.name)
             vector_index.data.delete_many(
-                where=wvc.query.Filter.by_property("doc_id").contains_any(doc_ids)
+                where=wvc.query.Filter.by_property("doc_id").contains_any(documents_ids)
             )
 
     # TODO: add return type
@@ -192,7 +196,7 @@ class Weaviate(Base):
                 for res_doc in res_docs
             ]
 
-    def get_docs_embeddings(
-        self, doc_ids: list[list[str]]
+    def get_documents_embeddings(
+        self, documents_ids: list[list[str]]
     ) -> list[list[list[int | float]]]:
-        return asyncio.run(self.get_all_doc_embeddings(doc_ids))
+        return asyncio.run(self.get_all_doc_embeddings(documents_ids))

@@ -126,7 +126,7 @@ class Voyager(Base):
         embeddings_id_to_doc_id.close()
         return res
 
-    def get_docs_embeddings(
+    def get_documents_embeddings(
         self, documents_ids: list[list[str]]
     ) -> list[list[list[int | float]]]:
         doc_id_to_embeddings_ids = SqliteDict(

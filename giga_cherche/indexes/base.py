@@ -18,12 +18,14 @@ class Base(ABC):
 
     @abstractmethod
     def add_documents(
-        self, doc_ids: list[str], doc_embeddings: list[list[list[int | float]]]
+        self,
+        documents_ids: list[str],
+        documents_embeddings: list[list[list[int | float]]],
     ) -> None:
         pass
 
     @abstractmethod
-    def remove_documents(self, doc_ids: list[str]) -> None:
+    def remove_documents(self, documents_ids: list[str]) -> None:
         pass
 
     @abstractmethod
@@ -31,7 +33,7 @@ class Base(ABC):
         pass
 
     @abstractmethod
-    def get_docs_embeddings(
-        self, doc_ids: list[list[str]]
+    def get_documents_embeddings(
+        self, documents_ids: list[list[str]]
     ) -> list[list[list[int | float]]]:
         pass
