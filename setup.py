@@ -9,6 +9,8 @@ base_packages = [
     "sentence-transformers >= 3.0.1",
     "datasets >= 2.20.0",
     "accelerate >= 0.31.0",
+    "voyager >= 2.0.9",
+    "sqldict >= 0.5.2",
 ]
 
 weaviate = ["weaviate-client >= 4.6.7"]
