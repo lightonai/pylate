@@ -36,7 +36,9 @@ class ColBERT:
             )
             for query_doc_ids in retrieved_elements["doc_ids"]
         ]
-        batch_documents_embeddings = self.index.get_docs_embeddings(batch_documents_ids)
+        batch_documents_embeddings = self.index.get_documents_embeddings(
+            batch_documents_ids
+        )
         reranking_results = rerank(
             documents_ids=batch_documents_ids,
             queries_embeddings=queries,
