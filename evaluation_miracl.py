@@ -8,7 +8,7 @@ model = models.ColBERT(
     model_name_or_path="NohTow/colbert_xml-r-english",
     document_length=300,
 )
-index = indexes.Weaviate(override_collection=True, max_doc_length=model.document_length)
+index = indexes.Voyager(override_collection=True)
 retriever = retrieve.ColBERT(index=index)
 
 documents, queries, qrels = GenericDataLoader("datasets/miracl_fr").load(split="dev")
@@ -35,8 +35,8 @@ for batch in utils.iter_batch(documents, batch_size=500):
     )
 
     index.add_documents(
-        doc_ids=[document["id"] for document in batch],
-        doc_embeddings=documents_embeddings,
+        documents_ids=[document["id"] for document in batch],
+        documents_embeddings=documents_embeddings,
     )
 
 scores = []
