@@ -10,7 +10,7 @@ base_packages = [
     "datasets >= 2.20.0",
     "accelerate >= 0.31.0",
     "voyager >= 2.0.9",
-    "sqldict >= 0.5.2",
+    "sqlitedict >= 2.1.0",
 ]
 
 weaviate = ["weaviate-client >= 4.6.7"]
