@@ -5,7 +5,7 @@ from giga_cherche import evaluation, indexes, models, retrieve, utils
 model = models.ColBERT(
     model_name_or_path="NohTow/colbertv2_sentence_transformer",
 )
-index = indexes.Weaviate(override_collection=True, max_doc_length=model.document_length)
+index = indexes.Voyager(override_collection=True)
 
 retriever = retrieve.ColBERT(index=index)
 
