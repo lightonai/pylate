@@ -90,8 +90,15 @@ class Distillation(torch.nn.Module):
             queries_embeddings.size(0), -1, *documents_embeddings.shape[1:]
         )
 
+        # handle the model being wrapped in (D)DP and so require to access module first
+        skiplist = (
+            self.model.skiplist
+            if hasattr(self.model, "skiplist")
+            else self.model.module.skiplist
+        )
+
         masks = extract_skiplist_mask(
-            sentence_features=sentence_features, skiplist=self.model.skiplist
+            sentence_features=sentence_features, skiplist=skiplist
         )
 
         documents_embeddings_mask = masks[1].view(

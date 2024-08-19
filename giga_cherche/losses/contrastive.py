@@ -138,9 +138,14 @@ class Contrastive(nn.Module):
             )
             for sentence_feature in sentence_features
         ]
-
+        # handle the model being wrapped in (D)DP and so require to access module first
+        skiplist = (
+            self.model.skiplist
+            if hasattr(self.model, "skiplist")
+            else self.model.module.skiplist
+        )
         masks = extract_skiplist_mask(
-            sentence_features=sentence_features, skiplist=self.model.skiplist
+            sentence_features=sentence_features, skiplist=skiplist
         )
 
         # Note: the queries mask is not used, if added, take care that the expansion tokens are not masked from scoring (because they might be masked during encoding).
