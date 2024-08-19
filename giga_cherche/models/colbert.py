@@ -875,8 +875,8 @@ class ColBERT(SentenceTransformer):
         max_length = self.query_length if is_query else self.document_length
         self._first_module().max_seq_length = max_length
 
-        # Handle padding for documents if specified
-        tokenize_args = {"padding": "max_length"} if pad_document else {}
+        # Pad queries (query expansion) and handle padding for documents if specified
+        tokenize_args = {"padding": "max_length"} if pad_document or is_query else {}
 
         # Tokenize the texts
         tokenized_outputs = self._first_module().tokenize(texts, **tokenize_args)
