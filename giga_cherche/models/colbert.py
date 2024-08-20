@@ -32,7 +32,7 @@ from torch import nn
 from tqdm.autonotebook import trange
 
 from ..utils import _start_multi_process_pool
-from .LinearProjection import LinearProjection
+from .Dense import Dense
 
 logger = logging.getLogger(__name__)
 
@@ -251,7 +251,7 @@ class ColBERT(SentenceTransformer):
                 f"The checkpoint does not contain a linear projection layer. Adding one with output dimensions ({hidden_size}, {embedding_size})"
             )
             # Add a linear projection layer to the model in order to project the embeddings to the desired size
-            self._modules[f"{len(self._modules)}"] = LinearProjection(
+            self._modules[f"{len(self._modules)}"] = Dense(
                 in_features=hidden_size, out_features=embedding_size, bias=False
             )
 
@@ -1120,5 +1120,5 @@ class ColBERT(SentenceTransformer):
         return [
             module
             for module in modules.values()
-            if isinstance(module, Transformer) or isinstance(module, LinearProjection)
+            if isinstance(module, Transformer) or isinstance(module, Dense)
         ]

@@ -5,10 +5,12 @@ from typing import Any
 import torch
 from torch import nn
 
-__all__ = ["LinearProjection"]
+__all__ = ["Dense"]
+
+from sentence_transformers import Dense as DenseSentenceTransformer
 
 
-class LinearProjection(nn.Module):
+class Dense(DenseSentenceTransformer):
     """Performs linear projection on the token embeddings to a lower dimension.
 
     Parameters
@@ -28,7 +30,7 @@ class LinearProjection(nn.Module):
     --------
     >>> from giga_cherche import models
 
-    >>> model = models.LinearProjection(
+    >>> model = models.Dense(
     ...     in_features=768,
     ...     out_features=128,
     ... )
@@ -51,7 +53,7 @@ class LinearProjection(nn.Module):
         init_weight: torch.Tensor = None,
         init_bias: torch.Tensor = None,
     ) -> None:
-        super(LinearProjection, self).__init__()
+        super(Dense, self).__init__()
         self.in_features = in_features
         self.out_features = out_features
         self.bias = bias
@@ -64,7 +66,7 @@ class LinearProjection(nn.Module):
             self.linear.bias = nn.Parameter(init_bias)
 
     def __repr__(self) -> str:
-        return f"LinearProjection({self.get_config_dict()})"
+        return f"Dense({self.get_config_dict()})"
 
     def forward(self, features: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """Performs linear projection on the token embeddings."""
@@ -92,12 +94,12 @@ class LinearProjection(nn.Module):
         torch.save(self.state_dict(), os.path.join(output_path, "pytorch_model.bin"))
 
     @staticmethod
-    def load(input_path) -> "LinearProjection":
+    def load(input_path) -> "Dense":
         """Load the model from a directory."""
         with open(file=os.path.join(input_path, "config.json")) as file:
             config = json.load(file)
 
-        model = LinearProjection(**config)
+        model = Dense(**config)
         model.load_state_dict(
             torch.load(
                 os.path.join(input_path, "pytorch_model.bin"),
