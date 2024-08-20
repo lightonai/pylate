@@ -180,6 +180,8 @@ class ColBERTTripletEvaluator(TripletEvaluator):
             "accuracy",
         ]
 
+        self.primary_metric = "accuracy"
+
     def __call__(
         self,
         model: ColBERT,
@@ -241,11 +243,7 @@ class ColBERTTripletEvaluator(TripletEvaluator):
         for metric in self.metrics:
             logger.info(f"{metric.capitalize()}: \t{metrics[metric]:.2f}")
 
-        metrics = self.prefix_name_to_metrics(
-            metrics,
-            self.name,
-        )
-        self.store_metrics_in_model_card_data(model, metrics)
+        self.store_metrics_in_model_card_data(model=model, metrics=metrics)
 
         if output_path is not None and self.write_csv:
             csv_writer(

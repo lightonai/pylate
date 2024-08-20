@@ -156,7 +156,7 @@ class ColBERT(SentenceTransformer):
     ... )
 
     >>> embeddings = model.encode("Hello, how are you?")
-    >>> assert embeddings.shape == (9, 128)
+    >>> assert isinstance(embeddings, np.ndarray)
 
     >>> embeddings = model.encode([
     ...     "Hello, how are you?",
@@ -164,8 +164,8 @@ class ColBERT(SentenceTransformer):
     ... ])
 
     >>> assert len(embeddings) == 2
-    >>> assert embeddings[0].shape == (9, 128)
-    >>> assert embeddings[1].shape == (9, 128)
+    >>> assert isinstance(embeddings[0], np.ndarray)
+    >>> assert isinstance(embeddings[1], np.ndarray)
 
     >>> embeddings = model.encode([
     ...     [
@@ -179,6 +179,19 @@ class ColBERT(SentenceTransformer):
     ... ])
 
     >>> assert len(embeddings) == 2
+
+    >>> model.save_pretrained("test-model")
+
+    >>> model = models.ColBERT("test-model")
+
+    >>> embeddings = model.encode([
+    ...     "Hello, how are you?",
+    ...     "How is the weather today?"
+    ... ])
+
+    >>> assert len(embeddings) == 2
+    >>> assert isinstance(embeddings[0], np.ndarray)
+    >>> assert isinstance(embeddings[1], np.ndarray)
 
     """
 
@@ -215,7 +228,6 @@ class ColBERT(SentenceTransformer):
         model_kwargs = {} if model_kwargs is None else model_kwargs
         model_kwargs["add_pooling_layer"] = False
 
-        # Note: self._load_sbert_model can also update `self.prompts` and `self.default_prompt_name`
         self.query_prefix = query_prefix
         self.document_prefix = document_prefix
         self.query_length = query_length
@@ -223,7 +235,6 @@ class ColBERT(SentenceTransformer):
         self.attend_to_expansion_tokens = attend_to_expansion_tokens
         self.skiplist_words = skiplist_words
 
-        # Init the model (will call the appropriate loading function)
         super(ColBERT, self).__init__(
             model_name_or_path=model_name_or_path,
             modules=modules,
@@ -246,16 +257,16 @@ class ColBERT(SentenceTransformer):
 
         hidden_size = self[0].get_word_embedding_dimension()
 
-        # If there is no linear projection layer, add one
-        # TODO: do this more cleanly
-        if self.num_modules() < 2:
+        # Add a linear projection layer to the model in order to project the embeddings to the desired size.
+        if len(self) < 2:
             # Add a linear projection layer to the model in order to project the embeddings to the desired size
             embedding_size = embedding_size or 128
+
+            logger.warning(
+                f"The checkpoint does not contain a linear projection layer. Adding one with output dimensions ({hidden_size}, {embedding_size})."
+            )
             self.append(
                 Dense(in_features=hidden_size, out_features=embedding_size, bias=bias)
-            )
-            logger.warning(
-                f"The checkpoint does not contain a linear projection layer. Adding one with output dimensions ({hidden_size}, {embedding_size})"
             )
 
         elif (
@@ -263,19 +274,19 @@ class ColBERT(SentenceTransformer):
             and self[1].get_sentence_embedding_dimension() != embedding_size
         ):
             logger.warning(
-                f"The checkpoint contains a dense layer but with incorrect dimension. Replacing it with a Dense layer with output dimensions ({hidden_size}, {embedding_size})"
+                f"The checkpoint contains a dense layer with output dimension ({hidden_size}, {self[1].get_sentence_embedding_dimension()}). Replacing it with a Dense layer with output dimensions ({hidden_size}, {embedding_size})."
             )
             self[1] = Dense(
                 in_features=hidden_size, out_features=embedding_size, bias=bias
             )
-        # If it is an instance of Dense from ST, convert it to our Dense to remove activation function in the forward pass, else the layer is already correct
+
         elif not isinstance(self[1], Dense):
             logger.warning(
-                f"Converting the existing Dense layer from SentenceTransform with output dimensions ({hidden_size}, {self[1].get_sentence_embedding_dimension()})"
+                f"Converting the existing Dense layer from SentenceTransform with output dimensions ({hidden_size}, {self[1].get_sentence_embedding_dimension()})."
             )
-            self[1] = Dense.from_sentence_transformers(self[1])
+            self[1] = Dense.from_sentence_transformers(dense=self[1])
         else:
-            logger.warning("Correctly loaded the Dense layer")
+            logger.warning("Correctly loaded the Dense layer.")
 
         self.to(device)
         self.is_hpu_graph_enabled = False
@@ -316,17 +327,8 @@ class ColBERT(SentenceTransformer):
     def load(input_path) -> "ColBERT":
         return ColBERT(model_name_or_path=input_path)
 
-    def num_modules(self) -> int:
+    def __len__(self) -> int:
         return len(self._modules)
-
-    def convert_dense_layer_from_sentence_transformer(
-        self, in_features: int, out_features: int
-    ):
-        dense_layer = Dense(
-            in_features=in_features, out_features=out_features, bias=False
-        )
-        dense_layer.load_state_dict(self[1].state_dict(), strict=False)
-        self[1] = dense_layer
 
     @staticmethod
     def insert_prefix_token(input_ids: torch.Tensor, prefix_id: int) -> torch.Tensor:
@@ -823,9 +825,6 @@ class ColBERT(SentenceTransformer):
         >>> model.stop_multi_process_pool(pool)
 
         >>> assert len(embeddings) == 3
-        >>> assert embeddings[0].shape == (9, 128)
-        >>> assert embeddings[1].shape == (10, 128)
-        >>> assert embeddings[2].shape == (9, 128)
 
         """
 

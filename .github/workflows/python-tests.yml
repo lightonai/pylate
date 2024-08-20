@@ -23,6 +23,10 @@ jobs:
         python -m pip install --upgrade pip
         pip install ".[dev]"
 
-    - name: Run tests
+    - name: Run tests training
       run: |
-        pytest giga_cherche --cov=giga_cherche --cov-report=html
+        pytest tests
+      
+    - name: Run tests library
+      run: |
+        pytest giga_cherche

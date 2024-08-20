@@ -148,4 +148,13 @@ output/
 
 # datasets
 evaluation_datasets/
-datasets/
+./datasets/
+
+*.csv
+*.sqlite
+*.voy
+*.parquet
+*.tsv
+
+/test-model/
+

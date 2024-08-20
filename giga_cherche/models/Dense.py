@@ -67,29 +67,36 @@ class Dense(DenseSentenceTransformer):
         return features
 
     @staticmethod
-    def from_sentence_transformers(dense_st: DenseSentenceTransformer):
-        config = dense_st.get_config_dict()
+    def from_sentence_transformers(dense: DenseSentenceTransformer) -> "Dense":
+        """Converts a SentenceTransformer Dense model to a Dense model.
+        Our Dense model does not have the activation function.
+        """
+        config = dense.get_config_dict()
         config["activation_function"] = nn.Identity()
         model = Dense(**config)
-        model.load_state_dict(dense_st.state_dict())
+        model.load_state_dict(dense.state_dict())
         return model
 
     @staticmethod
-    def load(input_path):
+    def load(input_path) -> "Dense":
+        """Load a Dense layer."""
         with open(os.path.join(input_path, "config.json")) as fIn:
             config = json.load(fIn)
 
         config["activation_function"] = import_from_string(
             config["activation_function"]
         )()
+
         model = Dense(**config)
+
         if os.path.exists(os.path.join(input_path, "model.safetensors")):
             load_safetensors_model(model, os.path.join(input_path, "model.safetensors"))
-        else:
-            model.load_state_dict(
-                torch.load(
-                    os.path.join(input_path, "pytorch_model.bin"),
-                    map_location=torch.device("cpu"),
-                )
+            return model
+
+        model.load_state_dict(
+            torch.load(
+                os.path.join(input_path, "pytorch_model.bin"),
+                map_location=torch.device("cpu"),
             )
+        )
         return model
