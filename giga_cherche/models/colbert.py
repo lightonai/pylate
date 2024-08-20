@@ -21,6 +21,7 @@ from sentence_transformers.model_card import (
     SentenceTransformerModelCardData,
     generate_model_card,
 )
+from sentence_transformers.models import Dense as DenseSentenceTransformer
 from sentence_transformers.models import Transformer
 from sentence_transformers.quantization import quantize_embeddings
 from sentence_transformers.similarity_functions import SimilarityFunction
@@ -32,7 +33,7 @@ from torch import nn
 from tqdm.autonotebook import trange
 
 from ..utils import _start_multi_process_pool
-from .LinearProjection import LinearProjection
+from .Dense import Dense
 
 logger = logging.getLogger(__name__)
 
@@ -196,7 +197,8 @@ class ColBERT(SentenceTransformer):
         token: bool | str | None = None,
         use_auth_token: bool | str | None = None,
         truncate_dim: int | None = None,
-        embedding_size: int | None = 128,
+        embedding_size: int | None = None,
+        bias: bool = False,
         query_prefix: str | None = "[Q] ",
         document_prefix: str | None = "[D] ",
         add_special_tokens: bool = True,
@@ -242,18 +244,38 @@ class ColBERT(SentenceTransformer):
             model_card_data=model_card_data,
         )
 
-        hidden_size = self._modules["0"].get_word_embedding_dimension()
+        hidden_size = self[0].get_word_embedding_dimension()
 
         # If there is no linear projection layer, add one
         # TODO: do this more cleanly
-        if len(self._modules) < 2:
+        if self.num_modules() < 2:
+            # Add a linear projection layer to the model in order to project the embeddings to the desired size
+            embedding_size = embedding_size or 128
+            self.append(
+                Dense(in_features=hidden_size, out_features=embedding_size, bias=bias)
+            )
             logger.warning(
                 f"The checkpoint does not contain a linear projection layer. Adding one with output dimensions ({hidden_size}, {embedding_size})"
             )
-            # Add a linear projection layer to the model in order to project the embeddings to the desired size
-            self._modules[f"{len(self._modules)}"] = LinearProjection(
-                in_features=hidden_size, out_features=embedding_size, bias=False
+
+        elif (
+            embedding_size is not None
+            and self[1].get_sentence_embedding_dimension() != embedding_size
+        ):
+            logger.warning(
+                f"The checkpoint contains a dense layer but with incorrect dimension. Replacing it with a Dense layer with output dimensions ({hidden_size}, {embedding_size})"
             )
+            self[1] = Dense(
+                in_features=hidden_size, out_features=embedding_size, bias=bias
+            )
+        # If it is an instance of Dense from ST, convert it to our Dense to remove activation function in the forward pass, else the layer is already correct
+        elif not isinstance(self[1], Dense):
+            logger.warning(
+                f"Converting the existing Dense layer from SentenceTransform with output dimensions ({hidden_size}, {self[1].get_sentence_embedding_dimension()})"
+            )
+            self[1] = Dense.from_sentence_transformers(self[1])
+        else:
+            logger.warning("Correctly loaded the Dense layer")
 
         self.to(device)
         self.is_hpu_graph_enabled = False
@@ -293,6 +315,18 @@ class ColBERT(SentenceTransformer):
     @staticmethod
     def load(input_path) -> "ColBERT":
         return ColBERT(model_name_or_path=input_path)
+
+    def num_modules(self) -> int:
+        return len(self._modules)
+
+    def convert_dense_layer_from_sentence_transformer(
+        self, in_features: int, out_features: int
+    ):
+        dense_layer = Dense(
+            in_features=in_features, out_features=out_features, bias=False
+        )
+        dense_layer.load_state_dict(self[1].state_dict(), strict=False)
+        self[1] = dense_layer
 
     @staticmethod
     def insert_prefix_token(input_ids: torch.Tensor, prefix_id: int) -> torch.Tensor:
@@ -1120,5 +1154,6 @@ class ColBERT(SentenceTransformer):
         return [
             module
             for module in modules.values()
-            if isinstance(module, Transformer) or isinstance(module, LinearProjection)
+            if isinstance(module, Transformer)
+            or isinstance(module, DenseSentenceTransformer)
         ]
