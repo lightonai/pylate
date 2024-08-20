@@ -263,10 +263,16 @@ class ColBERT(SentenceTransformer):
                 logger.warning(
                     f"The checkpoint contains a Dense layer from SentenceTransform model but with incorrect dimension. Replacing it with a Dense layer with output dimensions ({hidden_size}, {embedding_size})"
                 )
-                self._modules[f"{len(self._modules)}"] = Dense(
+                self[1] = Dense(
                     in_features=hidden_size, out_features=embedding_size, bias=False
                 )
             else:
+                logger.warning(
+                    f"Converting the existing Dense layer from SentenceTransform with output dimensions ({hidden_size}, {embedding_size})"
+                )
+                self.convert_dense_layer_from_sentence_transformer(
+                    in_features=hidden_size, out_features=embedding_size
+                )
                 logger.info(
                     f"Using the existing Dense layer with output dimensions ({hidden_size}, {embedding_size})"
                 )
@@ -309,6 +315,15 @@ class ColBERT(SentenceTransformer):
     @staticmethod
     def load(input_path) -> "ColBERT":
         return ColBERT(model_name_or_path=input_path)
+
+    def convert_dense_layer_from_sentence_transformer(
+        self, in_features: int, out_features: int
+    ):
+        dense_layer = Dense(
+            in_features=in_features, out_features=out_features, bias=False
+        )
+        dense_layer.load_state_dict(self._modules["1"].state_dict(), strict=False)
+        self[1] = dense_layer
 
     @staticmethod
     def insert_prefix_token(input_ids: torch.Tensor, prefix_id: int) -> torch.Tensor:

@@ -3,10 +3,10 @@ import os
 from typing import Any
 
 import torch
+from sentence_transformers.models import Dense as DenseSentenceTransformer
 from torch import nn
 
 __all__ = ["Dense"]
-from sentence_transformers.models import Dense as DenseSentenceTransformer
 
 
 class Dense(DenseSentenceTransformer):
@@ -41,6 +41,7 @@ class Dense(DenseSentenceTransformer):
     >>> projected_features = model(features)
 
     >>> assert projected_features["token_embeddings"].shape == (2, 128)
+    >>> assert isinstance(model, DenseSentenceTransformer)
 
     """
 
