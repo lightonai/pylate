@@ -1,9 +1,10 @@
 import json
 import os
-from typing import Any
 
 import torch
+from safetensors.torch import load_model as load_safetensors_model
 from sentence_transformers.models import Dense as DenseSentenceTransformer
+from sentence_transformers.util import import_from_string
 from torch import nn
 
 __all__ = ["Dense"]
@@ -50,65 +51,45 @@ class Dense(DenseSentenceTransformer):
         in_features: int,
         out_features: int,
         bias: bool = True,
+        activation_function=nn.Identity(),
         init_weight: torch.Tensor = None,
         init_bias: torch.Tensor = None,
     ) -> None:
         super(Dense, self).__init__(
-            in_features, out_features, bias, init_weight, init_bias
+            in_features, out_features, bias, activation_function, init_weight, init_bias
         )
-        self.in_features = in_features
-        self.out_features = out_features
-        self.bias = bias
-        self.linear_projection = nn.Linear(in_features, out_features, bias=bias)
-
-        if init_weight is not None:
-            self.linear.weight = nn.Parameter(init_weight)
-
-        if init_bias is not None:
-            self.linear.bias = nn.Parameter(init_bias)
-
-    def __repr__(self) -> str:
-        return f"Dense({self.get_config_dict()})"
-
-    def __call__(self, features: dict[str, torch.Tensor]):
-        return self.forward(features)
 
     def forward(self, features: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """Performs linear projection on the token embeddings."""
         token_embeddings = features["token_embeddings"]
-        projected_embeddings = self.linear_projection(token_embeddings)
+        projected_embeddings = self.linear(token_embeddings)
         features["token_embeddings"] = projected_embeddings
         return features
 
-    def get_sentence_embedding_dimension(self) -> int:
-        """Returns the dimension of the sentence embeddings."""
-        return self.out_features
-
-    def get_config_dict(self) -> dict[str, Any]:
-        """Returns the configuration of the model."""
-        return {
-            "in_features": self.in_features,
-            "out_features": self.out_features,
-            "bias": self.bias,
-        }
-
-    def save(self, output_path: str) -> None:
-        with open(file=os.path.join(output_path, "config.json"), mode="w") as fOut:
-            json.dump(obj=self.get_config_dict(), fp=fOut)
-
-        torch.save(self.state_dict(), os.path.join(output_path, "pytorch_model.bin"))
+    @staticmethod
+    def from_sentence_transformers(dense_st: DenseSentenceTransformer):
+        config = dense_st.get_config_dict()
+        config["activation_function"] = nn.Identity()
+        model = Dense(**config)
+        model.load_state_dict(dense_st.state_dict())
+        return model
 
     @staticmethod
-    def load(input_path) -> "Dense":
-        """Load the model from a directory."""
-        with open(file=os.path.join(input_path, "config.json")) as file:
-            config = json.load(file)
+    def load(input_path):
+        with open(os.path.join(input_path, "config.json")) as fIn:
+            config = json.load(fIn)
 
+        config["activation_function"] = import_from_string(
+            config["activation_function"]
+        )()
         model = Dense(**config)
-        model.load_state_dict(
-            torch.load(
-                os.path.join(input_path, "pytorch_model.bin"),
-                map_location=torch.device("cpu"),
+        if os.path.exists(os.path.join(input_path, "model.safetensors")):
+            load_safetensors_model(model, os.path.join(input_path, "model.safetensors"))
+        else:
+            model.load_state_dict(
+                torch.load(
+                    os.path.join(input_path, "pytorch_model.bin"),
+                    map_location=torch.device("cpu"),
+                )
             )
-        )
         return model
