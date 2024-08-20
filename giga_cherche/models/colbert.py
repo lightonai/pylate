@@ -197,7 +197,8 @@ class ColBERT(SentenceTransformer):
         token: bool | str | None = None,
         use_auth_token: bool | str | None = None,
         truncate_dim: int | None = None,
-        embedding_size: int | None = 128,
+        embedding_size: int | None = None,
+        bias: bool = False,
         query_prefix: str | None = "[Q] ",
         document_prefix: str | None = "[D] ",
         add_special_tokens: bool = True,
@@ -248,34 +249,33 @@ class ColBERT(SentenceTransformer):
         # If there is no linear projection layer, add one
         # TODO: do this more cleanly
         if self.num_modules() < 2:
+            # Add a linear projection layer to the model in order to project the embeddings to the desired size
+            embedding_size = embedding_size or 128
+            self.append(
+                Dense(in_features=hidden_size, out_features=embedding_size, bias=bias)
+            )
             logger.warning(
                 f"The checkpoint does not contain a linear projection layer. Adding one with output dimensions ({hidden_size}, {embedding_size})"
             )
-            # Add a linear projection layer to the model in order to project the embeddings to the desired size
-            self.append(
-                Dense(in_features=hidden_size, out_features=embedding_size, bias=False)
+
+        elif (
+            embedding_size is not None
+            and self[1].get_sentence_embedding_dimension() != embedding_size
+        ):
+            logger.warning(
+                f"The checkpoint contains a dense layer but with incorrect dimension. Replacing it with a Dense layer with output dimensions ({hidden_size}, {embedding_size})"
             )
-        elif isinstance(self[1], DenseSentenceTransformer):
-            if (
-                self[1].in_features != hidden_size
-                or self[1].out_features != embedding_size
-            ):
-                logger.warning(
-                    f"The checkpoint contains a Dense layer from SentenceTransform model but with incorrect dimension. Replacing it with a Dense layer with output dimensions ({hidden_size}, {embedding_size})"
-                )
-                self[1] = Dense(
-                    in_features=hidden_size, out_features=embedding_size, bias=False
-                )
-            else:
-                logger.warning(
-                    f"Converting the existing Dense layer from SentenceTransform with output dimensions ({hidden_size}, {embedding_size})"
-                )
-                self.convert_dense_layer_from_sentence_transformer(
-                    in_features=hidden_size, out_features=embedding_size
-                )
-                logger.info(
-                    f"Using the existing Dense layer with output dimensions ({hidden_size}, {embedding_size})"
-                )
+            self[1] = Dense(
+                in_features=hidden_size, out_features=embedding_size, bias=bias
+            )
+        # If it is an instance of Dense from ST, convert it to our Dense to remove activation function in the forward pass, else the layer is already correct
+        elif not isinstance(self[1], Dense):
+            logger.warning(
+                f"Converting the existing Dense layer from SentenceTransform with output dimensions ({hidden_size}, {self[1].get_sentence_embedding_dimension()})"
+            )
+            self[1] = Dense.from_sentence_transformers(self[1])
+        else:
+            logger.warning("Correctly loaded the Dense layer")
 
         self.to(device)
         self.is_hpu_graph_enabled = False
