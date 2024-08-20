@@ -6,8 +6,7 @@ import torch
 from torch import nn
 
 __all__ = ["Dense"]
-
-from sentence_transformers import Dense as DenseSentenceTransformer
+from sentence_transformers.models import Dense as DenseSentenceTransformer
 
 
 class Dense(DenseSentenceTransformer):
@@ -53,7 +52,9 @@ class Dense(DenseSentenceTransformer):
         init_weight: torch.Tensor = None,
         init_bias: torch.Tensor = None,
     ) -> None:
-        super(Dense, self).__init__()
+        super(Dense, self).__init__(
+            in_features, out_features, bias, init_weight, init_bias
+        )
         self.in_features = in_features
         self.out_features = out_features
         self.bias = bias
@@ -67,6 +68,9 @@ class Dense(DenseSentenceTransformer):
 
     def __repr__(self) -> str:
         return f"Dense({self.get_config_dict()})"
+
+    def __call__(self, features: dict[str, torch.Tensor]):
+        return self.forward(features)
 
     def forward(self, features: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """Performs linear projection on the token embeddings."""

@@ -21,6 +21,7 @@ from sentence_transformers.model_card import (
     SentenceTransformerModelCardData,
     generate_model_card,
 )
+from sentence_transformers.models import Dense as DenseSentenceTransformer
 from sentence_transformers.models import Transformer
 from sentence_transformers.quantization import quantize_embeddings
 from sentence_transformers.similarity_functions import SimilarityFunction
@@ -254,6 +255,21 @@ class ColBERT(SentenceTransformer):
             self._modules[f"{len(self._modules)}"] = Dense(
                 in_features=hidden_size, out_features=embedding_size, bias=False
             )
+        elif isinstance(self._modules["1"], DenseSentenceTransformer):
+            if (
+                self._modules["1"].in_features != hidden_size
+                or self._modules["1"].out_features != embedding_size
+            ):
+                logger.warning(
+                    f"The checkpoint contains a Dense layer from SentenceTransform model but with incorrect dimension. Replacing it with a Dense layer with output dimensions ({hidden_size}, {embedding_size})"
+                )
+                self._modules[f"{len(self._modules)}"] = Dense(
+                    in_features=hidden_size, out_features=embedding_size, bias=False
+                )
+            else:
+                logger.info(
+                    f"Using the existing Dense layer with output dimensions ({hidden_size}, {embedding_size})"
+                )
 
         self.to(device)
         self.is_hpu_graph_enabled = False
@@ -1120,5 +1136,6 @@ class ColBERT(SentenceTransformer):
         return [
             module
             for module in modules.values()
-            if isinstance(module, Transformer) or isinstance(module, Dense)
+            if isinstance(module, Transformer)
+            or isinstance(module, DenseSentenceTransformer)
         ]
