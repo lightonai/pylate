@@ -72,14 +72,14 @@ class KDProcessing:
 
     def transform(self, examples: dict) -> dict:
         """Update the input dataset with the queries and documents."""
-        if isinstance(examples["scores"], str):
+        if isinstance(examples["scores"][0], str):
             examples["scores"] = [
                 ast.literal_eval(node_or_string=score) for score in examples["scores"]
             ]
 
         examples["scores"] = [score[: self.n_ways] for score in examples["scores"]]
 
-        if isinstance(examples["document_ids"], str):
+        if isinstance(examples["document_ids"][0], str):
             examples["document_ids"] = [
                 ast.literal_eval(node_or_string=document_ids)
                 for document_ids in examples["document_ids"]
