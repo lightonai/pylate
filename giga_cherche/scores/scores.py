@@ -142,16 +142,21 @@ def colbert_kd_scores(
     >>> documents_embeddings = torch.tensor([
     ...     [[[10.], [0.], [1.]], [[20.], [0.], [1.]], [[30.], [0.], [1.]]],
     ...     [[[0.], [100.], [1.]], [[0.], [200.], [1.]], [[0.], [300.], [1.]]],
-    ...     [[[1.], [0.], [1000.]], [[1.], [0.], [2000.]], [[1.], [0.], [3000.]]],
+    ...     [[[1.], [0.], [1000.]], [[1.], [0.], [2000.]], [[10.], [0.], [3000.]]],
     ... ])
-
+    >>> mask = torch.tensor([
+    ...     [[1., 1., 1.], [1., 1., 1.], [1., 1., 1.]],
+    ...     [[1., 1., 1.], [1., 1., 1.], [1., 1., 1.]],
+    ...     [[1., 1., 1.], [1., 1., 1.], [1., 1., 0.]],
+    ... ])
     >>> colbert_kd_scores(
     ...     queries_embeddings=queries_embeddings,
-    ...     documents_embeddings=documents_embeddings
+    ...     documents_embeddings=documents_embeddings,
+    ...     mask=mask
     ... )
     tensor([[  10.,   20.,   30.],
             [ 200.,  400.,  600.],
-            [3000., 6000., 9000.]])
+            [3000., 6000., 30.]])
 
     """
     queries_embeddings = convert_to_tensor(queries_embeddings)
@@ -162,7 +167,6 @@ def colbert_kd_scores(
         queries_embeddings,
         documents_embeddings,
     )
-
     if mask is not None:
         mask = convert_to_tensor(mask)
         scores = scores * mask.unsqueeze(2)
