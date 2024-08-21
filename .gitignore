@@ -153,6 +153,7 @@ evaluation_datasets/
 *.csv
 *.sqlite
 *.voy
+*.voyager
 *.parquet
 *.tsv
 

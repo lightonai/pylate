@@ -1,166 +1,341 @@
 import itertools
 import os
-import shutil
 
+import numpy as np
+import torch
 from sqlitedict import SqliteDict
 from voyager import Index, Space
 
 from .base import Base
 
 
+def reshape_embeddings(
+    embeddings: np.ndarray | torch.Tensor,
+) -> np.ndarray | torch.Tensor:
+    """Reshape the embeddings, the Voyager index expects arrays with shape batch_size, n_tokens, embedding_size."""
+    if isinstance(embeddings, np.ndarray):
+        if len(embeddings.shape) == 2:
+            return np.expand_dims(a=embeddings, axis=0)
+
+    if isinstance(embeddings, torch.Tensor):
+        return reshape_embeddings(embeddings=embeddings.cpu().detach().numpy())
+
+    if isinstance(embeddings, list) and isinstance(embeddings[0], torch.Tensor):
+        return [embedding.cpu().detach().numpy() for embedding in embeddings]
+
+    return embeddings
+
+
 class Voyager(Base):
+    """Voyager index. The Voyager index is a fast and efficient index for approximate nearest neighbor search.
+
+    Parameters
+    ----------
+    name
+        The name of the collection.
+    override
+        Whether to override the collection if it already exists.
+    embedding_size
+        The number of dimensions of the embeddings.
+    M
+        The number of subquantizers.
+    ef_construction
+        The number of candidates to evaluate during the construction of the index.
+    ef_search
+        The number of candidates to evaluate during the search.
+
+    Examples
+    --------
+    >>> from giga_cherche import indexes, models
+
+    >>> index = indexes.Voyager(
+    ...     index_folder="test_indexes",
+    ...     index_name="colbert",
+    ...     override=True,
+    ...     embedding_size=128,
+    ... )
+
+    >>> model = models.ColBERT(
+    ...     model_name_or_path="sentence-transformers/all-MiniLM-L6-v2",
+    ... )
+
+    >>> documents_embeddings = model.encode(
+    ...     ["fruits are healthy.", "fruits are good for health.", "fruits are bad for health."],
+    ...     is_query=False,
+    ... )
+
+    >>> index = index.add_documents(
+    ...     documents_ids=["1", "2", "3"],
+    ...     documents_embeddings=documents_embeddings
+    ... )
+
+    >>> queries_embeddings = model.encode(
+    ...     ["fruits are healthy.", "fruits are good for health and fun."],
+    ...     is_query=True,
+    ... )
+
+    >>> matchs = index(queries_embeddings, k=30)
+
+    >>> assert matchs["distances"].shape[0] == 2
+    >>> assert isinstance(matchs, dict)
+    >>> assert "documents_ids" in matchs
+    >>> assert "distances" in matchs
+
+    >>> queries_embeddings = model.encode(
+    ...     "fruits are healthy.",
+    ...     is_query=True,
+    ... )
+
+    >>> matchs = index(queries_embeddings, k=30)
+
+    >>> assert matchs["distances"].shape[0] == 1
+    >>> assert isinstance(matchs, dict)
+    >>> assert "documents_ids" in matchs
+    >>> assert "distances" in matchs
+
+    """
+
     def __init__(
         self,
-        name: str = "colbert_collection",
-        override_collection: bool = False,
-        num_dimensions: int = 128,
+        index_folder: str = "indexes",
+        index_name: str = "colbert",
+        override: bool = False,
+        embedding_size: int = 128,
         M: int = 64,
         ef_construction: int = 200,
         ef_search: int = 200,
-    ):
-        self.ef_search = ef_search
-        self.folder_path = f"indexes/{name}"
-        if not os.path.exists(self.folder_path):
-            self.create_collection(self.folder_path, num_dimensions, M, ef_construction)
-        elif override_collection:
-            self.create_collection(self.folder_path, num_dimensions, M, ef_construction)
-        else:
-            self.index = Index.load(f"{self.folder_path}/index.voy")
-
-    def create_collection(
-        self, name: str, num_dimensions: int, M: int, ef_constructions: int
     ) -> None:
-        self.index = Index(
+        self.ef_search = ef_search
+
+        if not os.path.exists(path=index_folder):
+            os.makedirs(name=index_folder)
+
+        self.index_path = os.path.join(index_folder, f"{index_name}.voyager")
+        self.documents_ids_to_embeddings_path = os.path.join(
+            index_folder, f"{index_name}_document_ids_to_embeddings.sqlite"
+        )
+        self.embeddings_to_documents_ids_path = os.path.join(
+            index_folder, f"{index_name}_embeddings_to_documents_ids.sqlite"
+        )
+
+        self.index = self._create_collection(
+            index_path=self.index_path,
+            embedding_size=embedding_size,
+            M=M,
+            ef_constructions=ef_construction,
+            override=override,
+        )
+
+    def _load_documents_ids_to_embeddings(self) -> SqliteDict:
+        """Load the SQLite database that maps document IDs to embeddings."""
+        return SqliteDict(self.documents_ids_to_embeddings_path, outer_stack=False)
+
+    def _load_embeddings_to_documents_ids(self) -> SqliteDict:
+        """Load the SQLite database that maps embeddings to document IDs."""
+        return SqliteDict(self.embeddings_to_documents_ids_path, outer_stack=False)
+
+    def _create_collection(
+        self,
+        index_path: str,
+        embedding_size: int,
+        M: int,
+        ef_constructions: int,
+        override: bool,
+    ) -> None:
+        """Create a new Voyager collection.
+
+        Parameters
+        ----------
+        index_path
+            The path to the index.
+        embedding_size
+            The size of the embeddings.
+        M
+            The number of subquantizers.
+        ef_constructions
+            The number of candidates to evaluate during the construction of the index.
+        override
+            Whether to override the collection if it already exists.
+
+        """
+        if os.path.exists(path=index_path) and not override:
+            return Index.load(index_path)
+
+        if os.path.exists(path=index_path):
+            os.remove(index_path)
+
+        # Create the Voyager index
+        index = Index(
             Space.Cosine,
-            num_dimensions=num_dimensions,
+            num_dimensions=embedding_size,
             M=M,
             ef_construction=ef_constructions,
         )
 
-        if os.path.exists(name):
-            shutil.rmtree(name)
-        os.makedirs(name)
-        self.index.save(f"{name}/index.voy")
-        doc_id_to_embeddings_ids = SqliteDict(
-            f"{name}/doc_id_to_embeddings_ids.sqlite", outer_stack=False
-        )
-        doc_id_to_embeddings_ids.close()
-        embeddings_id_to_doc_id = SqliteDict(
-            f"{name}/embeddings_id_to_doc_id.sqlite", outer_stack=False
-        )
-        embeddings_id_to_doc_id.close()
+        index.save(index_path)
+
+        if override and os.path.exists(path=self.documents_ids_to_embeddings_path):
+            os.remove(path=self.documents_ids_to_embeddings_path)
+
+        if override and os.path.exists(path=self.embeddings_to_documents_ids_path):
+            os.remove(path=self.embeddings_to_documents_ids_path)
+
+        # Create the SQLite databases
+        documents_ids_to_embeddings = self._load_documents_ids_to_embeddings()
+        documents_ids_to_embeddings.close()
+
+        embeddings_to_documents_ids = self._load_embeddings_to_documents_ids()
+        embeddings_to_documents_ids.close()
+
+        return index
 
     def add_documents(
         self,
-        documents_ids: list[str],
-        documents_embeddings: list[list[list[int | float]]],
+        documents_ids: str | list[str],
+        documents_embeddings: list[np.ndarray | torch.Tensor],
     ) -> None:
-        doc_id_to_embeddings_ids = SqliteDict(
-            f"{self.folder_path}/doc_id_to_embeddings_ids.sqlite", outer_stack=False
-        )
-        embeddings_id_to_doc_id = SqliteDict(
-            f"{self.folder_path}/embeddings_id_to_doc_id.sqlite", outer_stack=False
-        )
-        # Add all the embeddings to the index at once
+        """Add documents to the index."""
+        if isinstance(documents_ids, str):
+            documents_ids = [documents_ids]
+
+        """Add documents to the index."""
+        documents_embeddings = reshape_embeddings(embeddings=documents_embeddings)
+
+        documents_ids_to_embeddings = self._load_documents_ids_to_embeddings()
+        embeddings_to_documents_ids = self._load_embeddings_to_documents_ids()
+
         embeddings_ids = self.index.add_items(
             list(itertools.chain(*documents_embeddings))
         )
+
         total = 0
         for doc_id, document_embeddings in zip(documents_ids, documents_embeddings):
             document_embeddings_ids = embeddings_ids[
                 total : total + len(document_embeddings)
             ]
-            doc_id_to_embeddings_ids[doc_id] = document_embeddings_ids
+            documents_ids_to_embeddings[doc_id] = document_embeddings_ids
 
-            embeddings_id_to_doc_id.update(
+            embeddings_to_documents_ids.update(
                 dict.fromkeys(document_embeddings_ids, doc_id)
             )
             total += len(document_embeddings)
-        doc_id_to_embeddings_ids.commit()
-        embeddings_id_to_doc_id.commit()
-        doc_id_to_embeddings_ids.close()
-        embeddings_id_to_doc_id.close()
+
+        documents_ids_to_embeddings.commit()
+        documents_ids_to_embeddings.close()
+
+        embeddings_to_documents_ids.commit()
+        embeddings_to_documents_ids.close()
+        return self
 
     def remove_documents(self, documents_ids: list[str]) -> None:
-        doc_id_to_embeddings_ids = SqliteDict(
-            f"{self.folder_path}/doc_id_to_embeddings_ids.sqlite", outer_stack=False
-        )
-        embeddings_id_to_doc_id = SqliteDict(
-            f"{self.folder_path}/embeddings_id_to_doc_id.sqlite", outer_stack=False
-        )
-        for doc_id in documents_ids:
-            embeddings_ids = doc_id_to_embeddings_ids[doc_id]
-            for embedding_id in embeddings_ids:
-                del embeddings_id_to_doc_id[embedding_id]
-                self.index.mark_deleted(embedding_id)
-            del doc_id_to_embeddings_ids[doc_id]
-        doc_id_to_embeddings_ids.commit()
-        embeddings_id_to_doc_id.commit()
-        doc_id_to_embeddings_ids.close()
-        embeddings_id_to_doc_id.close()
+        """Remove documents from the index.
 
-    def query(self, queries_embeddings: list[list[int | float]], k: int = 5):
-        # Query the index for every embeddings at once
+        Parameters
+        ----------
+        documents_ids
+            The documents IDs to remove.
+
+        """
+        documents_ids_to_embeddings = self._load_documents_ids_to_embeddings()
+        embeddings_to_documents_ids = self._load_embeddings_to_documents_ids()
+
+        for document_id in documents_ids:
+            embeddings_ids = documents_ids_to_embeddings[document_id]
+            for embedding_id in embeddings_ids:
+                del embeddings_to_documents_ids[embedding_id]
+                self.index.mark_deleted(embedding_id)
+            del documents_ids_to_embeddings[document_id]
+
+        documents_ids_to_embeddings.commit()
+        embeddings_to_documents_ids.commit()
+
+        documents_ids_to_embeddings.close()
+        embeddings_to_documents_ids.close()
+        return self
+
+    def __call__(
+        self,
+        queries_embeddings: np.ndarray | torch.Tensor,
+        k: int = 10,
+    ) -> dict:
+        """Query the index for the nearest neighbors of the queries embeddings.
+
+        Parameters
+        ----------
+        queries_embeddings
+            The queries embeddings.
+        k
+            The number of nearest neighbors to return.
+
+        """
+        embeddings_to_documents_ids = self._load_embeddings_to_documents_ids()
+        k = min(k, len(embeddings_to_documents_ids))
+
+        queries_embeddings = reshape_embeddings(embeddings=queries_embeddings)
+        n_queries = len(queries_embeddings)
+
         indices, distances = self.index.query(
             list(itertools.chain(*queries_embeddings)), k, query_ef=self.ef_search
         )
-        embeddings_id_to_doc_id = SqliteDict(
-            f"{self.folder_path}/embeddings_id_to_doc_id.sqlite", outer_stack=False
-        )
 
-        indices = indices.reshape(len(queries_embeddings), -1, k)
-        distances = distances.reshape(len(queries_embeddings), -1, k)
+        if len(indices) == 0:
+            raise ValueError("Index is empty, add documents before querying.")
 
-        res = {}
-        res["doc_ids"] = [
+        documents = [
             [
                 [
-                    embeddings_id_to_doc_id[str(token_indice)]
+                    embeddings_to_documents_ids[str(token_indice)]
                     for token_indice in tokens_indices
                 ]
                 for tokens_indices in document_indices
             ]
-            for document_indices in indices
+            for document_indices in indices.reshape(n_queries, -1, k)
         ]
-        res["distances"] = distances
-        embeddings_id_to_doc_id.close()
-        return res
+
+        embeddings_to_documents_ids.close()
+
+        return {
+            "documents_ids": documents,
+            "distances": distances.reshape(n_queries, -1, k),
+        }
 
     def get_documents_embeddings(
-        self, documents_ids: list[list[str]]
+        self, document_ids: list[list[str]]
     ) -> list[list[list[int | float]]]:
-        doc_id_to_embeddings_ids = SqliteDict(
-            f"{self.folder_path}/doc_id_to_embeddings_ids.sqlite", outer_stack=False
-        )
+        """Retrieve document embeddings for re-ranking from Voyager."""
 
-        # Store embedding IDs in the original shape
-        embeddings_ids = [
-            [doc_id_to_embeddings_ids[doc_id] for doc_id in doc_ids]
-            for doc_ids in documents_ids
+        # Load mappings of document IDs to embedding IDs
+        documents_ids_to_embeddings = self._load_documents_ids_to_embeddings()
+
+        # Retrieve embedding IDs in the same structure as document IDs
+        embedding_ids_structure = [
+            [documents_ids_to_embeddings[doc_id] for doc_id in doc_group]
+            for doc_group in document_ids
         ]
 
+        documents_ids_to_embeddings.close()
+
         # Flatten the embedding IDs for a single API call
-        all_embedding_ids = list(
-            itertools.chain.from_iterable(itertools.chain.from_iterable(embeddings_ids))
+        flattened_embedding_ids = list(
+            itertools.chain.from_iterable(
+                itertools.chain.from_iterable(embedding_ids_structure)
+            )
         )
 
-        # Make a single call to get all embeddings
-        all_embeddings = self.index.get_vectors(all_embedding_ids)
+        # Retrieve all embeddings in one API call
+        all_embeddings = self.index.get_vectors(flattened_embedding_ids)
 
-        # Reshape using the original structure
-        documents_embeddings = []
-        embedding_index = 0
-        for query_documents_embeddings_ids in embeddings_ids:
-            query_documents_embeddings = []
-            for query_document_embeddings_ids in query_documents_embeddings_ids:
-                num_embeddings = len(query_document_embeddings_ids)
-                document_embeddings = all_embeddings[
-                    embedding_index : embedding_index + num_embeddings
-                ]
-                query_documents_embeddings.append(document_embeddings)
-                embedding_index += num_embeddings
-            documents_embeddings.append(query_documents_embeddings)
+        # Reconstruct embeddings into the original structure
+        reconstructed_embeddings = []
+        embedding_idx = 0
+        for group_embedding_ids in embedding_ids_structure:
+            group_embeddings = []
+            for doc_embedding_ids in group_embedding_ids:
+                num_embeddings = len(doc_embedding_ids)
+                group_embeddings.append(
+                    all_embeddings[embedding_idx : embedding_idx + num_embeddings]
+                )
+                embedding_idx += num_embeddings
+            reconstructed_embeddings.append(group_embeddings)
 
-        doc_id_to_embeddings_ids.close()
-
-        return documents_embeddings
+        return reconstructed_embeddings
