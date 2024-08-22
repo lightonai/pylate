@@ -909,7 +909,9 @@ class ColBERT(SentenceTransformer):
         """
         # Set max sequence length based on whether the input is a query or document
         max_length = self.query_length if is_query else self.document_length
-        self._first_module().max_seq_length = max_length
+        self._first_module().max_seq_length = (
+            max_length - 1
+        )  # Subtract 1 for the prefix token
 
         # Pad queries (query expansion) and handle padding for documents if specified
         tokenize_args = {"padding": "max_length"} if pad_document or is_query else {}
