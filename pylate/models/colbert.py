@@ -291,6 +291,9 @@ class ColBERT(SentenceTransformer):
         self.to(device)
         self.is_hpu_graph_enabled = False
 
+        self.tokenizer.add_tokens([self.query_prefix, self.document_prefix])
+        self._first_module().auto_model.resize_token_embeddings(len(self.tokenizer))
+
         self.document_prefix_id = self.tokenizer.convert_tokens_to_ids(
             self.document_prefix
         )
