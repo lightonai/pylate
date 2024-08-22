@@ -1,18 +1,17 @@
-from datasets import load_dataset
 from sentence_transformers import (
     SentenceTransformerTrainer,
     SentenceTransformerTrainingArguments,
 )
-from sentence_transformers.training_args import BatchSamplers
 
+from datasets import load_dataset
 from pylate import evaluation, losses, models, utils
 
-model_name = "NohTow/colbertv2_sentence_transformer"  # "distilroberta-base" # Choose the model you want
+model_name = "output/answerai-colbert-small-v1"  # "distilroberta-base" # Choose the model you want
 batch_size = 32  # The larger you select this, the better the results (usually). But it requires more GPU memory
 num_train_epochs = 1
 
 # Save path of the model
-output_dir = f"output/msmarco_{model_name.replace('/', '-')}_{batch_size}_bs_{num_train_epochs}_epoch"
+output_dir = "output/msmarco_bm25_triplet_bert-base-uncased"
 
 # 1. Here we define our ColBERT model. If not a ColBERT model, will add a linear layer to the base encoder.
 model = models.ColBERT(model_name_or_path=model_name)
@@ -24,50 +23,32 @@ splits = dataset.train_test_split(test_size=0.01)
 train_dataset = splits["train"]
 eval_dataset = splits["test"]
 
-
-# Subsample the training dataset
-MAX_EXAMPLES = 100000
-train_dataset = train_dataset.shuffle(seed=21).select(range(MAX_EXAMPLES))
-
+# Define the loss function
 train_loss = losses.Contrastive(model=model)
-
-# Subsample the evaluation dataset
-# max_samples = 1000
-# eval_dataset = eval_dataset.select(range(max_samples))
 
 # Initialize the evaluator
 dev_evaluator = evaluation.ColBERTTripletEvaluator(
     anchors=eval_dataset["query"],
     positives=eval_dataset["positive"],
     negatives=eval_dataset["negative"],
-    # name=f"msmarco-bm25",
 )
 
-# Eval base model
-# dev_evaluator(model)
-
 args = SentenceTransformerTrainingArguments(
-    # Required parameter:
     output_dir=output_dir,
-    # Optional training parameters:
     num_train_epochs=num_train_epochs,
     per_device_train_batch_size=batch_size,
     per_device_eval_batch_size=batch_size,
-    # warmup_ratio=0.1,
     fp16=False,  # Set to False if you get an error that your GPU can't run on FP16
-    bf16=False,  # Set to True if you have a GPU that supports BF16
-    batch_sampler=BatchSamplers.NO_DUPLICATES,  # MultipleNegativesRankingLoss benefits from no duplicate samples in a batch
-    # Optional tracking/debugging parameters:
+    bf16=True,  # Set to True if you have a GPU that supports BF16
     eval_strategy="steps",
     eval_steps=0.1,
     save_strategy="steps",
     save_steps=5000,
     save_total_limit=2,
     logging_steps=10,
-    run_name="colbert-st-evaluation",  # Will be used in W&B if `wandb` is installed
-    # report_to="wandb",
+    report_to="none",
+    run_name="msmarco_bm25_triplet_bert-base-uncased",  # Will be used in W&B if `wandb` is installed
     learning_rate=3e-6,
-    # gradient_accumulation_steps=8,
 )
 
 trainer = SentenceTransformerTrainer(
