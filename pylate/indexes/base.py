@@ -17,6 +17,7 @@ class Base(ABC):
         self,
         documents_ids: list[str],
         documents_embeddings: list[list[list[int | float]]],
+        batch_size: int,
     ) -> None:
         pass
 
