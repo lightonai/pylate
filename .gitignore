@@ -158,4 +158,4 @@ evaluation_datasets/
 *.tsv
 
 /test-model/
-
+colbert-training/

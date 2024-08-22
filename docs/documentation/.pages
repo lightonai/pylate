@@ -1,0 +1,6 @@
+title: Documentation
+nav:
+    - Training: training.md
+    - Datasets: datasets.md
+    - Retrieval: retrieval.md
+    - Evaluation: evaluation.md

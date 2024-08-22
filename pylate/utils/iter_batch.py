@@ -7,7 +7,7 @@ def iter_batch(
     """Iterate over a list of elements by batch.
 
     Examples
-    -------
+    --------
     >>> from pylate import utils
 
     >>> X = [
