@@ -76,8 +76,9 @@ def load_beir(dataset_name: str, split: str = "test") -> tuple[list, list, dict]
     documents = [
         {
             "id": document_id,
-            "title": document["title"],
-            "text": document["text"],
+            "text": f"{document["title"]} {document["text"]}".strip()
+            if "title" in document
+            else f"{document["text"]}".strip(),
         }
         for document_id, document in documents.items()
     ]
