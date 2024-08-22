@@ -13,7 +13,6 @@ base_packages = [
     "sqlitedict >= 2.1.0",
 ]
 
-weaviate = ["weaviate-client >= 4.6.7"]
 
 dev = ["ruff >= 0.4.9", "pytest-cov >= 5.0.0", "pytest >= 8.2.1", "pandas >= 2.2.1"]
 
@@ -32,8 +31,7 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     install_requires=base_packages,
     extras_require={
-        "weaviate": weaviate,
-        "eval": base_packages + weaviate + eval,
+        "eval": base_packages + eval,
         "dev": base_packages + dev + eval,
     },
     classifiers=[

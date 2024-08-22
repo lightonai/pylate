@@ -76,9 +76,9 @@ def load_beir(dataset_name: str, split: str = "test") -> tuple[list, list, dict]
     documents = [
         {
             "id": document_id,
-            "text": f"{document["title"]} {document["text"]}".strip()
+            "text": f"{document['title']} {document['text']}".strip()
             if "title" in document
-            else f"{document["text"]}".strip(),
+            else document["text"].strip(),
         }
         for document_id, document in documents.items()
     ]
@@ -92,8 +92,6 @@ def load_beir(dataset_name: str, split: str = "test") -> tuple[list, list, dict]
 
 
 def get_beir_triples(
-    key: str,
-    on: list[str] | str,
     documents: list,
     queries: list[str],
     qrels: dict,
@@ -121,8 +119,6 @@ def get_beir_triples(
     ... )
 
     >>> triples = evaluation.get_beir_triples(
-    ...     key="id",
-    ...     on=["title", "text"],
     ...     documents=documents,
     ...     queries=queries,
     ...     qrels=qrels
@@ -132,12 +128,8 @@ def get_beir_triples(
     339
 
     """
-    on = on if isinstance(on, list) else [on]
 
-    mapping_documents = {
-        document[key]: " ".join([document[field] for field in on])
-        for document in documents
-    }
+    mapping_documents = {document["id"]: document["text"] for document in documents}
 
     X = []
     for query, (_, query_documents) in zip(queries, qrels.items()):

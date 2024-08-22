@@ -13,10 +13,6 @@ class Base(ABC):
         pass
 
     @abstractmethod
-    def create_collection(self, name: str) -> None:
-        pass
-
-    @abstractmethod
     def add_documents(
         self,
         documents_ids: list[str],
@@ -29,7 +25,7 @@ class Base(ABC):
         pass
 
     @abstractmethod
-    def query(self, queries_embeddings: list[list[int | float]], k: int = 5):
+    def __call__(self, queries_embeddings: list[list[int | float]], k: int = 5):
         pass
 
     @abstractmethod
