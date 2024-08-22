@@ -11,7 +11,7 @@ from sentence_transformers import (
 )
 from sentence_transformers.training_args import BatchSamplers
 
-from giga_cherche import evaluation, losses, models, utils
+from pylate import evaluation, losses, models, utils
 
 
 def test_contrastive_training() -> None:

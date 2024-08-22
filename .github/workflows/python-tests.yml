@@ -29,4 +29,4 @@ jobs:
       
     - name: Run tests library
       run: |
-        pytest giga_cherche
+        pytest pylate

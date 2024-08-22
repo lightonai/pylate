@@ -41,7 +41,7 @@ def rerank(
 
     Examples
     --------
-    >>> from giga_cherche import models, rank
+    >>> from pylate import models, rank
 
     >>> model = models.ColBERT(
     ...     model_name_or_path="sentence-transformers/all-MiniLM-L6-v2", device="cpu"

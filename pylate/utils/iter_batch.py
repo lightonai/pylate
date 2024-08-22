@@ -8,7 +8,7 @@ def iter_batch(
 
     Examples
     -------
-    >>> from giga_cherche import utils
+    >>> from pylate import utils
 
     >>> X = [
     ...  "element 0",

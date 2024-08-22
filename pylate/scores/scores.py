@@ -1,5 +1,3 @@
-"""ColBERT scores computation."""
-
 import numpy as np
 import torch
 

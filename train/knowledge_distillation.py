@@ -4,7 +4,7 @@ from sentence_transformers import (
     SentenceTransformerTrainingArguments,
 )
 
-from giga_cherche import losses, models, utils
+from pylate import losses, models, utils
 
 train = load_dataset(
     path="./datasets/msmarco_fr_full",

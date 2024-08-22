@@ -104,7 +104,7 @@ class ColBERTTripletEvaluator(TripletEvaluator):
 
     Examples
     --------
-    >>> from giga_cherche import evaluation, models
+    >>> from pylate import evaluation, models
 
     >>> model = models.ColBERT(
     ...     model_name_or_path="sentence-transformers/all-MiniLM-L6-v2",

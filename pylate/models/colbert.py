@@ -148,7 +148,7 @@ class ColBERT(SentenceTransformer):
 
     Examples
     --------
-    >>> from giga_cherche import models
+    >>> from pylate import models
 
     >>> model = models.ColBERT(
     ...     model_name_or_path="sentence-transformers/all-MiniLM-L6-v2",
@@ -808,7 +808,7 @@ class ColBERT(SentenceTransformer):
 
         Examples
         --------
-        >>> from giga_cherche import models
+        >>> from pylate import models
 
         >>> model = models.ColBERT(
         ...     "sentence-transformers/all-MiniLM-L6-v2",

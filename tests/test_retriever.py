@@ -1,4 +1,4 @@
-from giga_cherche import indexes, models, retrieve
+from pylate import indexes, models, retrieve
 
 
 def test_voyager_index(**kwargs) -> None:

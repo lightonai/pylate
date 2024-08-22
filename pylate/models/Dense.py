@@ -28,7 +28,7 @@ class Dense(DenseSentenceTransformer):
 
     Examples
     --------
-    >>> from giga_cherche import models
+    >>> from pylate import models
 
     >>> model = models.Dense(
     ...     in_features=768,

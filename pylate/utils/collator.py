@@ -16,7 +16,7 @@ class ColBERTCollator:
 
     Examples
     --------
-    >>> from giga_cherche import models, utils
+    >>> from pylate import models, utils
 
     >>> model = models.ColBERT(
     ...     model_name_or_path="sentence-transformers/all-MiniLM-L6-v2", device="cpu"

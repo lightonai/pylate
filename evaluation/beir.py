@@ -1,6 +1,6 @@
 """Evaluation script for the SciFact dataset using the Beir library."""
 
-from giga_cherche import evaluation, indexes, models, retrieve
+from pylate import evaluation, indexes, models, retrieve
 
 model = models.ColBERT(
     model_name_or_path="sentence-transformers/all-MiniLM-L6-v2",

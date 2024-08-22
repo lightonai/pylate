@@ -15,7 +15,7 @@ class ColBERT:
 
     Examples
     --------
-    >>> from giga_cherche import indexes, models, retrieve
+    >>> from pylate import indexes, models, retrieve
 
     >>> model = models.ColBERT(
     ...     model_name_or_path="sentence-transformers/all-MiniLM-L6-v2",
