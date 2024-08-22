@@ -3,6 +3,7 @@ import torch
 
 from ..indexes import Voyager
 from ..rank import rerank
+from ..utils import iter_batch
 
 
 class ColBERT:
@@ -90,6 +91,7 @@ class ColBERT:
         k: int = 10,
         k_index: int | None = None,
         device: str | None = None,
+        batch_size: int = 50,
     ) -> list[list[dict]]:
         """Retrieve documents for a list of queries.
 
@@ -105,31 +107,39 @@ class ColBERT:
             The device to use for the embeddings. Defaults to queries_embeddings device.
 
         """
-        retrieved_elements = self.index(
-            queries_embeddings=queries_embeddings,
-            k=k if k_index is None else k_index,
-        )
+        reranking_results = []
+        for queries_embeddings_batch in iter_batch(
+            queries_embeddings,
+            batch_size=batch_size,
+            desc=f"Retrieving documents (bs={batch_size})",
+        ):
+            retrieved_elements = self.index(
+                queries_embeddings=queries_embeddings_batch,
+                k=k if k_index is None else k_index,
+            )
 
-        documents_ids = [
-            list(
-                set(
-                    [
-                        document_id
-                        for query_token_document_ids in query_documents_ids
-                        for document_id in query_token_document_ids
-                    ]
+            documents_ids = [
+                list(
+                    set(
+                        [
+                            document_id
+                            for query_token_document_ids in query_documents_ids
+                            for document_id in query_token_document_ids
+                        ]
+                    )
+                )
+                for query_documents_ids in retrieved_elements["documents_ids"]
+            ]
+
+            documents_embeddings = self.index.get_documents_embeddings(documents_ids)
+
+            reranking_results.extend(
+                rerank(
+                    documents_ids=documents_ids,
+                    queries_embeddings=queries_embeddings_batch,
+                    documents_embeddings=documents_embeddings,
+                    device=device,
                 )
             )
-            for query_documents_ids in retrieved_elements["documents_ids"]
-        ]
-
-        documents_embeddings = self.index.get_documents_embeddings(documents_ids)
-
-        reranking_results = rerank(
-            documents_ids=documents_ids,
-            queries_embeddings=queries_embeddings,
-            documents_embeddings=documents_embeddings,
-            device=device,
-        )
-
+        print(len(reranking_results))
         return [query_results[:k] for query_results in reranking_results]

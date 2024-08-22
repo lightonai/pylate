@@ -6,6 +6,7 @@ import torch
 from sqlitedict import SqliteDict
 from voyager import Index, Space
 
+from ..utils import iter_batch
 from .base import Base
 
 
@@ -193,6 +194,7 @@ class Voyager(Base):
         self,
         documents_ids: str | list[str],
         documents_embeddings: list[np.ndarray | torch.Tensor],
+        batch_size: int = 2000,
     ) -> None:
         """Add documents to the index."""
         if isinstance(documents_ids, str):
@@ -203,22 +205,31 @@ class Voyager(Base):
 
         documents_ids_to_embeddings = self._load_documents_ids_to_embeddings()
         embeddings_to_documents_ids = self._load_embeddings_to_documents_ids()
-
-        embeddings_ids = self.index.add_items(
-            list(itertools.chain(*documents_embeddings))
-        )
-
-        total = 0
-        for doc_id, document_embeddings in zip(documents_ids, documents_embeddings):
-            document_embeddings_ids = embeddings_ids[
-                total : total + len(document_embeddings)
-            ]
-            documents_ids_to_embeddings[doc_id] = document_embeddings_ids
-
-            embeddings_to_documents_ids.update(
-                dict.fromkeys(document_embeddings_ids, doc_id)
+        for document_embeddings_batch, documents_ids_batch in zip(
+            iter_batch(
+                documents_embeddings,
+                batch_size,
+                desc=f"Adding documents to the index (bs={batch_size})",
+            ),
+            iter_batch(documents_ids, batch_size, tqdm_bar=False),
+        ):
+            embeddings_ids = self.index.add_items(
+                list(itertools.chain(*document_embeddings_batch))
             )
-            total += len(document_embeddings)
+
+            total = 0
+            for doc_id, document_embeddings in zip(
+                documents_ids_batch, document_embeddings_batch
+            ):
+                document_embeddings_ids = embeddings_ids[
+                    total : total + len(document_embeddings)
+                ]
+                documents_ids_to_embeddings[doc_id] = document_embeddings_ids
+
+                embeddings_to_documents_ids.update(
+                    dict.fromkeys(document_embeddings_ids, doc_id)
+                )
+                total += len(document_embeddings)
 
         documents_ids_to_embeddings.commit()
         documents_ids_to_embeddings.close()
