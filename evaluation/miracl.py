@@ -2,7 +2,7 @@
 
 from beir.datasets.data_loader import GenericDataLoader
 
-from giga_cherche import evaluation, indexes, models, retrieve
+from pylate import evaluation, indexes, models, retrieve
 
 model = models.ColBERT(
     model_name_or_path="NohTow/colbert_xml-r-english",

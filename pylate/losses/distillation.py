@@ -21,7 +21,7 @@ class Distillation(torch.nn.Module):
 
     Examples
     --------
-    >>> from giga_cherche import models, losses
+    >>> from pylate import models, losses
 
     >>> model = models.ColBERT(
     ...     model_name_or_path="sentence-transformers/all-MiniLM-L6-v2", device="cpu"

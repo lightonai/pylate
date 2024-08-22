@@ -5,7 +5,7 @@ from sentence_transformers import (
 )
 from sentence_transformers.training_args import BatchSamplers
 
-from giga_cherche import evaluation, losses, models, utils
+from pylate import evaluation, losses, models, utils
 
 model_name = "NohTow/colbertv2_sentence_transformer"  # "distilroberta-base" # Choose the model you want
 batch_size = 32  # The larger you select this, the better the results (usually). But it requires more GPU memory

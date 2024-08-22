@@ -15,7 +15,7 @@ For example, to run the BEIR evaluations using giga-cherche indexes:
 # Modeling
 The modeling of giga-cherche is based on sentence-transformers which allow to build a ColBERT model from any encoder available by appending a projection layer applied to the output of the encoders to reduce the embeddings dimension. 
 ```
-from giga_cherche import models
+from pylate import models
 model_name = "bert-base-uncased"
 model = models.ColBERT(model_name_or_path=model_name)
 ```
@@ -40,7 +40,7 @@ from sentence_transformers import (
     SentenceTransformerTrainingArguments,
 )
 
-from giga_cherche import losses, models, datasets, evaluation
+from pylate import losses, models, datasets, evaluation
 
 model_name = "bert-base-uncased"
 batch_size = 32
@@ -134,7 +134,7 @@ Note that query embeddings cannot be pooled.
 You can then compute the ColBERT max-sim scores like this:
 
 ```python
-from giga_cherche import scores
+from pylate import scores
 similarity_scores = scores.colbert_scores(query_embeddings, document_embeddings)
 ```
 
@@ -147,7 +147,7 @@ Before being able to create and use an index, you need to need to launch the Wea
 To populate an index, simply create it and then add the computed embeddings with their corresponding ids:
 
 ```python
-from giga_cherche import indexes
+from pylate import indexes
 
 index = indexes.Weaviate(name="test_index")
 
@@ -171,7 +171,7 @@ index.remove_documents(["1"])
 To retrieve documents from the index, you can use the following code snippet:
 
 ```python
-from giga_cherche import retrieve
+from pylate import retrieve
 
 retriever = retrieve.ColBERT(Weaviate)
 
@@ -185,7 +185,7 @@ retrieved_chunks = retriever.retrieve(queries_embeddings, k=10)
 You can also simply rerank a list of ids produced by an upstream retrieval module (such as BM25):
 
 ```python
-from giga_cherche import rerank
+from pylate import rerank
 
 reranker = rerank.ColBERT(Weaviate)
 
@@ -199,7 +199,7 @@ reranked_chunks = reranker.rerank(
 We can eavaluate the performance of the model using the BEIR evaluation framework. The following code snippet shows how to evaluate the model on the SciFact dataset:
 
 ```python
-from giga_cherche import evaluation, indexes, models, retrieve, utils
+from pylate import evaluation, indexes, models, retrieve, utils
 
 model = models.ColBERT(
     model_name_or_path="NohTow/colbertv2_sentence_transformer",

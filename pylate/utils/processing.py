@@ -21,7 +21,7 @@ class KDProcessing:
     Examples
     --------
     >>> from datasets import load_dataset
-    >>> from giga_cherche import utils
+    >>> from pylate import utils
 
     >>> train = load_dataset(
     ...    path="lightonai/lighton-ms-marco-mini",
@@ -121,7 +121,7 @@ class KDProcessing:
         Examples
         --------
         >>> from datasets import load_dataset
-        >>> from giga_cherche import utils
+        >>> from pylate import utils
 
         >>> train = load_dataset(
         ...    path="lightonai/lighton-ms-marco-mini",

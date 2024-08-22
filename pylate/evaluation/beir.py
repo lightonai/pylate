@@ -44,7 +44,7 @@ def load_beir(dataset_name: str, split: str = "test") -> tuple[list, list, dict]
 
     Examples
     --------
-    >>> from giga_cherche import evaluation
+    >>> from pylate import evaluation
 
     >>> documents, queries, qrels = evaluation.load_beir(
     ...     "scifact",
@@ -111,7 +111,7 @@ def get_beir_triples(
 
     Examples
     --------
-    >>> from giga_cherche import evaluation
+    >>> from pylate import evaluation
 
     >>> documents, queries, qrels = evaluation.load_beir(
     ...     "scifact",

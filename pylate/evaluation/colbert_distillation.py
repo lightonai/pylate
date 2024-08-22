@@ -41,7 +41,7 @@ class ColBERTDistillationEvaluator(SentenceEvaluator):
     Examples
     --------
 
-    >>> from giga_cherche import models, evaluation
+    >>> from pylate import models, evaluation
 
     >>> model = models.ColBERT(
     ...     model_name_or_path="sentence-transformers/all-MiniLM-L6-v2", device="cpu"

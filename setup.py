@@ -1,6 +1,6 @@
 import setuptools
 
-from giga_cherche.__version__ import __version__
+from pylate.__version__ import __version__
 
 with open(file="README.md", mode="r", encoding="utf-8") as fh:
     long_description = fh.read()
@@ -20,7 +20,7 @@ eval = ["ranx >= 0.3.16", "beir >= 2.0.0"]
 
 
 setuptools.setup(
-    name="giga_cherche",
+    name="pylate",
     version=f"{__version__}",
     license="",
     author="LightON",

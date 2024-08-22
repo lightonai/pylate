@@ -46,7 +46,7 @@ class Voyager(Base):
 
     Examples
     --------
-    >>> from giga_cherche import indexes, models
+    >>> from pylate import indexes, models
 
     >>> index = indexes.Voyager(
     ...     index_folder="test_indexes",
