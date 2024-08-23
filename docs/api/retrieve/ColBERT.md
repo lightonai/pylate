@@ -90,4 +90,5 @@ ColBERT retriever.
     - **k**     (*int*)     – defaults to `10`    
     - **k_index**     (*int | None*)     – defaults to `None`    
     - **device**     (*str | None*)     – defaults to `None`    
+    - **batch_size**     (*int*)     – defaults to `50`    
     

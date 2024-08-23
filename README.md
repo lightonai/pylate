@@ -7,7 +7,7 @@
 
 <div align="center">
   <!-- Documentation -->
-  <a href="https://github.com/lightonai/pylate"><img src="https://img.shields.io/badge/Documentation-purple.svg?style=flat-square" alt="documentation"></a>
+  <a href="https://lightonai.github.io/pylate/"><img src="https://img.shields.io/badge/Documentation-purple.svg?style=flat-square" alt="documentation"></a>
   <!-- License -->
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square" alt="license"></a>
 </div>

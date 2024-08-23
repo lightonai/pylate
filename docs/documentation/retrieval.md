@@ -4,9 +4,9 @@ The ColBERT retrieval module provide a streamlined interface to index and retrie
 
 ### Indexing documents
 
-First, initialize the ColBERT model and Voyager index, then encode and index your documents:
+First, load the ColBERT model and initialize the Voyager index, then encode and index your documents:
 
-1. Initialize the ColBERT model.
+1. Load the ColBERT model.
 2. Set up the Voyager index.
 3. Encode documents: Ensure `is_query=False` when encoding documents so the model knows it is processing documents rather than queries.
 4. Add documents to the index: Provide both document IDs and their corresponding embeddings to the index.
