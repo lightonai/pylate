@@ -141,5 +141,4 @@ class ColBERT:
                     device=device,
                 )
             )
-        print(len(reranking_results))
         return [query_results[:k] for query_results in reranking_results]
