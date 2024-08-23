@@ -236,6 +236,7 @@ class Voyager(Base):
 
         embeddings_to_documents_ids.commit()
         embeddings_to_documents_ids.close()
+        self.index.save(self.index_path)
         return self
 
     def remove_documents(self, documents_ids: list[str]) -> None:
@@ -262,6 +263,7 @@ class Voyager(Base):
 
         documents_ids_to_embeddings.close()
         embeddings_to_documents_ids.close()
+        self.index.save(self.index_path)
         return self
 
     def __call__(

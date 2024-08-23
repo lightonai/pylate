@@ -286,7 +286,7 @@ class ColBERT(SentenceTransformer):
             )
             self[1] = Dense.from_sentence_transformers(dense=self[1])
         else:
-            logger.warning("Correctly loaded the Dense layer.")
+            logger.warning("Pylate model loaded successfully.")
 
         self.to(device)
         self.is_hpu_graph_enabled = False
