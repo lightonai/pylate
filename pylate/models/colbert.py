@@ -515,7 +515,9 @@ class ColBERT(SentenceTransformer):
             0,
             len(sentences),
             batch_size,
-            desc="Batches",
+            desc=f"Encoding queries (bs={batch_size})"
+            if is_query
+            else f"Encoding documents (bs={batch_size})",
             disable=not show_progress_bar,
         ):
             sentences_batch = sentences_sorted[start_index : start_index + batch_size]

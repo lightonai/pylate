@@ -3,22 +3,22 @@
 from pylate import evaluation, indexes, models, retrieve
 
 model = models.ColBERT(
-    model_name_or_path="sentence-transformers/all-MiniLM-L6-v2",
+    model_name_or_path="output/answerai-colbert-small-v1", document_length=512
 )
 
-index = indexes.Voyager(override=True)
+index = indexes.Voyager(override=True, embedding_size=96)
 
 retriever = retrieve.ColBERT(index=index)
 
 # Download the SciFact dataset
 documents, queries, qrels = evaluation.load_beir(
-    dataset_name="scifact",
+    dataset_name="nfcorpus",
     split="test",
 )
 
 documents_embeddings = model.encode(
     sentences=[document["text"] for document in documents],
-    batch_size=32,
+    batch_size=2000,
     is_query=False,
     show_progress_bar=True,
 )
@@ -35,7 +35,7 @@ queries_embeddings = model.encode(
     batch_size=32,
 )
 
-scores = retriever.retrieve(queries_embeddings=queries_embeddings, k=10)
+scores = retriever.retrieve(queries_embeddings=queries_embeddings, k=100)
 
 
 evaluation_scores = evaluation.evaluate(
