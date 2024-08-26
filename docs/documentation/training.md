@@ -162,6 +162,16 @@ trainer = SentenceTransformerTrainer(
 trainer.train()
 
 ```
+## ColBERT parameters
+All the parameters of the ColBERT modeling can be found [here](https://lightonai.github.io/pylate/api/models/ColBERT/#parameters). Important parameters to consider are:
+
+- `model_name_or_path` the name of the base encoder model or PyLate model to init from.
+- `embedding_size` the output size of the projection layer. Large values give more capacity to the model but are heavier to store.
+- `query_prefix` and `document_prefix` represents the strings that will be prepended to query and document respectively.
+- `query_length` and `document_length` set the maximum size of queries and documents. Queries will be padded/truncated to the maximum length while documents are only truncated.
+- `attend_to_expansion_tokens` define whether the model will attend to the query expansion tokens (padding of queries) or if only the expansion tokens will attend to the other tokens. In the original ColBERT, the tokens **do not attend** to expansion tokens.
+- `skiplist_words` is list of words to skip from the documents scoring (note that these tokens are used for encoding and are only skipped during the scoring), the default is the list of string.punctuation as in the original ColBERT.
+
 
 ## Sentence Transformers Training Arguments
 
