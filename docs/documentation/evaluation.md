@@ -8,21 +8,23 @@ This guide demonstrates an end-to-end pipeline to evaluate the performance of th
 from pylate import evaluation, indexes, models, retrieve
 
 # Step 1: Initialize the ColBERT model
+
+dataset = "scifact"
 model = models.ColBERT(
-    model_name_or_path="sentence-transformers/all-MiniLM-L6-v2",
+    model_name_or_path="lightonai/colbertv2.0",
     device="cuda" # "cpu" or "cuda" or "mps"
 )
 
 # Step 2: Create a Voyager index
 index = indexes.Voyager(
     index_folder="pylate-index",
-    index_name="index",
+    index_name=dataset,
     override=True,  # Overwrite any existing index
 )
 
 # Step 3: Load the documents, queries, and relevance judgments (qrels)
 documents, queries, qrels = evaluation.load_beir(
-    "scifact",  # Specify the dataset (e.g., "scifact")
+    dataset,  # Specify the dataset (e.g., "scifact")
     split="test",  # Specify the split (e.g., "test")
 )
 

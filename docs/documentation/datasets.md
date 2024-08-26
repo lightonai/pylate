@@ -1,4 +1,4 @@
-PyLate models are designed to be compatible with Hugging Face datasets, facilitating seamless integration for tasks such as knowledge distillation and contrastive model training. Below are examples illustrating how to load and prepare datasets for these specific training objectives.
+PyLate is designed to be compatible with Hugging Face datasets, facilitating seamless integration for tasks such as knowledge distillation and contrastive model training. Below are examples illustrating how to load and prepare datasets for these specific training objectives.
 
 
 ## Constrastive dataset
@@ -136,8 +136,8 @@ Example entry:
 }
 ```
 ### Loading a pre-built knowledge distillation dataset
-You can directly download an existing knowledge distillation dataset from Hugging Face's hub, such as the [msmarco dataset with BGE M3 scores](https://huggingface.co/datasets/lightonai/ms-marco-en-bge).
-Simply load the different file by giving the respective names to the ```load_dataset``` function:
+You can directly download an existing knowledge distillation dataset from Hugging Face's hub, such as the [MS MARCO dataset with BGE M3 scores](https://huggingface.co/datasets/lightonai/ms-marco-en-bge).
+Simply load the different files by giving the respective names to the ```load_dataset``` function:
 
 ```python
 from datasets import load_dataset

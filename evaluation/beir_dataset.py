@@ -2,11 +2,9 @@
 
 from pylate import evaluation, indexes, models, retrieve
 
-model = models.ColBERT(
-    model_name_or_path="output/answerai-colbert-small-v1", document_length=512
-)
+model = models.ColBERT(model_name_or_path="lightonai/colbertv2.0", document_length=300)
 
-index = indexes.Voyager(override=True, embedding_size=96)
+index = indexes.Voyager(override=True)
 
 retriever = retrieve.ColBERT(index=index)
 

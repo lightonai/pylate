@@ -1,27 +1,20 @@
 ## ColBERT Retrieval
 
-The ColBERT retrieval module provide a streamlined interface to index and retrieve documents using the ColBERT model. It leverages the Voyager index to efficiently handle document embeddings and enable fast retrieval.
+PyLate provides a streamlined interface to index and retrieve documents using ColBERT models. The index leverages the Voyager HNSW index to efficiently handle document embeddings and enable fast retrieval.
 
 ### Indexing documents
 
 First, load the ColBERT model and initialize the Voyager index, then encode and index your documents:
 
-1. Load the ColBERT model.
-2. Set up the Voyager index.
-3. Encode documents: Ensure `is_query=False` when encoding documents so the model knows it is processing documents rather than queries.
-4. Add documents to the index: Provide both document IDs and their corresponding embeddings to the index.
-
-Here’s an example code for indexing:
-
 ```python
 from pylate import indexes, models, retrieve
 
-# Step 1: Initialize the ColBERT model
+# Step 1: Load the ColBERT model
 model = models.ColBERT(
-    model_name_or_path="sentence-transformers/all-MiniLM-L6-v2",
+    model_name_or_path="lightonai/colbertv2.0",
 )
 
-# Step 2: Create a Voyager index
+# Step 2: Initialize the Voyager index
 index = indexes.Voyager(
     index_folder="pylate-index",
     index_name="index",
@@ -35,26 +28,32 @@ documents = ["document 1 text", "document 2 text", "document 3 text"]
 documents_embeddings = model.encode(
     documents,
     batch_size=32,
-    is_query=False,  # Indicate that these are documents, not queries
+    is_query=False,  # Ensure that it is set to False to indicate that these are documents, not queries
     show_progress_bar=True,
 )
 
-# Step 4: Add document embeddings to the index
+# Step 4: Add document embeddings to the index by providing embeddings and corresponding ids
 index.add_documents(
     documents_ids=documents_ids,
     documents_embeddings=documents_embeddings,
 )
 ```
 
+Note that you do not have to recreate the index and encode the documents every time. Once you have created an index and added the documents, you can re-use the index later by loading it:
+```python
+# To load an index, simply instantiate it with the correct folder/name and without overriding it
+index = indexes.Voyager(
+    index_folder="pylate-index",
+    index_name="index",
+   
+)
+```
+
+
 ### Retrieving top-k documents for queries
 
 Once the documents are indexed, you can retrieve the top-k most relevant documents for a given set of queries.
-
-1. Initialize the ColBERT retriever
-2. Encode the queries: Use the same ColBERT model. Be sure to set `is_query=True`, so the system can differentiate between queries and documents.
-3. Retrieve top-k documents: Pass the query embeddings to the retriever to get the top matches, including document IDs and relevance scores.
-
-Here’s the code for retrieving relevant documents:
+To do so, initialize the ColBERT retriever with the index you want to search in, encode the queries and then retrieve the top-k documents to get the top matches ids and relevance scores:
 
 ```python
 # Step 1: Initialize the ColBERT retriever
@@ -64,7 +63,7 @@ retriever = retrieve.ColBERT(index=index)
 queries_embeddings = model.encode(
     ["query for document 3", "query for document 1"],
     batch_size=32,
-    is_query=True,  # Indicate that these are queries
+    is_query=True,  #  # Ensure that it is set to False to indicate that these are queries
     show_progress_bar=True,
 )
 
@@ -96,7 +95,7 @@ Example output
 
 ## Remove documents from the index
 
-To remove documents from the index, use the `remove_documents` method. Provide the document IDs you want to remove from the index.
+To remove documents from the index, use the `remove_documents` method. Provide the document IDs you want to remove from the index:
 
 ```python
 index.remove_documents(["1", "2"])

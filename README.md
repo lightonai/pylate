@@ -72,7 +72,6 @@ from sentence_transformers import (
     SentenceTransformerTrainer,
     SentenceTransformerTrainingArguments,
 )
-from sentence_transformers.training_args import BatchSamplers
 
 from pylate import evaluation, losses, models, utils
 
@@ -100,7 +99,6 @@ args = SentenceTransformerTrainingArguments(
     per_device_eval_batch_size=32,
     fp16=False,  # Some GPUs support FP16 which is faster than FP32
     bf16=False,  # Some GPUs support BF16 which is a faster FP16
-    batch_sampler=BatchSamplers.NO_DUPLICATES,
     # Tracking parameters:
     eval_strategy="steps",
     eval_steps=0.1,
@@ -142,7 +140,7 @@ model = models.ColBERT(model_name_or_path="custom-colbert-model")
 
 ##  Retrieve
 
-PyLate allows easy retrieval of top documents for a given query set using the trained ColBERT model and Voyager index.
+PyLate allows easy retrieval of top documents for a given query set using the trained ColBERT model and Voyager index, simply load the model and init the index:
 
 ```python
 from pylate import indexes, models, retrieve
@@ -160,7 +158,7 @@ index = indexes.Voyager(
 retriever = retrieve.ColBERT(index=index)
 ```
 
-Once the model and index are set up, we can add documents to the index:
+Once the model and index are set up, we can add documents to the index using their embeddings and corresponding ids:
 
 ```python
 documents_ids = ["1", "2", "3"]
@@ -184,7 +182,7 @@ index.add_documents(
 )
 ```
 
-Then we can retrieve the top-k documents for a given query set:
+Then we can retrieve the top-k documents for a given set of queries:
 
 ```python
 queries_embeddings = model.encode(

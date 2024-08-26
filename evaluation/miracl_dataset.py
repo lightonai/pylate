@@ -5,7 +5,7 @@ from beir.datasets.data_loader import GenericDataLoader
 from pylate import evaluation, indexes, models, retrieve
 
 model = models.ColBERT(
-    model_name_or_path="NohTow/colbert_xml-r-english",
+    model_name_or_path="lightonai/colbertv2.0",
     document_length=300,
 )
 index = indexes.Voyager(override=True)
@@ -47,7 +47,7 @@ queries_embeddings = model.encode(
     show_progress_bar=True,
 )
 
-scores = retriever.retrieve(queries_embeddings=queries_embeddings, k=10)
+scores = retriever.retrieve(queries_embeddings=queries_embeddings, k=100)
 
 
 evaluation_scores = evaluation.evaluate(
