@@ -16,8 +16,9 @@ documents, queries, qrels = GenericDataLoader("datasets/miracl_fr").load(split="
 documents = [
     {
         "id": document_id,
-        "title": document["title"],
-        "text": document["text"],
+        "text": f"{document['title']} {document['text']}".strip()
+        if "title" in document
+        else document["text"].strip(),
     }
     for document_id, document in documents.items()
 ]
