@@ -1,20 +1,26 @@
+import torch
+from datasets import load_dataset
 from sentence_transformers import (
     SentenceTransformerTrainer,
     SentenceTransformerTrainingArguments,
 )
 
-from datasets import load_dataset
 from pylate import evaluation, losses, models, utils
 
-model_name = "output/answerai-colbert-small-v1"  # "distilroberta-base" # Choose the model you want
-batch_size = 32  # The larger you select this, the better the results (usually). But it requires more GPU memory
-num_train_epochs = 1
+# Define model parameters for contrastive training
+model_name = "bert-base-uncased"  # Choose the pre-trained model you want to use as base
+batch_size = 32  # Larger batch size often improves results, but requires more memory
 
-# Save path of the model
-output_dir = "output/msmarco_bm25_triplet_bert-base-uncased"
+num_train_epochs = 1  # Adjust based on your requirements
+# Set the run name for logging and output directory
+run_name = "contrastive-bert-base-uncased"
+output_dir = f"output/{run_name}"
 
 # 1. Here we define our ColBERT model. If not a ColBERT model, will add a linear layer to the base encoder.
 model = models.ColBERT(model_name_or_path=model_name)
+
+# Compiling the model makes the training faster
+model = torch.compile(model)
 
 # Load dataset
 dataset = load_dataset("sentence-transformers/msmarco-bm25", "triplet", split="train")
@@ -33,24 +39,19 @@ dev_evaluator = evaluation.ColBERTTripletEvaluator(
     negatives=eval_dataset["negative"],
 )
 
+# Configure the training arguments (e.g., batch size, evaluation strategy, logging steps)
 args = SentenceTransformerTrainingArguments(
     output_dir=output_dir,
     num_train_epochs=num_train_epochs,
     per_device_train_batch_size=batch_size,
     per_device_eval_batch_size=batch_size,
-    fp16=False,  # Set to False if you get an error that your GPU can't run on FP16
-    bf16=True,  # Set to True if you have a GPU that supports BF16
-    eval_strategy="steps",
-    eval_steps=0.1,
-    save_strategy="steps",
-    save_steps=5000,
-    save_total_limit=2,
-    logging_steps=10,
-    report_to="none",
-    run_name="msmarco_bm25_triplet_bert-base-uncased",  # Will be used in W&B if `wandb` is installed
+    fp16=True,  # Set to False if you get an error that your GPU can't run on FP16
+    bf16=False,  # Set to True if you have a GPU that supports BF16
+    run_name=run_name,  # Will be used in W&B if `wandb` is installed
     learning_rate=3e-6,
 )
 
+# Initialize the trainer for the contrastive training
 trainer = SentenceTransformerTrainer(
     model=model,
     args=args,
@@ -60,5 +61,5 @@ trainer = SentenceTransformerTrainer(
     evaluator=dev_evaluator,
     data_collator=utils.ColBERTCollator(model.tokenize),
 )
-
+# Start the training process
 trainer.train()

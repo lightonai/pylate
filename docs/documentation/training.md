@@ -15,37 +15,41 @@ During training, the model is tasked to maximize the similarity of the query wit
 Here is a example of code to run contrastive training using PyLate:
 
 ```python
+import torch
+from datasets import load_dataset
 from sentence_transformers import (
     SentenceTransformerTrainer,
     SentenceTransformerTrainingArguments,
 )
 
-from datasets import load_dataset
 from pylate import evaluation, losses, models, utils
 
 # Define model parameters for contrastive training
-model_name = "bert-base-uncased"  # Choose the pre-trained model you want to use
-batch_size = 32  # A larger batch size often improves results, but requires more GPU memory
+model_name = "bert-base-uncased"  # Choose the pre-trained model you want to use as base
+batch_size = 32  # Larger batch size often improves results, but requires more memory
+
 num_train_epochs = 1  # Adjust based on your requirements
+# Set the run name for logging and output directory
+run_name = "contrastive-bert-base-uncased"
+output_dir = f"output/{run_name}"
 
-# Set the output directory for saving the trained model
-output_dir = "output/msmarco_bm25_contrastive_bert-base-uncased"
-
-# Initialize the ColBERT model, adding a linear layer if it's not already a ColBERT model
+# 1. Here we define our ColBERT model. If not a ColBERT model, will add a linear layer to the base encoder.
 model = models.ColBERT(model_name_or_path=model_name)
 
-# Load the contrastive dataset (query, positive, and negative pairs)
-dataset = load_dataset("sentence-transformers/msmarco-bm25", "triplet", split="train")
+# Compiling the model makes the training faster
+model = torch.compile(model)
 
-# Split the dataset into training and evaluation subsets
+# Load dataset
+dataset = load_dataset("sentence-transformers/msmarco-bm25", "triplet", split="train")
+# Split the dataset (this dataset does not have a validation set, so we split the training set)
 splits = dataset.train_test_split(test_size=0.01)
 train_dataset = splits["train"]
 eval_dataset = splits["test"]
 
-# Define the contrastive loss function for training
+# Define the loss function
 train_loss = losses.Contrastive(model=model)
 
-# Set up an evaluator for validation using the contrastive approach (query, positive, negative)
+# Initialize the evaluator
 dev_evaluator = evaluation.ColBERTTripletEvaluator(
     anchors=eval_dataset["query"],
     positives=eval_dataset["positive"],
@@ -58,17 +62,10 @@ args = SentenceTransformerTrainingArguments(
     num_train_epochs=num_train_epochs,
     per_device_train_batch_size=batch_size,
     per_device_eval_batch_size=batch_size,
-    fp16=False,  # Disable FP16 if the GPU does not support it
-    bf16=True,   # Enable BF16 if supported by the GPU
-    eval_strategy="steps",
-    eval_steps=0.1,
-    save_strategy="steps",
-    save_steps=5000,
-    save_total_limit=2,
-    logging_steps=10,
-    report_to="none",  # Set to 'none' to avoid sending data to monitoring services like W&B
-    run_name="msmarco_bm25_contrastive_bert-base-uncased",
-    learning_rate=3e-6,  # Adjust learning rate based on the task
+    fp16=True,  # Set to False if you get an error that your GPU can't run on FP16
+    bf16=False,  # Set to True if you have a GPU that supports BF16
+    run_name=run_name,  # Will be used in W&B if `wandb` is installed
+    learning_rate=3e-6,
 )
 
 # Initialize the trainer for the contrastive training
@@ -81,7 +78,6 @@ trainer = SentenceTransformerTrainer(
     evaluator=dev_evaluator,
     data_collator=utils.ColBERTCollator(model.tokenize),
 )
-
 # Start the training process
 trainer.train()
 
@@ -95,6 +91,7 @@ Knowledge distillation training aim at making ColBERT models learn to reproduce 
 Here is a example of code to run knowledge distillation training using PyLate:
 
 ```python
+import torch
 from datasets import load_dataset
 from sentence_transformers import (
     SentenceTransformerTrainer,
@@ -125,23 +122,27 @@ train.set_transform(
 )
 
 # Define the base model, training parameters, and output directory
-model_name = "bert-base-uncased"
+model_name = "bert-base-uncased"  # Choose the pre-trained model you want to use as base
 batch_size = 16
 num_train_epochs = 1
-output_dir = "output/distillation_run-bert-base"
+# Set the run name for logging and output directory
+run_name = "knowledge-distillation-bert-base"
+output_dir = f"output/{run_name}"
 
-# Initialize the ColBERT model
+# Initialize the ColBERT model from the base model
 model = models.ColBERT(model_name_or_path=model_name)
+
+# Compiling the model to make the training faster
+model = torch.compile(model)
 
 # Configure the training arguments (e.g., epochs, batch size, learning rate)
 args = SentenceTransformerTrainingArguments(
     output_dir=output_dir,
     num_train_epochs=num_train_epochs,
     per_device_train_batch_size=batch_size,
-    fp16=False,
-    bf16=False,
-    logging_steps=10,
-    run_name="distillation_run-bert-base",
+    fp16=True,  # Set to False if you get an error that your GPU can't run on FP16
+    bf16=False,  # Set to True if you have a GPU that supports BF16
+    run_name=run_name,
     learning_rate=1e-5,
 )
 
@@ -159,6 +160,7 @@ trainer = SentenceTransformerTrainer(
 
 # Start the training process
 trainer.train()
+
 ```
 
 ## Sentence Transformers Training Arguments
