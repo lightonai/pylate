@@ -13,6 +13,7 @@
 - [evaluate](../evaluation/evaluate)
 - [get_beir_triples](../evaluation/get-beir-triples)
 - [load_beir](../evaluation/load-beir)
+- [load_custom_dataset](../evaluation/load-custom-dataset)
 
 ## indexes
 

@@ -1,35 +1,20 @@
-"""Evaluation script for the miracl_fr dataset using the Beir library."""
-
-from beir.datasets.data_loader import GenericDataLoader
+"""Evaluation script for the custom dataset."""
 
 from pylate import evaluation, indexes, models, retrieve
 
 model = models.ColBERT(
-    model_name_or_path="NohTow/colbert_xml-r-english",
+    model_name_or_path="lightonai/colbertv2.0",
     document_length=300,
 )
 index = indexes.Voyager(override=True)
 retriever = retrieve.ColBERT(index=index)
 
-documents, queries, qrels = GenericDataLoader("datasets/miracl_fr").load(split="dev")
-
-documents = [
-    {
-        "id": document_id,
-        "title": document["title"],
-        "text": document["text"],
-    }
-    for document_id, document in documents.items()
-]
-
-qrels = {
-    queries[query_id]: query_documents for query_id, query_documents in qrels.items()
-}
-queries = list(qrels.keys())
-
+documents, queries, qrels = evaluation.load_custom_dataset(
+    "datasets/miracl_fr", split="dev"
+)
 
 documents_embeddings = model.encode(
-    sentences=[document["text"] + " " + document["title"] for document in documents],
+    sentences=[document["text"] for document in documents],
     batch_size=32,
     is_query=False,
     show_progress_bar=True,
@@ -47,7 +32,7 @@ queries_embeddings = model.encode(
     show_progress_bar=True,
 )
 
-scores = retriever.retrieve(queries_embeddings=queries_embeddings, k=10)
+scores = retriever.retrieve(queries_embeddings=queries_embeddings, k=100)
 
 
 evaluation_scores = evaluation.evaluate(

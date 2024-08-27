@@ -1,122 +1,55 @@
 # ColBERT Training
+PyLate training is based on Sentence Transformer (and thus transformers) trainer, enabling a lot of functionnality such multi-GPU and FP16/BF16 training as well as logging to Weights & Biases out-of-the-box. This allows efficient, scalable and monitorable training. There are two primary ways to train ColBERT models using PyLate:
 
-PyLate supports multi-GPU training for ColBERT models, allowing efficient scaling across multiple GPUs. There are two primary ways to fine-tune ColBERT models using PyLate:
+1. **Contrastive Loss (Simplest Method)**: The easiest way to train your model is by using contrastive loss, which only requires a dataset containing triplets—each consisting of a query, a positive document (relevant to the query), and a negative document (irrelevant to the query). This method trains the model to maximize the similarity between the query and the positive document, while minimizing it with the negative document.
 
-1. Contrastive Loss (Simplest Method): The easiest way to fine-tune your model is by using Contrastive Loss, which only requires a dataset containing triplets—each consisting of a query, a positive document (relevant to the query), and a negative document (irrelevant to the query). This method trains the model to maximize the similarity between the query and the positive document, while minimizing it with the negative document.
-
-2. Knowledge Distillation: To fine-tune a ColBERT model using Knowledge Distillation, you need to provide a dataset with three components: queries, documents, and the relevance scores between them. This method compresses the knowledge of a larger model / more accurate model (cross-encoder) into a smaller one, using the relevance scores to guide the training process.
-
-## Knowledge Distillation Training
-
-Knowledge distillation training aïm at training a ColBERT models to reproduce the outputs of Cross-Encoder model. This is done by using a dataset containing queries, documents and the scores between them.
-
-Example Code for Knowledge Distillation Training:
-
-```python
-from datasets import load_dataset
-from sentence_transformers import (
-    SentenceTransformerTrainer,
-    SentenceTransformerTrainingArguments,
-)
-
-from pylate import losses, models, utils
-
-# Load the datasets required for knowledge distillation (train, queries, documents)
-train = load_dataset(
-    path="./datasets/msmarco_fr_full",
-    name="train",
-)
-
-queries = load_dataset(
-    path="./datasets/msmarco_fr_full",
-    name="queries",
-)
-
-documents = load_dataset(
-    path="./datasets/msmarco_fr_full",
-    name="documents",
-)
-
-# Apply transformations to align the data with the knowledge distillation process
-train.set_transform(
-    utils.KDProcessing(queries=queries, documents=documents).transform,
-)
-
-# Define the model, training parameters, and output directory
-model_name = "bert-base-uncased"
-batch_size = 16
-num_train_epochs = 1
-output_dir = "output/distillation_run-bert-base"
-
-# Initialize the ColBERT model for distillation
-model = models.ColBERT(model_name_or_path=model_name)
-
-# Configure the training arguments (e.g., epochs, batch size, learning rate)
-args = SentenceTransformerTrainingArguments(
-    output_dir=output_dir,
-    num_train_epochs=num_train_epochs,
-    per_device_train_batch_size=batch_size,
-    fp16=False,
-    bf16=False,
-    logging_steps=10,
-    run_name="distillation_run-bert-base",
-    learning_rate=1e-5,
-)
-
-# Use the Distillation loss function for training
-train_loss = losses.Distillation(model=model)
-
-# Initialize the trainer for the distillation process
-trainer = SentenceTransformerTrainer(
-    model=model,
-    args=args,
-    train_dataset=train,
-    loss=train_loss,
-    data_collator=utils.ColBERTCollator(tokenize_fn=model.tokenize),
-)
-
-# Start the training process
-trainer.train()
-```
+2. **Knowledge Distillation**: To train a ColBERT model using knowledge distillation, you need to provide a dataset with three components: queries, documents, and the relevance scores between them. This method compresses the knowledge of a larger model / more accurate model (cross-encoder) into a smaller one, using the relevance scores to guide the training process.
 
 ## Contrastive Training
+The original training of ColBERT was done using contrastive learning, that is, train the model to differentiate between relevant (positive) and irrelevant (negative) documents for a given query by maximizing the similarity between a query and a positive document while minimizing the similarity with irrelevant documents.
 
-Contrastive training is used to improve the model's ability to differentiate between relevant and irrelevant documents by maximizing the similarity between a query and a relevant document while minimizing it with irrelevant documents.
+The contrastive learning in PyLate is done using triplet dataset, that is, a query is associated to one positive and one negative. It is thus **compatible with any triplet datasets from the sentence-transformers library**.
 
-Example Code for Contrastive Training:
+During training, the model is tasked to maximize the similarity of the query with its positive while minimizing the similarity with all the negatives as well as the positives of the other queries in the batch (thus also leveraging in-batch negatives).
+
+Here is a example of code to run contrastive training using PyLate:
 
 ```python
+import torch
+from datasets import load_dataset
 from sentence_transformers import (
     SentenceTransformerTrainer,
     SentenceTransformerTrainingArguments,
 )
 
-from datasets import load_dataset
 from pylate import evaluation, losses, models, utils
 
 # Define model parameters for contrastive training
-model_name = "output/answerai-colbert-small-v1"  # Choose the pre-trained model you want to use
-batch_size = 32  # A larger batch size often improves results, but requires more GPU memory
+model_name = "bert-base-uncased"  # Choose the pre-trained model you want to use as base
+batch_size = 32  # Larger batch size often improves results, but requires more memory
+
 num_train_epochs = 1  # Adjust based on your requirements
+# Set the run name for logging and output directory
+run_name = "contrastive-bert-base-uncased"
+output_dir = f"output/{run_name}"
 
-# Set the output directory for saving the trained model
-output_dir = "output/msmarco_bm25_contrastive_bert-base-uncased"
-
-# Initialize the ColBERT model, adding a linear layer if it's not already a ColBERT model
+# 1. Here we define our ColBERT model. If not a ColBERT model, will add a linear layer to the base encoder.
 model = models.ColBERT(model_name_or_path=model_name)
 
-# Load the contrastive dataset (query, positive, and negative pairs)
-dataset = load_dataset("sentence-transformers/msmarco-bm25", "triplet", split="train")
+# Compiling the model makes the training faster
+model = torch.compile(model)
 
-# Split the dataset into training and evaluation subsets
+# Load dataset
+dataset = load_dataset("sentence-transformers/msmarco-bm25", "triplet", split="train")
+# Split the dataset (this dataset does not have a validation set, so we split the training set)
 splits = dataset.train_test_split(test_size=0.01)
 train_dataset = splits["train"]
 eval_dataset = splits["test"]
 
-# Define the contrastive loss function for training
+# Define the loss function
 train_loss = losses.Contrastive(model=model)
 
-# Set up an evaluator for validation using the contrastive approach (query, positive, negative)
+# Initialize the evaluator
 dev_evaluator = evaluation.ColBERTTripletEvaluator(
     anchors=eval_dataset["query"],
     positives=eval_dataset["positive"],
@@ -129,17 +62,10 @@ args = SentenceTransformerTrainingArguments(
     num_train_epochs=num_train_epochs,
     per_device_train_batch_size=batch_size,
     per_device_eval_batch_size=batch_size,
-    fp16=False,  # Disable FP16 if the GPU does not support it
-    bf16=True,   # Enable BF16 if supported by the GPU
-    eval_strategy="steps",
-    eval_steps=0.1,
-    save_strategy="steps",
-    save_steps=5000,
-    save_total_limit=2,
-    logging_steps=10,
-    report_to="none",  # Set to 'none' to avoid sending data to monitoring services like W&B
-    run_name="msmarco_bm25_contrastive_bert-base-uncased",
-    learning_rate=3e-6,  # Adjust learning rate based on the task
+    fp16=True,  # Set to False if you get an error that your GPU can't run on FP16
+    bf16=False,  # Set to True if you have a GPU that supports BF16
+    run_name=run_name,  # Will be used in W&B if `wandb` is installed
+    learning_rate=3e-6,
 )
 
 # Initialize the trainer for the contrastive training
@@ -152,14 +78,104 @@ trainer = SentenceTransformerTrainer(
     evaluator=dev_evaluator,
     data_collator=utils.ColBERTCollator(model.tokenize),
 )
-
 # Start the training process
 trainer.train()
 
 ```
 
+## Knowledge Distillation Training
+
+The training of late-interaction models have shown to benefit from knowledge distillation compared to a more simple contrastive learning.
+Knowledge distillation training aim at making ColBERT models learn to reproduce the outputs of a more capable (e.g, a cross-encoder) teacher model. This is done by using a dataset containing queries, documents and the scores attributed by the teacher to the different query/document pairs.
+
+Here is a example of code to run knowledge distillation training using PyLate:
+
+```python
+import torch
+from datasets import load_dataset
+from sentence_transformers import (
+    SentenceTransformerTrainer,
+    SentenceTransformerTrainingArguments,
+)
+
+from pylate import losses, models, utils
+
+# Load the datasets required for knowledge distillation (train, queries, documents)
+train = load_dataset(
+    path="lightonai/ms-marco-en-bge",
+    name="train",
+)
+
+queries = load_dataset(
+    path="lightonai/ms-marco-en-bge",
+    name="queries",
+)
+
+documents = load_dataset(
+    path="lightonai/ms-marco-en-bge",
+    name="documents",
+)
+
+# Set the transformation to load the documents/queries texts using the corresponding ids on the fly
+train.set_transform(
+    utils.KDProcessing(queries=queries, documents=documents).transform,
+)
+
+# Define the base model, training parameters, and output directory
+model_name = "bert-base-uncased"  # Choose the pre-trained model you want to use as base
+batch_size = 16
+num_train_epochs = 1
+# Set the run name for logging and output directory
+run_name = "knowledge-distillation-bert-base"
+output_dir = f"output/{run_name}"
+
+# Initialize the ColBERT model from the base model
+model = models.ColBERT(model_name_or_path=model_name)
+
+# Compiling the model to make the training faster
+model = torch.compile(model)
+
+# Configure the training arguments (e.g., epochs, batch size, learning rate)
+args = SentenceTransformerTrainingArguments(
+    output_dir=output_dir,
+    num_train_epochs=num_train_epochs,
+    per_device_train_batch_size=batch_size,
+    fp16=True,  # Set to False if you get an error that your GPU can't run on FP16
+    bf16=False,  # Set to True if you have a GPU that supports BF16
+    run_name=run_name,
+    learning_rate=1e-5,
+)
+
+# Use the Distillation loss function for training
+train_loss = losses.Distillation(model=model)
+
+# Initialize the trainer
+trainer = SentenceTransformerTrainer(
+    model=model,
+    args=args,
+    train_dataset=train,
+    loss=train_loss,
+    data_collator=utils.ColBERTCollator(tokenize_fn=model.tokenize),
+)
+
+# Start the training process
+trainer.train()
+
+```
+## ColBERT parameters
+All the parameters of the ColBERT modeling can be found [here](https://lightonai.github.io/pylate/api/models/ColBERT/#parameters). Important parameters to consider are:
+
+- `model_name_or_path` the name of the base encoder model or PyLate model to init from.
+- `embedding_size` the output size of the projection layer. Large values give more capacity to the model but are heavier to store.
+- `query_prefix` and `document_prefix` represents the strings that will be prepended to query and document respectively.
+- `query_length` and `document_length` set the maximum size of queries and documents. Queries will be padded/truncated to the maximum length while documents are only truncated.
+- `attend_to_expansion_tokens` define whether the model will attend to the query expansion tokens (padding of queries) or if only the expansion tokens will attend to the other tokens. In the original ColBERT, the tokens **do not attend** to expansion tokens.
+- `skiplist_words` is list of words to skip from the documents scoring (note that these tokens are used for encoding and are only skipped during the scoring), the default is the list of string.punctuation as in the original ColBERT.
+
+
 ## Sentence Transformers Training Arguments
 
+PyLate is built on top of SentenceTransformer, you can thus use the same arguments you already are familiar with to control the training. 
 The table below lists the arguments for the `SentenceTransformerTrainingArguments` class. Feel free to refer to the [SentenceTransformers](https://sbert.net/docs/sentence_transformer/training_overview.html#) library documentation for more information
 
 === "Table"

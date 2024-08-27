@@ -1,27 +1,20 @@
 ## ColBERT Retrieval
 
-The ColBERT retrieval module provide a streamlined interface to index and retrieve documents using the ColBERT model. It leverages the Voyager index to efficiently handle document embeddings and enable fast retrieval.
+PyLate provides a streamlined interface to index and retrieve documents using ColBERT models. The index leverages the Voyager HNSW index to efficiently handle document embeddings and enable fast retrieval.
 
 ### Indexing documents
 
-First, initialize the ColBERT model and Voyager index, then encode and index your documents:
-
-1. Initialize the ColBERT model.
-2. Set up the Voyager index.
-3. Encode documents: Ensure `is_query=False` when encoding documents so the model knows it is processing documents rather than queries.
-4. Add documents to the index: Provide both document IDs and their corresponding embeddings to the index.
-
-Here’s an example code for indexing:
+First, load the ColBERT model and initialize the Voyager index, then encode and index your documents:
 
 ```python
 from pylate import indexes, models, retrieve
 
-# Step 1: Initialize the ColBERT model
+# Step 1: Load the ColBERT model
 model = models.ColBERT(
-    model_name_or_path="sentence-transformers/all-MiniLM-L6-v2",
+    model_name_or_path="lightonai/colbertv2.0",
 )
 
-# Step 2: Create a Voyager index
+# Step 2: Initialize the Voyager index
 index = indexes.Voyager(
     index_folder="pylate-index",
     index_name="index",
@@ -35,26 +28,44 @@ documents = ["document 1 text", "document 2 text", "document 3 text"]
 documents_embeddings = model.encode(
     documents,
     batch_size=32,
-    is_query=False,  # Indicate that these are documents, not queries
+    is_query=False,  # Ensure that it is set to False to indicate that these are documents, not queries
     show_progress_bar=True,
 )
 
-# Step 4: Add document embeddings to the index
+# Step 4: Add document embeddings to the index by providing embeddings and corresponding ids
 index.add_documents(
     documents_ids=documents_ids,
     documents_embeddings=documents_embeddings,
 )
 ```
 
+Note that you do not have to recreate the index and encode the documents every time. Once you have created an index and added the documents, you can re-use the index later by loading it:
+```python
+# To load an index, simply instantiate it with the correct folder/name and without overriding it
+index = indexes.Voyager(
+    index_folder="pylate-index",
+    index_name="index",
+)
+```
+#### Pooling document embeddings
+[In a recent study](https://www.answer.ai/posts/colbert-pooling.html), we showed that similar tokens in document embeddings can be pooled together to reduce the overall cost of ColBERT indexing without without losing much performance. You can use this feature by setting the `pool_factor` parameter when encoding the documents to only keep 1 / `pool_factor` tokens. The results show that using a `pool_factor` of 2 cut the memory requirement of the index in half with virtually 0 performance drop. Higher compression can be achieved at the cost of some performance, please refer to the blogpost for all the details and results.
+
+This simple modification to the encoding call thus save a lot of space with a very contained impact on the performances:
+
+```python
+documents_embeddings = model.encode(
+    documents,
+    batch_size=32,
+    is_query=False,  # Ensure that it is set to False to indicate that these are documents, not queries
+    pool_factor=2,
+    show_progress_bar=True,
+)
+```
+
 ### Retrieving top-k documents for queries
 
 Once the documents are indexed, you can retrieve the top-k most relevant documents for a given set of queries.
-
-1. Initialize the ColBERT retriever
-2. Encode the queries: Use the same ColBERT model. Be sure to set `is_query=True`, so the system can differentiate between queries and documents.
-3. Retrieve top-k documents: Pass the query embeddings to the retriever to get the top matches, including document IDs and relevance scores.
-
-Here’s the code for retrieving relevant documents:
+To do so, initialize the ColBERT retriever with the index you want to search in, encode the queries and then retrieve the top-k documents to get the top matches ids and relevance scores:
 
 ```python
 # Step 1: Initialize the ColBERT retriever
@@ -64,7 +75,7 @@ retriever = retrieve.ColBERT(index=index)
 queries_embeddings = model.encode(
     ["query for document 3", "query for document 1"],
     batch_size=32,
-    is_query=True,  # Indicate that these are queries
+    is_query=True,  #  # Ensure that it is set to False to indicate that these are queries
     show_progress_bar=True,
 )
 
@@ -94,9 +105,37 @@ Example output
 ]
 ```
 
+### Parameters affecting the retrieval performance
+The retrieval is not an exact search, which mean that certain parameters can affect the quality of the approximate search. First, because we leverage a HNSW index, the usual parameters can be passed when creating the index:
+
+- `M`, the maximum number of connections of a node in the graph. Higher values will improve recall and reduce retrieval time but will increase memory usage and the creation time of the index.
+- `ef_construction` the maximum number of neighbors for a node during the creation of the index. Higher values increase the quality of the index but increase the creation time of the index.
+- `ef_search` the maximum number of neighbors for a node during the search. Higher values increase the quality of the search but also the search time.
+
+Please refer to dedicated [HNSW documentation for more details](https://www.pinecone.io/learn/series/faiss/hnsw/).
+
+Another parameter not related to the index strongly influence the quality of the search, `k_token`. It corresponds to the number of neighbors retrieved for each of the query token and so the total number of candidates scored. Higher values will consider more candidates and so get better results but will slow the search.
+
+```python
+index = indexes.Voyager(
+    index_folder="pylate-index",
+    index_name="index",
+    override=True,  # This overwrites the existing index if any
+    M=M,
+    ef_construction=ef_construction,
+    ef_search=ef_search,
+)
+
+scores = retriever.retrieve(
+    queries_embeddings=queries_embeddings, 
+    k=10,  # Retrieve the top 10 matches for each query
+    k_token=200 # retrieve 200 candidates per query token
+)
+
+```
 ## Remove documents from the index
 
-To remove documents from the index, use the `remove_documents` method. Provide the document IDs you want to remove from the index.
+To remove documents from the index, use the `remove_documents` method. Provide the document IDs you want to remove from the index:
 
 ```python
 index.remove_documents(["1", "2"])

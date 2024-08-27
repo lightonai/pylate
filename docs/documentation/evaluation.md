@@ -2,27 +2,29 @@
 
 This guide demonstrates an end-to-end pipeline to evaluate the performance of the ColBERT model on retrieval tasks. The pipeline involves three key steps: indexing documents, retrieving top-k documents for a given set of queries, and evaluating the retrieval results using standard metrics.
 
-### Retrieval Evaluation Pipeline
+### BEIR Retrieval Evaluation Pipeline
 
 ```python
 from pylate import evaluation, indexes, models, retrieve
 
 # Step 1: Initialize the ColBERT model
+
+dataset = "scifact" # Choose the dataset you want to evaluate
 model = models.ColBERT(
-    model_name_or_path="sentence-transformers/all-MiniLM-L6-v2",
+    model_name_or_path="lightonai/colbertv2.0",
     device="cuda" # "cpu" or "cuda" or "mps"
 )
 
 # Step 2: Create a Voyager index
 index = indexes.Voyager(
     index_folder="pylate-index",
-    index_name="index",
+    index_name=dataset,
     override=True,  # Overwrite any existing index
 )
 
 # Step 3: Load the documents, queries, and relevance judgments (qrels)
 documents, queries, qrels = evaluation.load_beir(
-    "scifact",  # Specify the dataset (e.g., "scifact")
+    dataset,  # Specify the dataset (e.g., "scifact")
     split="test",  # Specify the split (e.g., "test")
 )
 
@@ -98,7 +100,7 @@ Key Points:
 2. Evaluation metrics: The pipeline supports a wide range of evaluation metrics, including NDCG, hits, MAP, recall, and precision, with different cutoff points.
 3. Relevance judgments (qrels): The qrels are used to calculate how well the retrieved documents match the ground truth.
 
-### Beir datasets
+### BEIR datasets
 
 The following table lists the datasets available in the BEIR benchmark along with their names, types, number of queries, corpus size, and relevance degree per query. Source: [BEIR Datasets](https://github.com/beir-cellar/beir?tab=readme-ov-file)
 
@@ -125,6 +127,30 @@ The following table lists the datasets available in the BEIR benchmark along wit
     | FEVER         | fever            | train, dev, test  | 6,666   | 5,420,000   |
     | Climate-FEVER | climate-fever    | test              | 1,535   | 5,420,000   |
     | SciFact       | scifact          | train, test       | 300     | 5,000       |
+
+### Custom datasets
+You can also run evaluation on your custom dataset using the following structure:
+
+- `corpus.jsonl`: each row contains a json element with two properties: `['_id', 'text']`
+    - `_id` refers to the document identifier.
+    - `text` contains the text of the document.
+    - (an additional `title` field can also be added if necessary)
+- `queries.jsonl`: each row contains a json element with two properties: `['_id', 'text']`
+    - `_id` refers to the query identifier.
+    - `text` contains the text of the query.
+- `qrels` folder contains tsv files with three columns: `['query-id', 'doc-id', 'score']`
+    - `query-id` refers to the query identifier.
+    - `doc-id` refers to the document identifier.
+    - `score` contains the relation between the query and the document (1 if relevant, else 0)
+The name of the tsv corresponds to the split (e.g, "dev").
+
+You can then use the same pipeline as with BEIR datasets by changing the loading of the data in step 3:
+
+```python
+documents, queries, qrels = evaluation.load_custom_dataset(
+    "custom_dataset", split="dev"
+)
+```
 
 
 ### Metrics
