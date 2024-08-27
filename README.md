@@ -76,7 +76,7 @@ from sentence_transformers import (
 from pylate import evaluation, losses, models, utils
 
 # Define the model
-model = models.ColBERT(model_name_or_path="sentence-transformers/all-MiniLM-L6-v2")
+model = models.ColBERT(model_name_or_path="bert-base-uncased")
 
 # Load dataset
 dataset = load_dataset("sentence-transformers/msmarco-bm25", "triplet", split="train")
@@ -146,7 +146,7 @@ PyLate allows easy retrieval of top documents for a given query set using the tr
 from pylate import indexes, models, retrieve
 
 model = models.ColBERT(
-    model_name_or_path="sentence-transformers/all-MiniLM-L6-v2",
+    model_name_or_path="lightonai/colbertv2.0",
 )
 
 index = indexes.Voyager(

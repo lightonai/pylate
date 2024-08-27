@@ -147,22 +147,9 @@ The name of the tsv corresponds to the split (e.g, "dev").
 You can then use the same pipeline as with BEIR datasets by changing the loading of the data in step 3:
 
 ```python
-documents, queries, qrels = GenericDataLoader("datasets/miracl_fr").load(split="dev")
-
-documents = [
-    {
-        "id": document_id,
-        "text": f"{document['title']} {document['text']}".strip()
-            if "title" in document
-            else document["text"].strip()
-    }
-    for document_id, document in documents.items()
-]
-
-qrels = {
-    queries[query_id]: query_documents for query_id, query_documents in qrels.items()
-}
-queries = list(qrels.keys())
+documents, queries, qrels = evaluation.load_custom_dataset(
+    "custom_dataset", split="dev"
+)
 ```
 
 

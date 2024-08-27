@@ -45,10 +45,22 @@ Note that you do not have to recreate the index and encode the documents every t
 index = indexes.Voyager(
     index_folder="pylate-index",
     index_name="index",
-   
 )
 ```
+#### Pooling document embeddings
+[In a recent study](https://www.answer.ai/posts/colbert-pooling.html), we showed that similar tokens in document embeddings can be pooled together to reduce the overall cost of ColBERT indexing without without losing much performance. You can use this feature by setting the `pool_factor` parameter when encoding the documents to only keep 1 / `pool_factor` tokens. The results show that using a `pool_factor` of 2 cut the memory requirement of the index in half with virtually 0 performance drop. Higher compression can be achieved at the cost of some performance, please refer to the blogpost for all the details and results.
 
+This simple modification to the encoding call thus save a lot of space with a very contained impact on the performances:
+
+```python
+documents_embeddings = model.encode(
+    documents,
+    batch_size=32,
+    is_query=False,  # Ensure that it is set to False to indicate that these are documents, not queries
+    pool_factor=2,
+    show_progress_bar=True,
+)
+```
 
 ### Retrieving top-k documents for queries
 

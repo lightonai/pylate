@@ -1,4 +1,4 @@
-"""Evaluation script for the miracl_fr dataset using the Beir library."""
+"""Evaluation script for the custom dataset."""
 
 from pylate import evaluation, indexes, models, retrieve
 

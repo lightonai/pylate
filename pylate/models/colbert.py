@@ -6,11 +6,7 @@ import os
 import string
 import traceback
 from pathlib import Path
-from typing import (
-    Iterable,
-    Literal,
-    Optional,
-)
+from typing import Iterable, Literal, Optional
 
 import numpy as np
 import torch
@@ -25,10 +21,7 @@ from sentence_transformers.models import Dense as DenseSentenceTransformer
 from sentence_transformers.models import Transformer
 from sentence_transformers.quantization import quantize_embeddings
 from sentence_transformers.similarity_functions import SimilarityFunction
-from sentence_transformers.util import (
-    batch_to_device,
-    load_file_path,
-)
+from sentence_transformers.util import batch_to_device, load_file_path
 from torch import nn
 from tqdm.autonotebook import trange
 
@@ -105,7 +98,8 @@ class ColBERT(SentenceTransformer):
         Whether to attend to the expansion tokens in the attention layers model. If False, the original tokens will
         not only attend to the expansion tokens, only the expansion tokens will attend to the original tokens. Default
         is False (as in the original ColBERT codebase).
-
+    skiplist_words
+        A list of words to skip from the documents scoring (note that these tokens are used for encoding and are only skipped during the scoring). Default is the list of string.punctuation.
     model_kwargs : dict, optional
         Additional model configuration parameters to be passed to the Huggingface Transformers model. Particularly
         useful options are:
