@@ -128,7 +128,7 @@ The following table lists the datasets available in the BEIR benchmark along wit
     | Climate-FEVER | climate-fever    | test              | 1,535   | 5,420,000   |
     | SciFact       | scifact          | train, test       | 300     | 5,000       |
 
-### Other datasets
+### Custom datasets
 You can also run evaluation on your custom dataset using the following structure:
 
 - `corpus.jsonl`: each row contains a json element with two properties: `['_id', 'text']`

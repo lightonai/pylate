@@ -105,6 +105,34 @@ Example output
 ]
 ```
 
+### Parameters affecting the retrieval performance
+The retrieval is not an exact search, which mean that certain parameters can affect the quality of the approximate search. First, because we leverage a HNSW index, the usual parameters can be passed when creating the index:
+
+- `M`, the maximum number of connections of a node in the graph. Higher values will improve recall and reduce retrieval time but will increase memory usage and the creation time of the index.
+- `ef_construction` the maximum number of neighbors for a node during the creation of the index. Higher values increase the quality of the index but increase the creation time of the index.
+- `ef_search` the maximum number of neighbors for a node during the search. Higher values increase the quality of the search but also the search time.
+
+Please refer to dedicated [HNSW documentation for more details](https://www.pinecone.io/learn/series/faiss/hnsw/).
+
+Another parameter not related to the index strongly influence the quality of the search, `k_token`. It corresponds to the number of neighbors retrieved for each of the query token and so the total number of candidates scored. Higher values will consider more candidates and so get better results but will slow the search.
+
+```python
+index = indexes.Voyager(
+    index_folder="pylate-index",
+    index_name="index",
+    override=True,  # This overwrites the existing index if any
+    M=M,
+    ef_construction=ef_construction,
+    ef_search=ef_search,
+)
+
+scores = retriever.retrieve(
+    queries_embeddings=queries_embeddings, 
+    k=10,  # Retrieve the top 10 matches for each query
+    k_token=200 # retrieve 200 candidates per query token
+)
+
+```
 ## Remove documents from the index
 
 To remove documents from the index, use the `remove_documents` method. Provide the document IDs you want to remove from the index:

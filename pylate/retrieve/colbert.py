@@ -1,9 +1,13 @@
+import logging
+
 import numpy as np
 import torch
 
 from ..indexes import Voyager
 from ..rank import rerank
 from ..utils import iter_batch
+
+logger = logging.getLogger(__name__)
 
 
 class ColBERT:
@@ -89,7 +93,7 @@ class ColBERT:
         self,
         queries_embeddings: list[list | np.ndarray | torch.Tensor],
         k: int = 10,
-        k_index: int | None = None,
+        k_token: int = 100,
         device: str | None = None,
         batch_size: int = 50,
     ) -> list[list[dict]]:
@@ -101,12 +105,17 @@ class ColBERT:
             The queries embeddings.
         k
             The number of documents to retrieve.
-        k_index
+        k_token
             The number of documents to retrieve from the index. Defaults to `k`.
         device
             The device to use for the embeddings. Defaults to queries_embeddings device.
 
         """
+        if k > k_token:
+            logger.warning(
+                f"k ({k}) is greater than k_token ({k_token}), setting k_token to k."
+            )
+            k_token = k
         reranking_results = []
         for queries_embeddings_batch in iter_batch(
             queries_embeddings,
@@ -115,7 +124,7 @@ class ColBERT:
         ):
             retrieved_elements = self.index(
                 queries_embeddings=queries_embeddings_batch,
-                k=k if k_index is None else k_index,
+                k=k_token,
             )
 
             documents_ids = [
