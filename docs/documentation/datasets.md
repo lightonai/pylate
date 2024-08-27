@@ -122,7 +122,7 @@ Note: Ensure that the length of `document_ids` matches the length of `scores`.
 Example entry:
 
 ```python
-{"query_id": 749480, "text": "what is function of magnesium in human body"}
+{"query_id": 749480, "text": "example query 1"}
 ```
 
 - `documents`: contains two columns: `['document_ids', 'text']`
@@ -132,7 +132,7 @@ Example entry:
 ```python
 {
     "document_id": 136062,
-    "text": "Document text",
+    "text": "example document 1",
 }
 ```
 ### Loading a pre-built knowledge distillation dataset
@@ -220,19 +220,19 @@ dataset = [
 dataset = Dataset.from_list(mapping=dataset)
 
 documents = [
-    {"document_id": 6862419, "text": "Document text"},
-    {"document_id": 335116, "text": "Document text"},
-    {"document_id": 339186, "text": "Document text"},
-    {"document_id": 7509316, "text": "Document text"},
-    {"document_id": 7361291, "text": "Document text"},
-    {"document_id": 7416534, "text": "Document text"},
-    {"document_id": 5789936, "text": "Document text"},
-    {"document_id": 5645247, "text": "Document text"},
+    {"document_id": 6862419, "text": "example document 1"},
+    {"document_id": 335116, "text": "example document 2"},
+    {"document_id": 339186, "text": "example document 3"},
+    {"document_id": 7509316, "text": "example document 4"},
+    {"document_id": 7361291, "text": "example document 5"},
+    {"document_id": 7416534, "text": "example document 6"},
+    {"document_id": 5789936, "text": "example document 7"},
+    {"document_id": 5645247, "text": "example document 8"},
 ]
 
 queries = [
-    {"query_id": 749480, "text": "what is function of magnesium in human body"},
-    {"query_id": 54528, "text": "what is the capital of France"},
+    {"query_id": 749480, "text": "example query 1"},
+    {"query_id": 54528, "text": "example query 2"},
 ]
 
 documents = Dataset.from_list(mapping=documents)
