@@ -351,6 +351,42 @@ Sample Output:
 ]
 ```
 
+## Rerank
+
+If you only want to use the ColBERT model to perform reranking on top of your first-stage retrieval pipeline without building an index, you can simply use rank function and pass the queries and documents to rerank:
+
+```python
+from pylate import rank
+
+queries = [
+    "query A",
+    "query B",
+]
+documents = [
+    ["document A", "document B"],
+    ["document 1", "document C", "document B"],
+]
+documents_ids = [
+    [1, 2],
+    [1, 3, 2],
+]
+
+queries_embeddings = model.encode(
+    queries,
+    is_query=True,
+)
+documents_embeddings = model.encode(
+    documents,
+    is_query=False,
+)
+
+reranked_documents = rank.rerank(
+    documents_ids=documents_ids,
+    queries_embeddings=queries_embeddings,
+    documents_embeddings=documents_embeddings,
+)
+```
+
 ## Contributing
 
 We welcome contributions! To get started:
