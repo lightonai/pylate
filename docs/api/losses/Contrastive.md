@@ -10,7 +10,7 @@ Contrastive loss. Expects as input two texts and a label of either 0 or 1. If th
 
     ColBERT model.
 
-- **score_metric** – defaults to `<function colbert_scores at 0x1526b8fe0>`
+- **score_metric** – defaults to `<function colbert_scores at 0x17af08fe0>`
 
     ColBERT scoring function. Defaults to colbert_scores.
 
