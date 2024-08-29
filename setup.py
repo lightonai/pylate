@@ -37,7 +37,7 @@ setuptools.setup(
     author="LightON",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/lightonai/giga-cherche",
+    url="https://github.com/lightonai/pylate",
     keywords=[],
     packages=setuptools.find_packages(),
     install_requires=base_packages,
