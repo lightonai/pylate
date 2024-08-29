@@ -136,7 +136,7 @@ Example entry:
 }
 ```
 ### Loading a pre-built knowledge distillation dataset
-You can directly download an existing knowledge distillation dataset from Hugging Face's hub, such as the [MS MARCO dataset with BGE M3 scores](https://huggingface.co/datasets/lightonai/ms-marco-en-bge).
+You can directly download an existing knowledge distillation dataset from Hugging Face's hub, such as the English [MS MARCO dataset with BGE M3 scores](https://huggingface.co/datasets/lightonai/ms-marco-en-bge) or the [French version](https://huggingface.co/datasets/lightonai/ms-marco-fr-bge).
 Simply load the different files by giving the respective names to the ```load_dataset``` function:
 
 ```python

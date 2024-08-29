@@ -414,3 +414,14 @@ make ruff
 ```bash
 make livedoc
 ```
+
+## Citation
+If you use PyLate for research, you can refer to the library with this BibTeX:
+```bibtex
+@misc{PyLate,
+  title={PyLate: Flexible Training and Retrieval for Late Interaction Models},
+  author={Chaffin, Antoine and Sourty, Raphaël},
+  url={https://github.com/lightonai/pylate},
+  year={2024}
+}
+```
