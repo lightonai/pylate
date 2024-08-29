@@ -1,9 +1,8 @@
-PyLate is designed to be compatible with Hugging Face datasets, facilitating seamless integration for tasks such as knowledge distillation and contrastive model training. Below are examples illustrating how to load and prepare datasets for these specific training objectives.
+PyLate is designed to be compatible with Hugging Face datasets, enabling seamless integration for tasks like knowledge distillation and contrastive model training. Below are examples of how to load and prepare datasets for these specific training objectives.
 
+## Contrastive Dataset
 
-## Constrastive dataset
-
-Contrastive training involves datasets that contain a query, a positive document (relevant to the query), and a negative document (irrelevant to the query). This the standard triplet format used by Sentence Transformers and so PyLate contrastive training is **compatible with every existing triplet datasets.**
+Contrastive training requires datasets that include a query, a positive document (relevant to the query), and a negative document (irrelevant to the query). This is the standard triplet format used by Sentence Transformers, making PyLate's contrastive training **compatible with all existing triplet datasets**.
 
 ### Loading a pre-built contrastive dataset
 
@@ -79,13 +78,18 @@ train_dataset, test_dataset = dataset.train_test_split(test_size=0.001)
 
 ## Knowledge distillation dataset
 
-For fine-tuning a model using knowledge distillation loss, three distinct dataset files are required: train, queries, and documents. Each file contains unique and complementary information necessary for the distillation process:
+For fine-tuning a model using knowledge distillation loss, three distinct dataset files are required: train, queries, and documents. 
+
+???+ info
+    Each file contains unique and complementary information necessary for the distillation process:
 
 
-- `train`: Contains three columns: `['query_id', 'document_ids', 'scores']`
-    - `query_id` refers to the query identifier.
-    - `document_ids` is a list of document IDs relevant to the query.
-    - `scores` corresponds to the relevance scores between the query and each document.
+    - `train`: Contains three columns: `['query_id', 'document_ids', 'scores']`
+        - `query_id` refers to the query identifier.
+        - `document_ids` is a list of document IDs relevant to the query.
+        - `scores` corresponds to the relevance scores between the query and each document.
+
+### Train
 
 Example entry:
 
@@ -115,7 +119,10 @@ Example entry:
 }
 ```
 
-Note: Ensure that the length of `document_ids` matches the length of `scores`.
+???+ warning
+    Ensure that the length of `document_ids` matches the length of `scores`.
+
+### Queries
 
 - `queries`: Contains two columns: `['query_id', 'text']`
 
@@ -124,6 +131,8 @@ Example entry:
 ```python
 {"query_id": 749480, "text": "example query 1"}
 ```
+
+### Documents
 
 - `documents`: contains two columns: `['document_ids', 'text']`
 
@@ -136,6 +145,7 @@ Example entry:
 }
 ```
 ### Loading a pre-built knowledge distillation dataset
+
 You can directly download an existing knowledge distillation dataset from Hugging Face's hub, such as the English [MS MARCO dataset with BGE M3 scores](https://huggingface.co/datasets/lightonai/ms-marco-en-bge) or the [French version](https://huggingface.co/datasets/lightonai/ms-marco-fr-bge).
 Simply load the different files by giving the respective names to the ```load_dataset``` function:
 

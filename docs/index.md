@@ -12,7 +12,9 @@
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square" alt="license"></a>
 </div>
 
-PyLate is a library built on top of Sentence Transformers, designed to simplify and optimize fine-tuning, inference, and retrieval with state-of-the-art ColBERT models. It enables easy fine-tuning on both single and multiple GPUs, providing flexibility for various hardware setups. PyLate also streamlines document retrieval and allows you to load a wide range of models, enabling you to construct ColBERT models from most pre-trained language models. 
+<p align="justify">
+PyLate is a library built on top of Sentence Transformers, designed to simplify and optimize fine-tuning, inference, and retrieval with state-of-the-art ColBERT models. It enables easy fine-tuning on both single and multiple GPUs, providing flexibility for various hardware setups. PyLate also streamlines document retrieval and allows you to load a wide range of models, enabling you to construct ColBERT models from most pre-trained language models.
+</p>
 
 ## Installation
 
@@ -416,7 +418,9 @@ make livedoc
 ```
 
 ## Citation
-If you use PyLate for research, you can refer to the library with this BibTeX:
+
+You can refer to the library with this BibTeX:
+
 ```bibtex
 @misc{PyLate,
   title={PyLate: Flexible Training and Retrieval for Late Interaction Models},

@@ -40,6 +40,7 @@ index.add_documents(
 ```
 
 Note that you do not have to recreate the index and encode the documents every time. Once you have created an index and added the documents, you can re-use the index later by loading it:
+
 ```python
 # To load an index, simply instantiate it with the correct folder/name and without overriding it
 index = indexes.Voyager(
@@ -47,20 +48,28 @@ index = indexes.Voyager(
     index_name="index",
 )
 ```
-#### Pooling document embeddings
-[In a recent study](https://www.answer.ai/posts/colbert-pooling.html), we showed that similar tokens in document embeddings can be pooled together to reduce the overall cost of ColBERT indexing without without losing much performance. You can use this feature by setting the `pool_factor` parameter when encoding the documents to only keep 1 / `pool_factor` tokens. The results show that using a `pool_factor` of 2 cut the memory requirement of the index in half with virtually 0 performance drop. Higher compression can be achieved at the cost of some performance, please refer to the blogpost for all the details and results.
 
-This simple modification to the encoding call thus save a lot of space with a very contained impact on the performances:
+???+ tip
 
-```python
-documents_embeddings = model.encode(
-    documents,
-    batch_size=32,
-    is_query=False,  # Ensure that it is set to False to indicate that these are documents, not queries
-    pool_factor=2,
-    show_progress_bar=True,
-)
-```
+    #### Pooling document embeddings
+
+    [In this blog post](https://www.answer.ai/posts/colbert-pooling.html), we showed that similar tokens in document embeddings can be pooled together to reduce the overall cost of ColBERT indexing without without losing much performance. 
+    
+    You can use this feature by setting the `pool_factor` parameter when encoding the documents to only keep 1 / `pool_factor` tokens. 
+    
+    The results show that using a `pool_factor` of 2 cut the memory requirement of the index in half with virtually 0 performance drop. Higher compression can be achieved at the cost of some performance, please refer to the blog post for all the details and results.
+
+    This simple modification to the encoding call thus save a lot of space with a very contained impact on the performances:
+
+    ```python
+    documents_embeddings = model.encode(
+        documents,
+        batch_size=32,
+        is_query=False,  # Ensure that it is set to False to indicate that these are documents, not queries
+        pool_factor=2,
+        show_progress_bar=True,
+    )
+    ```
 
 ### Retrieving top-k documents for queries
 
@@ -106,33 +115,35 @@ Example output
 ```
 
 ### Parameters affecting the retrieval performance
-The retrieval is not an exact search, which mean that certain parameters can affect the quality of the approximate search. First, because we leverage a HNSW index, the usual parameters can be passed when creating the index:
 
-- `M`, the maximum number of connections of a node in the graph. Higher values will improve recall and reduce retrieval time but will increase memory usage and the creation time of the index.
-- `ef_construction` the maximum number of neighbors for a node during the creation of the index. Higher values increase the quality of the index but increase the creation time of the index.
-- `ef_search` the maximum number of neighbors for a node during the search. Higher values increase the quality of the search but also the search time.
+The retrieval is not an exact search, which mean that certain parameters can affect the quality of the approximate search:
 
-Please refer to dedicated [HNSW documentation for more details](https://www.pinecone.io/learn/series/faiss/hnsw/).
+- `M`: the maximum number of connections of a node in the graph. Higher values will improve recall and reduce retrieval time but will increase memory usage and the creation time of the index.
+- `ef_construction`: the maximum number of neighbors for a node during the creation of the index. Higher values increase the quality of the index but increase the creation time of the index.
+- `ef_search`: the maximum number of neighbors for a node during the search. Higher values increase the quality of the search but also the search time.
 
-Another parameter not related to the index strongly influence the quality of the search, `k_token`. It corresponds to the number of neighbors retrieved for each of the query token and so the total number of candidates scored. Higher values will consider more candidates and so get better results but will slow the search.
+Refer to [HNSW documentation for more details](https://www.pinecone.io/learn/series/faiss/hnsw/). 
 
-```python
-index = indexes.Voyager(
-    index_folder="pylate-index",
-    index_name="index",
-    override=True,  # This overwrites the existing index if any
-    M=M,
-    ef_construction=ef_construction,
-    ef_search=ef_search,
-)
+???+ info
+    Another parameter that significantly influences search quality is **k_token**. This parameter determines the **number of neighbors retrieved for each query token**. Higher values of k_token will consider more candidates, leading to better results but at the cost of slower search performance.
 
-scores = retriever.retrieve(
-    queries_embeddings=queries_embeddings, 
-    k=10,  # Retrieve the top 10 matches for each query
-    k_token=200 # retrieve 200 candidates per query token
-)
+    ```python
+    index = indexes.Voyager(
+        index_folder="pylate-index",
+        index_name="index",
+        override=True,  # This overwrites the existing index if any
+        M=M,
+        ef_construction=ef_construction,
+        ef_search=ef_search,
+    )
 
-```
+    scores = retriever.retrieve(
+        queries_embeddings=queries_embeddings, 
+        k=10,  # Retrieve the top 10 matches for each query
+        k_token=200 # retrieve 200 candidates per query token
+    )
+    ```
+
 ### Remove documents from the index
 
 To remove documents from the index, use the `remove_documents` method. Provide the document IDs you want to remove from the index:
@@ -146,25 +157,32 @@ index.remove_documents(["1", "2"])
 If you only want to use the ColBERT model to perform reranking on top of your first-stage retrieval pipeline without building an index, you can simply use rank function and pass the queries and documents to rerank:
 
 ```python
-from pylate import rank
+from pylate import rank, models
 
 queries = [
     "query A",
     "query B",
 ]
+
 documents = [
     ["document A", "document B"],
     ["document 1", "document C", "document B"],
 ]
+
 documents_ids = [
     [1, 2],
     [1, 3, 2],
 ]
 
+model = models.ColBERT(
+    model_name_or_path="lightonai/colbertv2.0",
+)
+
 queries_embeddings = model.encode(
     queries,
     is_query=True,
 )
+
 documents_embeddings = model.encode(
     documents,
     is_query=False,
@@ -175,4 +193,20 @@ reranked_documents = rank.rerank(
     queries_embeddings=queries_embeddings,
     documents_embeddings=documents_embeddings,
 )
+```
+
+Sample output:
+
+```
+[
+    [
+        {"id": 1, "score": 13.866096496582031}, 
+        {"id": 2, "score": 7.363473415374756}
+    ],
+    [
+        {"id": 2, "score": 16.025644302368164},
+        {"id": 3, "score": 7.144075870513916},
+        {"id": 1, "score": 4.203659534454346},
+    ],
+]
 ```
