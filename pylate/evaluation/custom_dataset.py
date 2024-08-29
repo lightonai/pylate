@@ -1,7 +1,6 @@
-from beir.datasets.data_loader import GenericDataLoader
-
-
 def load_custom_dataset(path: str, split: str = "test") -> tuple[list, list, dict]:
+    from beir.datasets.data_loader import GenericDataLoader
+
     """Load a custom dataset.
 
     Parameters
