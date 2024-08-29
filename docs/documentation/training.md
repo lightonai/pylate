@@ -83,6 +83,10 @@ trainer.train()
 
 ```
 
+Please note that for multi-GPU training, running ``python training.py`` **will use Data Parallel (DP) by default**. We strongly suggest using using Distributed Data Parallelism (DDP) using accelerate or torchrun: ``accelerate launch --num_processes num_gpu training.py``.
+
+Refer to this [documentation](https://sbert.net/docs/sentence_transformer/training/distributed.html) for more information.
+
 ## Knowledge Distillation Training
 
 The training of late-interaction models have shown to benefit from knowledge distillation compared to a more simple contrastive learning.
@@ -162,6 +166,9 @@ trainer = SentenceTransformerTrainer(
 trainer.train()
 
 ```
+
+Once again, use [DDP](https://sbert.net/docs/sentence_transformer/training/distributed.html) if you want the best performance when training using multiple GPUs.
+
 ## ColBERT parameters
 All the parameters of the ColBERT modeling can be found [here](https://lightonai.github.io/pylate/api/models/ColBERT/#parameters). Important parameters to consider are:
 
