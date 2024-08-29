@@ -1,18 +1,22 @@
 # ColBERT Training
-PyLate training is based on Sentence Transformer (and thus transformers) trainer, enabling a lot of functionnality such multi-GPU and FP16/BF16 training as well as logging to Weights & Biases out-of-the-box. This allows efficient, scalable and monitorable training. There are two primary ways to train ColBERT models using PyLate:
+PyLate training is based on Sentence Transformer (and thus transformers) trainer, enabling a lot of functionality such multi-GPU and FP16/BF16 training as well as logging to Weights & Biases out-of-the-box. This allows efficient, and scalable training. 
 
-1. **Contrastive Loss (Simplest Method)**: The easiest way to train your model is by using contrastive loss, which only requires a dataset containing triplets—each consisting of a query, a positive document (relevant to the query), and a negative document (irrelevant to the query). This method trains the model to maximize the similarity between the query and the positive document, while minimizing it with the negative document.
+???+ info
+    There are two primary ways to train ColBERT models using PyLate:
 
-2. **Knowledge Distillation**: To train a ColBERT model using knowledge distillation, you need to provide a dataset with three components: queries, documents, and the relevance scores between them. This method compresses the knowledge of a larger model / more accurate model (cross-encoder) into a smaller one, using the relevance scores to guide the training process.
+    1. **Contrastive Loss**: Simplest method, it only requires a dataset containing triplets, each consisting of a query, a positive document (relevant to the query), and a negative document (irrelevant to the query). This method trains the model to maximize the similarity between the query and the positive document, while minimizing it with the negative document.
+
+    2. **Knowledge Distillation**: To train a ColBERT model using knowledge distillation, you need to provide a dataset with three components: queries, documents, and the relevance scores between them. This method compresses the knowledge of a larger model / more accurate model (cross-encoder) into a smaller one, using the relevance scores to guide the training process.
 
 ## Contrastive Training
-The original training of ColBERT was done using contrastive learning, that is, train the model to differentiate between relevant (positive) and irrelevant (negative) documents for a given query by maximizing the similarity between a query and a positive document while minimizing the similarity with irrelevant documents.
 
-The contrastive learning in PyLate is done using triplet dataset, that is, a query is associated to one positive and one negative. It is thus **compatible with any triplet datasets from the sentence-transformers library**.
+ColBERT was originally trained using contrastive learning. This approach involves teaching the model to distinguish between relevant (positive) and irrelevant (negative) documents for a given query. The model is trained to maximize the similarity between a query and its corresponding positive document while minimizing the similarity with irrelevant documents.
 
-During training, the model is tasked to maximize the similarity of the query with its positive while minimizing the similarity with all the negatives as well as the positives of the other queries in the batch (thus also leveraging in-batch negatives).
+PyLate uses contrastive learning with a triplet dataset, where each query is paired with one positive and one negative example. **This makes it fully compatible with any triplet datasets from the sentence-transformers library**.
 
-Here is a example of code to run contrastive training using PyLate:
+During training, the model is optimized to maximize the similarity between the query and its positive example while minimizing the similarity with all negative examples and the positives from other queries in the batch. This approach leverages in-batch negatives for more effective learning.
+
+Here is an example of code to run contrastive training with PyLate:
 
 ```python
 import torch
@@ -83,16 +87,16 @@ trainer.train()
 
 ```
 
-Please note that for multi-GPU training, running ``python training.py`` **will use Data Parallel (DP) by default**. We strongly suggest using using Distributed Data Parallelism (DDP) using accelerate or torchrun: ``accelerate launch --num_processes num_gpu training.py``.
+???+ tip
+    Please note that for multi-GPU training, running ``python training.py`` **will use Data Parallel (DP) by default**. We strongly suggest using using Distributed Data Parallelism (DDP) using accelerate or torchrun: ``accelerate launch --num_processes num_gpu training.py``.
 
-Refer to this [documentation](https://sbert.net/docs/sentence_transformer/training/distributed.html) for more information.
+    Refer to this [documentation](https://sbert.net/docs/sentence_transformer/training/distributed.html) for more information.
 
 ## Knowledge Distillation Training
 
-The training of late-interaction models have shown to benefit from knowledge distillation compared to a more simple contrastive learning.
-Knowledge distillation training aim at making ColBERT models learn to reproduce the outputs of a more capable (e.g, a cross-encoder) teacher model. This is done by using a dataset containing queries, documents and the scores attributed by the teacher to the different query/document pairs.
+Training late-interaction models, such as ColBERT, has been shown to benefit from knowledge distillation compared to simpler contrastive learning approaches. Knowledge distillation training focuses on teaching ColBERT models to replicate the outputs of a more capable teacher model (e.g., a cross-encoder). This is achieved using a dataset that includes queries, documents, and the scores assigned by the teacher model to each query/document pair.
 
-Here is a example of code to run knowledge distillation training using PyLate:
+Below is an example of code to run knowledge distillation training using PyLate:
 
 ```python
 import torch
@@ -167,23 +171,26 @@ trainer.train()
 
 ```
 
-Once again, use [DDP](https://sbert.net/docs/sentence_transformer/training/distributed.html) if you want the best performance when training using multiple GPUs.
+???+ tip
+    Please note that for multi-GPU training, running ``python training.py`` **will use Data Parallel (DP) by default**. We strongly suggest using using Distributed Data Parallelism (DDP) using accelerate or torchrun: ``accelerate launch --num_processes num_gpu training.py``.
+
+    Refer to this [documentation](https://sbert.net/docs/sentence_transformer/training/distributed.html) for more information.
 
 ## ColBERT parameters
 All the parameters of the ColBERT modeling can be found [here](https://lightonai.github.io/pylate/api/models/ColBERT/#parameters). Important parameters to consider are:
 
-- `model_name_or_path` the name of the base encoder model or PyLate model to init from.
-- `embedding_size` the output size of the projection layer. Large values give more capacity to the model but are heavier to store.
-- `query_prefix` and `document_prefix` represents the strings that will be prepended to query and document respectively.
-- `query_length` and `document_length` set the maximum size of queries and documents. Queries will be padded/truncated to the maximum length while documents are only truncated.
-- `attend_to_expansion_tokens` define whether the model will attend to the query expansion tokens (padding of queries) or if only the expansion tokens will attend to the other tokens. In the original ColBERT, the tokens **do not attend** to expansion tokens.
-- `skiplist_words` is list of words to skip from the documents scoring (note that these tokens are used for encoding and are only skipped during the scoring), the default is the list of string.punctuation as in the original ColBERT.
+???+ info
+    - `model_name_or_path` the name of the base encoder model or PyLate model to init from.
+    - `embedding_size` the output size of the projection layer. Large values give more capacity to the model but are heavier to store.
+    - `query_prefix` and `document_prefix` represents the strings that will be prepended to query and document respectively.
+    - `query_length` and `document_length` set the maximum size of queries and documents. Queries will be padded/truncated to the maximum length while documents are only truncated.
+    - `attend_to_expansion_tokens` define whether the model will attend to the query expansion tokens (padding of queries) or if only the expansion tokens will attend to the other tokens. In the original ColBERT, the tokens **do not attend** to expansion tokens.
+    - `skiplist_words` is list of words to skip from the documents scoring (note that these tokens are used for encoding and are only skipped during the scoring), the default is the list of string.punctuation as in the original ColBERT.
 
 
 ## Sentence Transformers Training Arguments
 
-PyLate is built on top of SentenceTransformer, you can thus use the same arguments you already are familiar with to control the training. 
-The table below lists the arguments for the `SentenceTransformerTrainingArguments` class. Feel free to refer to the [SentenceTransformers](https://sbert.net/docs/sentence_transformer/training_overview.html#) library documentation for more information
+PyLate is built on top of SentenceTransformer, so you can use the same arguments you are already familiar with to control the training process. The table below lists the arguments available in the SentenceTransformerTrainingArguments class. For more details, please refer to the [SentenceTransformers documentation](https://sbert.net/docs/sentence_transformer/training_overview.html#).
 
 === "Table"
 | Parameter                         | Name                                 | Definition                                                                                                                                                                                                                                                                     | Training Performance |  Observing Performance |
