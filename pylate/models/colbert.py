@@ -219,9 +219,6 @@ class ColBERT(SentenceTransformer):
         config_kwargs: dict | None = None,
         model_card_data: Optional[SentenceTransformerModelCardData] = None,
     ) -> None:
-        model_kwargs = {} if model_kwargs is None else model_kwargs
-        model_kwargs["add_pooling_layer"] = False
-
         self.query_prefix = query_prefix
         self.document_prefix = document_prefix
         self.query_length = query_length
@@ -250,9 +247,21 @@ class ColBERT(SentenceTransformer):
         )
 
         hidden_size = self[0].get_word_embedding_dimension()
-
+        # If the model is a stanford-nlp ColBERT, load the weights of the dense layer
+        if self[0].auto_model.config.architectures[0] == "HF_ColBERT":
+            self.append(
+                Dense.from_stanford_weights(
+                    model_name_or_path,
+                    cache_folder,
+                    revision,
+                    local_files_only,
+                    token,
+                    use_auth_token,
+                )
+            )
+            logger.warning("Loaded the ColBERT model from Stanford NLP.")
         # Add a linear projection layer to the model in order to project the embeddings to the desired size.
-        if len(self) < 2:
+        elif len(self) < 2:
             # Add a linear projection layer to the model in order to project the embeddings to the desired size
             embedding_size = embedding_size or 128
 
@@ -281,6 +290,9 @@ class ColBERT(SentenceTransformer):
             self[1] = Dense.from_sentence_transformers(dense=self[1])
         else:
             logger.warning("Pylate model loaded successfully.")
+
+        if model_kwargs is not None and "torch_dtype" in model_kwargs:
+            self[1].to(model_kwargs["torch_dtype"])
 
         self.to(device)
         self.is_hpu_graph_enabled = False
