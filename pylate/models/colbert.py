@@ -245,32 +245,35 @@ class ColBERT(SentenceTransformer):
             config_kwargs=config_kwargs,
             model_card_data=model_card_data,
         )
-
         hidden_size = self[0].get_word_embedding_dimension()
-        # If the model is a stanford-nlp ColBERT, load the weights of the dense layer
-        if self[0].auto_model.config.architectures[0] == "HF_ColBERT":
-            self.append(
-                Dense.from_stanford_weights(
-                    model_name_or_path,
-                    cache_folder,
-                    revision,
-                    local_files_only,
-                    token,
-                    use_auth_token,
-                )
-            )
-            logger.warning("Loaded the ColBERT model from Stanford NLP.")
-        # Add a linear projection layer to the model in order to project the embeddings to the desired size.
-        elif len(self) < 2:
-            # Add a linear projection layer to the model in order to project the embeddings to the desired size
-            embedding_size = embedding_size or 128
 
-            logger.warning(
-                f"The checkpoint does not contain a linear projection layer. Adding one with output dimensions ({hidden_size}, {embedding_size})."
-            )
-            self.append(
-                Dense(in_features=hidden_size, out_features=embedding_size, bias=bias)
-            )
+        # Add a linear projection layer to the model in order to project the embeddings to the desired size.
+        if len(self) < 2:
+            # If the model is a stanford-nlp ColBERT, load the weights of the dense layer
+            if self[0].auto_model.config.architectures[0] == "HF_ColBERT":
+                self.append(
+                    Dense.from_stanford_weights(
+                        model_name_or_path,
+                        cache_folder,
+                        revision,
+                        local_files_only,
+                        token,
+                        use_auth_token,
+                    )
+                )
+                logger.warning("Loaded the ColBERT model from Stanford NLP.")
+            else:
+                # Add a linear projection layer to the model in order to project the embeddings to the desired size
+                embedding_size = embedding_size or 128
+
+                logger.warning(
+                    f"The checkpoint does not contain a linear projection layer. Adding one with output dimensions ({hidden_size}, {embedding_size})."
+                )
+                self.append(
+                    Dense(
+                        in_features=hidden_size, out_features=embedding_size, bias=bias
+                    )
+                )
 
         elif (
             embedding_size is not None
