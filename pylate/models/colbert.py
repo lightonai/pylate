@@ -272,6 +272,7 @@ class ColBERT(SentenceTransformer):
                 logger.warning(
                     f"The checkpoint does not contain a linear projection layer. Adding one with output dimensions ({hidden_size}, {embedding_size})."
                 )
+                logger.warning("Created a PyLate model from base encoder.")
                 self.append(
                     Dense(
                         in_features=hidden_size, out_features=embedding_size, bias=bias
@@ -1079,7 +1080,7 @@ class ColBERT(SentenceTransformer):
 
         """
         logger.warning(
-            f"No sentence-transformers model found with name {model_name_or_path}. Creating a ColBERT model from base encoder."
+            f"No sentence-transformers model found with name {model_name_or_path}."
         )
 
         shared_kwargs = {
