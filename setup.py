@@ -35,6 +35,7 @@ setuptools.setup(
     version=f"{__version__}",
     license="",
     author="LightON",
+    description="A library for training and retrieval with ColBERT",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/lightonai/pylate",
