@@ -294,8 +294,12 @@ class ColBERT(SentenceTransformer):
         else:
             logger.warning("Pylate model loaded successfully.")
 
-        if model_kwargs is not None and "torch_dtype" in model_kwargs:
-            self[1].to(model_kwargs["torch_dtype"])
+        # Ensure all tensors in the model are of the same dtype as the first tensor
+        try:
+            dtype = next(self.parameters()).dtype
+            self.to(dtype)
+        except StopIteration:
+            pass
 
         self.to(device)
         self.is_hpu_graph_enabled = False
