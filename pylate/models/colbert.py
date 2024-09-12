@@ -261,6 +261,9 @@ class ColBERT(SentenceTransformer):
                         use_auth_token,
                     )
                 )
+                # Setting the prefixes from stanford-nlp models
+                self.query_prefix = "[unused0]"
+                self.document_prefix = "[unused1]"
                 logger.warning("Loaded the ColBERT model from Stanford NLP.")
             else:
                 # Add a linear projection layer to the model in order to project the embeddings to the desired size
