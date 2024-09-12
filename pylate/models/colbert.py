@@ -308,8 +308,15 @@ class ColBERT(SentenceTransformer):
         self.to(device)
         self.is_hpu_graph_enabled = False
 
-        self.tokenizer.add_tokens([self.query_prefix, self.document_prefix])
-        self._first_module().auto_model.resize_token_embeddings(len(self.tokenizer))
+        # Try adding the prefixes to the tokenizer. We call resize_token_embeddings twice to ensure the tokens are added only if resize_token_embeddings works. There should be a better way to do this.
+        try:
+            self._first_module().auto_model.resize_token_embeddings(len(self.tokenizer))
+            self.tokenizer.add_tokens([self.query_prefix, self.document_prefix])
+            self._first_module().auto_model.resize_token_embeddings(len(self.tokenizer))
+        except NotImplementedError:
+            logger.warning(
+                "The tokenizer does not support resizing the token embeddings, the prefixes token have not been added to vocabulary."
+            )
 
         self.document_prefix_id = self.tokenizer.convert_tokens_to_ids(
             self.document_prefix
