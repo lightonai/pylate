@@ -261,6 +261,9 @@ class ColBERT(SentenceTransformer):
                         use_auth_token,
                     )
                 )
+                # Setting the prefixes from stanford-nlp models
+                self.query_prefix = "[unused0]"
+                self.document_prefix = "[unused1]"
                 logger.warning("Loaded the ColBERT model from Stanford NLP.")
             else:
                 # Add a linear projection layer to the model in order to project the embeddings to the desired size
@@ -269,6 +272,7 @@ class ColBERT(SentenceTransformer):
                 logger.warning(
                     f"The checkpoint does not contain a linear projection layer. Adding one with output dimensions ({hidden_size}, {embedding_size})."
                 )
+                logger.warning("Created a PyLate model from base encoder.")
                 self.append(
                     Dense(
                         in_features=hidden_size, out_features=embedding_size, bias=bias
@@ -294,14 +298,25 @@ class ColBERT(SentenceTransformer):
         else:
             logger.warning("Pylate model loaded successfully.")
 
-        if model_kwargs is not None and "torch_dtype" in model_kwargs:
-            self[1].to(model_kwargs["torch_dtype"])
+        # Ensure all tensors in the model are of the same dtype as the first tensor
+        try:
+            dtype = next(self.parameters()).dtype
+            self.to(dtype)
+        except StopIteration:
+            pass
 
         self.to(device)
         self.is_hpu_graph_enabled = False
 
-        self.tokenizer.add_tokens([self.query_prefix, self.document_prefix])
-        self._first_module().auto_model.resize_token_embeddings(len(self.tokenizer))
+        # Try adding the prefixes to the tokenizer. We call resize_token_embeddings twice to ensure the tokens are added only if resize_token_embeddings works. There should be a better way to do this.
+        try:
+            self._first_module().auto_model.resize_token_embeddings(len(self.tokenizer))
+            self.tokenizer.add_tokens([self.query_prefix, self.document_prefix])
+            self._first_module().auto_model.resize_token_embeddings(len(self.tokenizer))
+        except NotImplementedError:
+            logger.warning(
+                "The tokenizer does not support resizing the token embeddings, the prefixes token have not been added to vocabulary."
+            )
 
         self.document_prefix_id = self.tokenizer.convert_tokens_to_ids(
             self.document_prefix
@@ -1072,7 +1087,7 @@ class ColBERT(SentenceTransformer):
 
         """
         logger.warning(
-            f"No sentence-transformers model found with name {model_name_or_path}. Creating a ColBERT model from base encoder."
+            f"No sentence-transformers model found with name {model_name_or_path}."
         )
 
         shared_kwargs = {
