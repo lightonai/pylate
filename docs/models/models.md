@@ -1,6 +1,30 @@
 # Available models
 
-Here is a list of the pre-trained ColBERT models available in PyLate along with their results on BEIR:
+!!! tip 
+    Following an update, all the models trained using the stanford-nlp ColBERT library or RAGatouille should be compatible with PyLate natively.
+    You can simply load the model in PyLate:
+
+    ```python
+    from pylate import models
+
+    model = models.ColBERT(
+        model_name_or_path="colbert-ir/colbertv2.0",
+    )
+    ```
+
+    Note that some models can use non-default parameters (e.g, prefixes) and so you might have to specify them, e.g for the [jinaai/jina-colbert-v2](https://huggingface.co/jinaai/jina-colbert-v2) model, you need to specify the prefixes and allow the query tokens to attend to expansion tokens:
+    ```python
+    model = models.ColBERT(
+        model_name_or_path="jinaai/jina-colbert-v2",
+        query_prefix="[QueryMarker]",
+        document_prefix="[DocumentMarker]",
+        attend_to_expansion_tokens=True,
+        trust_remote_code=True,
+    )
+    ```
+
+
+Here is a list of some of the pre-trained ColBERT models available in PyLate along with their results on BEIR:
 
 === "Table"
 
@@ -8,6 +32,7 @@ Here is a list of the pre-trained ColBERT models available in PyLate along with 
 |---------------------------------------|----------|----------|---------|---------|----------|-----------|----------|------------|---------|--------------|-------|----------------|------|---------|
 | [lightonai/colbertv2.0](https://huggingface.co/lightonai/colbertv2.0)                 | 50.02    | 33.8     | 69.3    | 15.4    | 35.6     | 73.3      | 66.7     | 26.3       | 46.3    | 17.6         | 78.5  | 85.2           | 56.2 | 44.6    |
 | [answerdotai/answerai-colbert-small-v1](https://huggingface.co/answerdotai/answerai-colbert-small-v1) | 53.79    | 37.3     | 74.77   | 18.42   | 41.15    | 84.59     | 76.11    | 25.69      | 50.09   | 33.07        | 90.96 | 87.72          | 59.1 | 45.58   |
+| [jinaai/jina-colbert-v2](https://huggingface.co/jinaai/jina-colbert-v2) | 53.1    | 34.6     | 67.8   | 18.6   | 40.8    | 83.4     | 76.6    | 27.4      | 36.6   | 23.9        | 80.05 | 88.7          | 64.0 | 47.1   |
 
 
 ???+ note
