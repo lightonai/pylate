@@ -206,8 +206,8 @@ class ColBERT(SentenceTransformer):
         truncate_dim: int | None = None,
         embedding_size: int | None = None,
         bias: bool = False,
-        query_prefix: str | None = "[Q] ",
-        document_prefix: str | None = "[D] ",
+        query_prefix: str | None = None,
+        document_prefix: str | None = None,
         add_special_tokens: bool = True,
         truncation: bool = True,
         query_length: int | None = None,
@@ -262,8 +262,10 @@ class ColBERT(SentenceTransformer):
                     )
                 )
                 # Setting the prefixes from stanford-nlp models
-                self.query_prefix = "[unused0]"
-                self.document_prefix = "[unused1]"
+                if self.query_prefix is None:
+                    self.query_prefix = "[unused0]"
+                if self.document_prefix is None:
+                    self.document_prefix = "[unused1]"
                 logger.warning("Loaded the ColBERT model from Stanford NLP.")
             else:
                 # Add a linear projection layer to the model in order to project the embeddings to the desired size
@@ -307,6 +309,11 @@ class ColBERT(SentenceTransformer):
 
         self.to(device)
         self.is_hpu_graph_enabled = False
+
+        if self.query_prefix is None:
+            self.query_prefix = "[Q] "
+        if self.document_prefix is None:
+            self.document_prefix = "[D] "
 
         # Try adding the prefixes to the tokenizer. We call resize_token_embeddings twice to ensure the tokens are added only if resize_token_embeddings works. There should be a better way to do this.
         try:
