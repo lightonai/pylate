@@ -41,10 +41,10 @@ def parse_args():
         "--port", type=int, default=8002, help="Port to run the server on"
     )
     parser.add_argument(
-        "--model_name",
+        "--model",
         type=str,
         default="lightonai/colbertv2.0",
-        help="Model to serve",
+        help="Model to serve, can be an HF model or a path to a model",
     )
     return parser.parse_args()
 
@@ -52,7 +52,7 @@ def parse_args():
 args = parse_args()
 
 # We need to load the model here so it is shared for every request
-model = models.ColBERT(args.model_name)
+model = models.ColBERT(args.model)
 # We cannot create the function on the fly as the batching require to use the same function (memory address)
 model.encode_query = batched.aio.dynamically(wrap_encode_function(model, is_query=True))
 model.encode_document = batched.aio.dynamically(
@@ -62,10 +62,10 @@ model.encode_document = batched.aio.dynamically(
 
 @app.post("/v1/embeddings", response_model=EmbeddingResponse)
 async def create_embedding(request: EmbeddingRequest):
-    if request.model != args.model_name:
+    if request.model != args.model:
         raise HTTPException(
             status_code=400,
-            detail=f"Model not supported, the loaded model is {args.model_name}, but the request is for {request.model}",
+            detail=f"Model not supported, the loaded model is {args.model}, but the request is for {request.model}",
         )
     try:
         if request.is_query:
