@@ -86,6 +86,13 @@ model.encode_document = batched.aio.dynamically(
 
 @app.post("/v1/embeddings", response_model=EmbeddingResponse)
 async def create_embedding(request: EmbeddingRequest):
+    """API endpoint that encode the elements of an EmbeddingRequest and returns an EmbeddingResponse.
+
+    Parameters
+    ----------
+    request
+        The EmbeddingRequest containing the elements to encode, the model to use, and whether the input is a query or a document.
+    """
     if request.model != args.model:
         raise HTTPException(
             status_code=400,

@@ -1,5 +1,5 @@
 # Serve the embeddings of a PyLate model
-The ```server.py``` script allows to create a FastAPI server to serve the embeddings of a PyLate model.
+The ```server.py``` script (located in the ```server``` folder) allows to create a FastAPI server to serve the embeddings of a PyLate model.
 To use it, you need to install the api dependencies: ```pip install "pylate[api]"```
 Then, run ```python server.py``` to launch the server.
 
