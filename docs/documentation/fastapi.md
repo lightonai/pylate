@@ -1,4 +1,4 @@
-# Serve the embeddings of a PyLate model
+# Serve the embeddings of a PyLate model using FastAPI
 The ```server.py``` script (located in the ```server``` folder) allows to create a FastAPI server to serve the embeddings of a PyLate model.
 To use it, you need to install the api dependencies: ```pip install "pylate[api]"```
 Then, run ```python server.py``` to launch the server.
@@ -15,7 +15,8 @@ curl -X POST http://localhost:8002/v1/embeddings \
 ```
 If you want to encode queries, simply set ```ìs_query``` to ```True```.
 
-Note that the server leverages [batched](https://github.com/mixedbread-ai/batched), so you can do batch processing by sending multiple separate calls and it will create batches dynamically to fill up the GPU.
+???+ tip
+    Note that the server leverages [batched](https://github.com/mixedbread-ai/batched), so you can do batch processing by sending multiple separate calls and it will create batches dynamically to fill up the GPU.
 
 For now, the server only support one loaded model, which you can define by using the ```--model``` argument when launching the server.
 
