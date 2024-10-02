@@ -12,12 +12,36 @@ app = FastAPI()
 
 
 class EmbeddingRequest(BaseModel):
+    """PyDantic model for the requests sent to the server.
+
+    Parameters
+    ----------
+    input
+        The input(s) to encode.
+    is_query
+        A boolean indicating if the input is a query or a document.
+    model
+        The name model to use for encoding.
+    """
+
     input: List[str] | str
     is_query: bool = True
     model: str = "lightonai/colbertv2.0"
 
 
 class EmbeddingResponse(BaseModel):
+    """PyDantic model for the server answer to a call.
+
+    Parameters
+    ----------
+    data
+        A list of dictionaries containing the embeddings ("embedding" key) and the type of the object ("object" key, is always embedding).
+    model
+        The name of the model used for encoding.
+    usage
+        An approximation of the number of tokens used to generate the embeddings (computed by splitting the input sequences on spaces).
+    """
+
     data: List[dict]
     model: str
     usage: dict
