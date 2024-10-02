@@ -29,6 +29,7 @@ dev = [
 
 eval = ["ranx >= 0.3.16", "beir >= 2.0.0"]
 
+api = ["fastapi >= 0.114.1", "uvicorn >= 0.30.6", "batched >= 0.1.2"]
 
 setuptools.setup(
     name="pylate",
@@ -44,7 +45,8 @@ setuptools.setup(
     install_requires=base_packages,
     extras_require={
         "eval": base_packages + eval,
-        "dev": base_packages + dev + eval,
+        "api": base_packages + api,
+        "dev": base_packages + dev + eval + api,
     },
     classifiers=[
         "Programming Language :: Python :: 3",
