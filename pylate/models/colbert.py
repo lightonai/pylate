@@ -250,7 +250,10 @@ class ColBERT(SentenceTransformer):
         # Add a linear projection layer to the model in order to project the embeddings to the desired size.
         if len(self) < 2:
             # If the model is a stanford-nlp ColBERT, load the weights of the dense layer
-            if self[0].auto_model.config.architectures[0] == "HF_ColBERT":
+            if (
+                self[0].auto_model.config.architectures is not None
+                and self[0].auto_model.config.architectures[0] == "HF_ColBERT"
+            ):
                 self.append(
                     Dense.from_stanford_weights(
                         model_name_or_path,
