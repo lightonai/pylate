@@ -15,7 +15,9 @@ class KDProcessing:
         Queries dataset.
     documents
         Documents dataset.
-    n_scores
+    split
+        Split to use for the queries and documents datasets. Used only if the queries and documents are of type `datasets.DatasetDict`.
+    n_ways
         Number of scores to keep for the distillation.
 
     Examples
@@ -55,10 +57,22 @@ class KDProcessing:
     """
 
     def __init__(
-        self, queries: datasets.Dataset, documents: datasets.Dataset, n_ways: int = 32
+        self,
+        queries: datasets.Dataset | datasets.DatasetDict,
+        documents: datasets.Dataset | datasets.DatasetDict,
+        split: str = "train",
+        n_ways: int = 32,
     ) -> None:
-        self.queries = queries["train"] if "train" in queries else queries
-        self.documents = documents["train"] if "train" in documents else documents
+        if isinstance(queries, datasets.DatasetDict):
+            self.queries = queries[split]
+        else:
+            self.queries = queries
+
+        if isinstance(documents, datasets.DatasetDict):
+            self.documents = documents[split]
+        else:
+            self.documents = documents
+
         self.n_ways = n_ways
 
         self.queries_index = {
