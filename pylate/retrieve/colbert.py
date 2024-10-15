@@ -126,6 +126,10 @@ class ColBERT:
                 queries_embeddings=queries_embeddings_batch,
                 k=k_token,
             )
+            # print(len(retrieved_elements["distances"]))
+            # print(len(retrieved_elements["distances"][0]))
+            # print(len(retrieved_elements["distances"][0][0]))
+            # print(retrieved_elements["distances"].size)
 
             documents_ids = [
                 list(
@@ -147,6 +151,7 @@ class ColBERT:
                     documents_ids=documents_ids,
                     queries_embeddings=queries_embeddings_batch,
                     documents_embeddings=documents_embeddings,
+                    retrieved_scores=retrieved_elements["distances"],
                     device=device,
                 )
             )

@@ -24,6 +24,7 @@ def rerank(
     documents_ids: list[list[int | str]],
     queries_embeddings: list[list[float | int] | np.ndarray | torch.Tensor],
     documents_embeddings: list[list[float | int] | np.ndarray | torch.Tensor],
+    retrieved_scores,
     device: str = None,
 ) -> list[list[dict[str, float]]]:
     """Rerank the documents based on the queries embeddings.
@@ -94,10 +95,14 @@ def rerank(
 
     queries_embeddings = reshape_embeddings(embeddings=queries_embeddings)
     documents_embeddings = reshape_embeddings(embeddings=documents_embeddings)
+    retrieved_scores = torch.Tensor(retrieved_scores)
 
-    for query_embeddings, query_documents_ids, query_documents_embeddings in zip(
-        queries_embeddings, documents_ids, documents_embeddings
-    ):
+    for (
+        query_embeddings,
+        query_documents_ids,
+        query_documents_embeddings,
+        query_retrieved_scores,
+    ) in zip(queries_embeddings, documents_ids, documents_embeddings, retrieved_scores):
         query_embeddings = func_convert_to_tensor(query_embeddings)
 
         query_documents_embeddings = [
@@ -109,6 +114,8 @@ def rerank(
         query_documents_embeddings = torch.nn.utils.rnn.pad_sequence(
             query_documents_embeddings, batch_first=True, padding_value=0
         )
+        # print("quyerydoc")
+        # print(query_documents_embeddings.shape)
 
         if device is not None:
             query_embeddings = query_embeddings.to(device)
@@ -121,6 +128,7 @@ def rerank(
         query_scores = colbert_scores(
             queries_embeddings=query_embeddings.unsqueeze(0),
             documents_embeddings=query_documents_embeddings,
+            retrieved_scores=query_retrieved_scores,
         )[0]
 
         scores, sorted_indices = torch.sort(input=query_scores, descending=True)

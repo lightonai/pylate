@@ -7,6 +7,7 @@ from ..utils.tensor import convert_to_tensor
 def colbert_scores(
     queries_embeddings: list | np.ndarray | torch.Tensor,
     documents_embeddings: list | np.ndarray | torch.Tensor,
+    retrieved_scores: list | np.ndarray | torch.Tensor,
     mask: torch.Tensor = None,
 ) -> torch.Tensor:
     """Computes the ColBERT scores between queries and documents embeddings. The score is computed as the sum of maximum similarities
@@ -58,8 +59,48 @@ def colbert_scores(
     if mask is not None:
         mask = convert_to_tensor(mask)
         scores = scores * mask.unsqueeze(0).unsqueeze(2)
+    max_scores = scores.max(axis=-1).values  # Shape [1, num_candidate_docs, 32]
+    # print(max_scores[0][0])
 
-    return scores.max(axis=-1).values.sum(axis=-1)
+    # Add the max_scores to the retrieved_scores to be considered for max/min if they were not orignally retrieved
+    retrieved_scores = torch.cat(
+        (retrieved_scores, max_scores.squeeze(0).transpose(0, 1)), dim=1
+    )
+    # Step 1: Extract min and max scores from the second tensor
+    min_retrieved_scores, _ = retrieved_scores.min(dim=1)  # Shape: [32]
+    max_retrieved_scores, _ = retrieved_scores.max(dim=1)  # Shape: [32]
+    max_retrieved_scores = max_retrieved_scores.view(1, 1, -1)
+    min_retrieved_scores = min_retrieved_scores.view(1, 1, -1)
+    # print(max_retrieved_scores.shape)
+    # print(max_scores.shape)
+    # Step 2 & 3: Normalize the first tensor
+    normalized_scores = (max_scores - min_retrieved_scores) / (
+        max_retrieved_scores - min_retrieved_scores
+    )  # * max_scores
+    # normalized_scores = torch.nn.functional.softmax(normalized_scores, dim=-1)
+    # normalized_scores = torch.relu(normalized_scores)
+
+    # # Step 1: Extract mean scores from retrieved_scores
+    # mean_retrieved_scores = retrieved_scores.mean(dim=1).view(
+    #     1, 1, -1
+    # )  # Shape: [1, 1, 32]
+
+    # # std_retrieved_scores = retrieved_scores.std(dim=1).view(
+    # #     1, 1, -1
+    # # )  # Shape: [1, 1, 32]
+
+    # # Step 2 & 3: Normalize the scores by subtracting the mean
+    # normalized_scores = max_scores - mean_retrieved_scores
+    # # normalized_scores = (max_scores - mean_retrieved_scores) / (
+    # #     std_retrieved_scores + 1e-8
+    # # )
+    # # normalized_scores = torch.relu(max_scores - mean_retrieved_scores)
+
+    # # print(max_scores - normalized_scores)
+    # print(normalized_scores[0][0])
+    # print(normalized_scores.sum(axis=-1))
+    return normalized_scores.sum(axis=-1)
+    # return scores.max(axis=-1).values.sum(axis=-1)
 
 
 def colbert_scores_pairwise(
