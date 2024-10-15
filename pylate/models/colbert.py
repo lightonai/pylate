@@ -301,7 +301,7 @@ class ColBERT(SentenceTransformer):
             )
             self[1] = Dense.from_sentence_transformers(dense=self[1])
         else:
-            logger.warning("Pylate model loaded successfully.")
+            logger.warning("PyLate model loaded successfully.")
 
         # Ensure all tensors in the model are of the same dtype as the first tensor
         try:
@@ -1150,7 +1150,7 @@ class ColBERT(SentenceTransformer):
         config_kwargs: dict | None = None,
     ) -> list[nn.Module]:
         """Create a Sentence Transformer model from a model name or path."""
-        modules = super()._load_sbert_model(
+        modules, module_kwargs = super()._load_sbert_model(
             model_name_or_path=model_name_or_path,
             token=token,
             cache_folder=cache_folder,
@@ -1196,4 +1196,4 @@ class ColBERT(SentenceTransformer):
             for module in modules.values()
             if isinstance(module, Transformer)
             or isinstance(module, DenseSentenceTransformer)
-        ]
+        ], module_kwargs
