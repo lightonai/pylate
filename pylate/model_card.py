@@ -19,6 +19,7 @@ from huggingface_hub import dataset_info as get_dataset_info
 from huggingface_hub import model_info as get_model_info
 from huggingface_hub.repocard_data import EvalResult, eval_results_to_model_index
 from huggingface_hub.utils import yaml_dump
+from sentence_transformers import SentenceTransformerModelCardData
 from sentence_transformers import __version__ as sentence_transformers_version
 from sentence_transformers.models import StaticEmbedding, Transformer
 from sentence_transformers.training_args import SentenceTransformerTrainingArguments
@@ -45,9 +46,6 @@ if TYPE_CHECKING:
     from sentence_transformers.evaluation.SentenceEvaluator import SentenceEvaluator
     from sentence_transformers.SentenceTransformer import SentenceTransformer
     from sentence_transformers.trainer import SentenceTransformerTrainer
-
-
-from sentence_transformers import SentenceTransformerModelCardData
 
 
 class ModelCardCallback(TrainerCallback):
