@@ -285,19 +285,6 @@ class PylateModelCardData(SentenceTransformerModelCardData):
 
         Install `codecarbon <https://github.com/mlco2/codecarbon>`_ to automatically track carbon emission usage and
         include it in your model cards.
-
-    Example::
-
-        >>> model = SentenceTransformer(
-        ...     "microsoft/mpnet-base",
-        ...     model_card_data=SentenceTransformerModelCardData(
-        ...         model_id="tomaarsen/sbert-mpnet-base-allnli",
-        ...         train_datasets=[{"name": "SNLI", "id": "stanfordnlp/snli"}, {"name": "MultiNLI", "id": "nyu-mll/multi_nli"}],
-        ...         eval_datasets=[{"name": "SNLI", "id": "stanfordnlp/snli"}, {"name": "MultiNLI", "id": "nyu-mll/multi_nli"}],
-        ...         license="apache-2.0",
-        ...         language="en",
-        ...     ),
-        ... )
     """
 
     # Potentially provided by the user
