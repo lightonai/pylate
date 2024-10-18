@@ -4,7 +4,7 @@
 {{ card_data }}
 ---
 
-# {{ model_name if model_name else "Sentence Transformer model" }}
+# {{ model_name if model_name else "PyLate model" }}
 
 This is a [PyLate](https://github.com/lightonai/pylate) model{% if base_model %} finetuned from [{{ base_model }}](https://huggingface.co/{{ base_model }}){% else %} trained{% endif %}{% if train_datasets | selectattr("name") | list %} on the {% for dataset in (train_datasets | selectattr("name")) %}{% if dataset.id %}[{{ dataset.name if dataset.name else dataset.id }}](https://huggingface.co/datasets/{{ dataset.id }}){% else %}{{ dataset.name }}{% endif %}{% if not loop.last %}{% if loop.index == (train_datasets | selectattr("name") | list | length - 1) %} and {% else %}, {% endif %}{% endif %}{% endfor %} dataset{{"s" if train_datasets | selectattr("name") | list | length > 1 else ""}}{% endif %}. It maps sentences & paragraphs to sequences of {{ output_dimensionality }}-dimensional dense vectors and can be used for semantic textual similarity using the MaxSim operator.
 
@@ -85,7 +85,7 @@ from pylate import indexes, models, retrieve
 
 # Step 1: Load the ColBERT model
 model = models.ColBERT(
-    model_name_or_path={{ model_id | default('sentence_transformers_model_id', true) }},
+    model_name_or_path={{ model_id | default('pylate_model_id', true) }},
 )
 
 # Step 2: Initialize the Voyager index
@@ -169,7 +169,7 @@ documents_ids = [
 ]
 
 model = models.ColBERT(
-    model_name_or_path={{ model_id | default('sentence_transformers_model_id', true) }},
+    model_name_or_path={{ model_id | default('pylate_model_id', true) }},
 )
 
 queries_embeddings = model.encode(
