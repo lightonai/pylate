@@ -13,10 +13,6 @@ import torch
 from numpy import ndarray
 from scipy.cluster import hierarchy
 from sentence_transformers import SentenceTransformer
-from sentence_transformers.model_card import (
-    SentenceTransformerModelCardData,
-    generate_model_card,
-)
 from sentence_transformers.models import Dense as DenseSentenceTransformer
 from sentence_transformers.models import Transformer
 from sentence_transformers.quantization import quantize_embeddings
@@ -25,6 +21,7 @@ from sentence_transformers.util import batch_to_device, load_file_path
 from torch import nn
 from tqdm.autonotebook import trange
 
+from ..model_card import PylateModelCardData, generate_model_card
 from ..utils import _start_multi_process_pool
 from .Dense import Dense
 
@@ -217,7 +214,7 @@ class ColBERT(SentenceTransformer):
         model_kwargs: dict | None = None,
         tokenizer_kwargs: dict | None = None,
         config_kwargs: dict | None = None,
-        model_card_data: Optional[SentenceTransformerModelCardData] = None,
+        model_card_data: Optional[PylateModelCardData] = None,
     ) -> None:
         self.query_prefix = query_prefix
         self.document_prefix = document_prefix
@@ -225,6 +222,7 @@ class ColBERT(SentenceTransformer):
         self.document_length = document_length
         self.attend_to_expansion_tokens = attend_to_expansion_tokens
         self.skiplist_words = skiplist_words
+        model_card_data = model_card_data or PylateModelCardData()
 
         super(ColBERT, self).__init__(
             model_name_or_path=model_name_or_path,
