@@ -12,6 +12,7 @@ base_packages = [
     "voyager >= 2.0.9",
     "sqlitedict >= 2.1.0",
     "pandas >= 2.2.1",
+    "transformers == 4.46.2",
 ]
 
 
