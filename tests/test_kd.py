@@ -63,6 +63,8 @@ def test_kd_training() -> None:
 
     trainer.train()
 
+    model.save_pretrained("tests/kd/final")
+
     assert os.path.isdir("tests/kd")
 
     if os.path.exists(path="tests/kd"):
