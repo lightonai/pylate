@@ -21,7 +21,7 @@ from sentence_transformers.util import batch_to_device, load_file_path
 from torch import nn
 from tqdm.autonotebook import trange
 
-from ..model_card import PylateModelCardData, generate_model_card
+from ..hf_hub.model_card import PylateModelCardData, generate_model_card
 from ..utils import _start_multi_process_pool
 from .Dense import Dense
 

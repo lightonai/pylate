@@ -35,7 +35,7 @@ from transformers.integrations import CodeCarbonCallback
 from transformers.modelcard import make_markdown_table
 from transformers.trainer_callback import TrainerControl, TrainerState
 
-from .__version__ import __version__ as pylate_version
+from ..__version__ import __version__ as pylate_version
 
 if is_datasets_available():
     from datasets import Dataset, DatasetDict, IterableDataset, Value
