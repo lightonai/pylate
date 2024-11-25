@@ -59,29 +59,29 @@ def get_versions() -> dict[str, Any]:
 
 @dataclass
 class PylateModelCardData(SentenceTransformerModelCardData):
-    """A dataclass storing data used in the model card.
+    """
+    A dataclass for storing data used in the model card.
 
-    Args:
-        language (`Optional[Union[str, List[str]]]`): The model language, either a string or a list,
-            e.g. "en" or ["en", "de", "nl"]
-        license (`Optional[str]`): The license of the model, e.g. "apache-2.0", "mit",
-            or "cc-by-nc-sa-4.0"
-        model_name (`Optional[str]`): The pretty name of the model, e.g. "SentenceTransformer based on microsoft/mpnet-base".
-        model_id (`Optional[str]`): The model ID when pushing the model to the Hub,
-            e.g. "tomaarsen/sbert-mpnet-base-allnli".
-        train_datasets (`List[Dict[str, str]]`): A list of the names and/or Hugging Face dataset IDs of the training datasets.
-            e.g. [{"name": "SNLI", "id": "stanfordnlp/snli"}, {"name": "MultiNLI", "id": "nyu-mll/multi_nli"}, {"name": "STSB"}]
-        eval_datasets (`List[Dict[str, str]]`): A list of the names and/or Hugging Face dataset IDs of the evaluation datasets.
-            e.g. [{"name": "SNLI", "id": "stanfordnlp/snli"}, {"id": "mteb/stsbenchmark-sts"}]
-        task_name (`str`): The human-readable task the model is trained on,
-            e.g. "semantic textual similarity, semantic search, paraphrase mining, text classification, clustering, and more".
-        tags (`Optional[List[str]]`): A list of tags for the model,
-            e.g. ["sentence-transformers", "sentence-similarity", "feature-extraction"].
-
-    .. tip::
-
-        Install `codecarbon <https://github.com/mlco2/codecarbon>`_ to automatically track carbon emission usage and
-        include it in your model cards.
+    Parameters
+    ----------
+    language
+        The model language, either a string or a list of strings, e.g., "en" or ["en", "de", "nl"].
+    license
+        The license of the model, e.g., "apache-2.0", "mit", or "cc-by-nc-sa-4.0".
+    model_name
+        The pretty name of the model, e.g., "SentenceTransformer based on microsoft/mpnet-base".
+    model_id
+        The model ID for pushing the model to the Hub, e.g., "tomaarsen/sbert-mpnet-base-allnli".
+    train_datasets
+        A list of dictionaries containing names and/or Hugging Face dataset IDs for training datasets,
+        e.g., [{"name": "SNLI", "id": "stanfordnlp/snli"}, {"name": "MultiNLI", "id": "nyu-mll/multi_nli"}, {"name": "STSB"}].
+    eval_datasets
+        A list of dictionaries containing names and/or Hugging Face dataset IDs for evaluation datasets,
+        e.g., [{"name": "SNLI", "id": "stanfordnlp/snli"}, {"id": "mteb/stsbenchmark-sts"}].
+    task_name
+        The human-readable task the model is trained on, e.g., "semantic textual similarity, semantic search, paraphrase mining, text classification, clustering, and more".
+    tags
+        A list of tags for the model, e.g., ["sentence-transformers", "sentence-similarity", "feature-extraction"].
     """
 
     # Potentially provided by the user
