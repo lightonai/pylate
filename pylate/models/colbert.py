@@ -214,7 +214,7 @@ class ColBERT(SentenceTransformer):
         model_kwargs: dict | None = None,
         tokenizer_kwargs: dict | None = None,
         config_kwargs: dict | None = None,
-        model_card_data: Optional[PylateModelCardData] = None,
+        model_card_data: PylateModelCardData | None = None,
     ) -> None:
         self.query_prefix = query_prefix
         self.document_prefix = document_prefix
