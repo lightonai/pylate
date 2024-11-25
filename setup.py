@@ -6,12 +6,13 @@ with open(file="README.md", mode="r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 base_packages = [
-    "sentence-transformers == 3.2.0",
+    "sentence-transformers == 3.3.0",
     "datasets >= 2.20.0",
     "accelerate >= 0.31.0",
     "voyager >= 2.0.9",
     "sqlitedict >= 2.1.0",
     "pandas >= 2.2.1",
+    "transformers == 4.46.2",
 ]
 
 
