@@ -65,6 +65,8 @@ def test_contrastive_training() -> None:
 
     trainer.train()
 
+    model.save_pretrained("tests/contrastive/final")
+
     assert os.path.isdir("tests/contrastive")
 
     metrics = dev_evaluation(
