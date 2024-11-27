@@ -96,9 +96,10 @@ class Launcher:
             or self.run_config.avoid_fork_if_possible
         )
 
-        new_config = type(custom_config).from_existing(
-            custom_config, self.run_config, RunConfig(rank=0)
-        )
+        # new_config = type(custom_config).from_existing(
+        #     custom_config, self.run_config, RunConfig(rank=0)
+        # )
+        new_config = custom_config
         return_val = run_process_without_mp(self.callee, new_config, *args)
 
         return return_val

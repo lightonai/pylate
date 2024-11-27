@@ -4,9 +4,7 @@ import time
 import torch.multiprocessing as mp
 
 from pylate.indexes.stanford_nlp.indexing.collection_indexer import encode
-from pylate.indexes.stanford_nlp.infra.config import ColBERTConfig
 from pylate.indexes.stanford_nlp.infra.launcher import Launcher
-from pylate.indexes.stanford_nlp.infra.run import Run
 from pylate.indexes.stanford_nlp.utils.utils import create_directory, print_message
 
 
@@ -19,10 +17,12 @@ class Indexer:
         self.index_path = None
         self.verbose = verbose
         self.checkpoint = checkpoint
-        self.checkpoint_config = ColBERTConfig.load_from_checkpoint(checkpoint)
-        self.config = ColBERTConfig.from_existing(
-            self.checkpoint_config, config, Run().config
-        )
+        # self.checkpoint_config = ColBERTConfig.load_from_checkpoint(checkpoint)
+        # self.config = ColBERTConfig.from_existing(
+        #     self.checkpoint_config, config, Run().config
+        # )
+        self.config = config
+
         # TODO: This is a hack to avoid forking in the current implementation. This should be removed in the future.
         self.config.avoid_fork_if_possible = True
 
