@@ -108,12 +108,14 @@ class PLAID(Base):
         self.config = ColBERTConfig(
             nbits=nbits,
             nranks=nranks,
-            root=f"{index_folder}",
+            root=f"{index_folder}/",
+            index_root=f"{index_folder}/",
             overwrite=override,
             kmeans_niters=kmeans_niters,
             index_bsize=index_bsize,
         )
         self.index_name = index_name
+        self.index_folder = index_folder
         self.indexer = Indexer(checkpoint="colbert-ir/colbertv2.0", config=self.config)
         self.documents_ids_to_plaid_ids_path = os.path.join(
             index_folder, f"{index_name}_documents_ids_to_plaid_ids.sqlite"
@@ -133,7 +135,11 @@ class PLAID(Base):
             if len(documents_ids_to_plaid_ids) == 0:
                 self.searcher = None
             else:
-                self.searcher = Searcher(index=self.index_name, config=self.config)
+                self.searcher = Searcher(
+                    index=self.index_name,
+                    config=self.config,
+                    index_root=f"{index_folder}/",
+                )
             documents_ids_to_plaid_ids.close()
 
     def _load_documents_ids_to_plaid_ids(self) -> SqliteDict:
@@ -164,7 +170,11 @@ class PLAID(Base):
                 collection=documents_embeddings,
                 overwrite=True,
             )
-            self.searcher = Searcher(index=self.index_name, config=self.config)
+            self.searcher = Searcher(
+                index=self.index_name,
+                config=self.config,
+                index_root=f"{self.index_folder}/",
+            )
             plaid_ids = list(range(len(documents_embeddings)))
         else:
             index_updater = IndexUpdater(
