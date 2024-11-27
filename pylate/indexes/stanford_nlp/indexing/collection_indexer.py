@@ -16,13 +16,11 @@ import torch.multiprocessing as mp
 import pylate.indexes.stanford_nlp.utils.distributed as distributed
 from pylate.indexes.stanford_nlp.data.collection import Collection
 from pylate.indexes.stanford_nlp.indexing.codecs.residual import ResidualCodec
-from pylate.indexes.stanford_nlp.indexing.collection_encoder import CollectionEncoder
 from pylate.indexes.stanford_nlp.indexing.index_saver import IndexSaver
 from pylate.indexes.stanford_nlp.indexing.utils import optimize_ivf
 from pylate.indexes.stanford_nlp.infra.config.config import ColBERTConfig
 from pylate.indexes.stanford_nlp.infra.launcher import print_memory_stats
 from pylate.indexes.stanford_nlp.infra.run import Run
-from pylate.indexes.stanford_nlp.modeling.checkpoint import Checkpoint
 from pylate.indexes.stanford_nlp.utils.utils import print_message
 
 
@@ -48,11 +46,6 @@ class CollectionIndexer:
             self.config.help()
 
         self.collection = Collection.cast(collection)
-        self.checkpoint = Checkpoint(self.config.checkpoint, colbert_config=self.config)
-        if self.use_gpu:
-            self.checkpoint = self.checkpoint.cuda()
-
-        self.encoder = CollectionEncoder(config, self.checkpoint)
         self.saver = IndexSaver(config)
 
         print_memory_stats(f"RANK:{self.rank}")
@@ -274,7 +267,6 @@ class CollectionIndexer:
 
         # TODO: Allocate a float16 array. Load the samples from disk, copy to array.
         sample = torch.empty(self.num_sample_embs, self.config.dim, dtype=torch.float16)
-
         offset = 0
         for r in range(self.nranks):
             sub_sample_path = os.path.join(self.config.index_path_, f"sample.{r}.pt")

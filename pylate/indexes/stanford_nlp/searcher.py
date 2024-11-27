@@ -9,7 +9,6 @@ from pylate.indexes.stanford_nlp.infra.config import ColBERTConfig
 from pylate.indexes.stanford_nlp.infra.launcher import print_memory_stats
 from pylate.indexes.stanford_nlp.infra.provenance import Provenance
 from pylate.indexes.stanford_nlp.infra.run import Run
-from pylate.indexes.stanford_nlp.modeling.checkpoint import Checkpoint
 from pylate.indexes.stanford_nlp.search.index_storage import IndexScorer
 
 TextQueries = Union[str, "list[str]", "dict[int, str]", Queries]
@@ -36,20 +35,12 @@ class Searcher:
         self.index = os.path.join(index_root, index)
         self.index_config = ColBERTConfig.load_from_index(self.index)
 
-        self.checkpoint = checkpoint or self.index_config.checkpoint
-        self.checkpoint_config = ColBERTConfig.load_from_checkpoint(self.checkpoint)
-        self.config = ColBERTConfig.from_existing(
-            self.checkpoint_config, self.index_config, initial_config
-        )
+        self.config = ColBERTConfig.from_existing(self.index_config, initial_config)
         self.collection = Collection.cast(collection or self.config.collection)
-        self.configure(checkpoint=self.checkpoint, collection=self.collection)
+        self.configure(collection=self.collection)
 
-        self.checkpoint = Checkpoint(
-            self.checkpoint, colbert_config=self.config, verbose=self.verbose
-        )
         use_gpu = self.config.total_visible_gpus > 0
-        if use_gpu:
-            self.checkpoint = self.checkpoint.cuda()
+
         load_index_with_mmap = self.config.load_index_with_mmap
         if load_index_with_mmap and use_gpu:
             raise ValueError("Memory-mapped index can only be used with CPU!")
