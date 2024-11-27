@@ -73,10 +73,13 @@ class IndexUpdater:
         self.removed_pids.extend(pids)
 
     def create_embs_and_doclens(
-        self, passages, embs_path="embs.pt", doclens_path="doclens.pt", persist=False
+        self, embs, embs_path="embs.pt", doclens_path="doclens.pt", persist=False
     ):
         # Extend doclens and embs of self.searcher.ranker
-        embs, doclens = self.encoder.encode_passages(passages)
+        # embs, doclens = self.encoder.encode_passages(passages)
+        doclens = [len(emb) for emb in embs]
+        # Flatten embeddings
+        embs = torch.cat([torch.tensor(emb) for emb in embs])
         compressed_embs = self.searcher.ranker.codec.compress(embs)
 
         if persist:
@@ -141,10 +144,10 @@ class IndexUpdater:
         # Rebuild StridedTensor within searcher
         self.searcher.ranker.set_embeddings_strided()
 
-    def add(self, passages):
+    def add(self, embs):
         """
         Input:
-            passages: list(string)
+            passages: list[np.ndarray | torch.Tensor]
         Output:
             passage_ids: list(int)
 
@@ -160,11 +163,11 @@ class IndexUpdater:
         start_pid = len(self.searcher.ranker.doclens)
         curr_pid = start_pid
 
-        compressed_embs, doclens = self.create_embs_and_doclens(passages)
+        compressed_embs, doclens = self.create_embs_and_doclens(embs)
         self.update_searcher(compressed_embs, doclens, curr_pid)
 
-        print_message(f"#> Added {len(passages)} passages from pid {start_pid}.")
-        new_pids = list(range(start_pid, start_pid + len(passages)))
+        print_message(f"#> Added {len(doclens)} passages from pid {start_pid}.")
+        new_pids = list(range(start_pid, start_pid + len(doclens)))
         return new_pids
 
     def persist_to_disk(self):

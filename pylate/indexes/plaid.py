@@ -1,4 +1,3 @@
-import itertools
 import os
 
 import numpy as np
@@ -6,7 +5,7 @@ import torch
 from sqlitedict import SqliteDict
 
 from .base import Base
-from .stanford_nlp import Indexer, Searcher
+from .stanford_nlp import Indexer, IndexUpdater, Searcher
 from .stanford_nlp.infra import ColBERTConfig
 
 
@@ -104,9 +103,7 @@ class PLAID(Base):
         nbits: int = 2,
         nranks: int = 1,
         kmeans_niters: int = 4,
-        bsize: int = 128,
         index_bsize: int = 1,
-        doc_maxlen: int = 512,
     ) -> None:
         self.config = ColBERTConfig(
             nbits=nbits,
@@ -115,11 +112,10 @@ class PLAID(Base):
             avoid_fork_if_possible=True,
             overwrite=override,
             kmeans_niters=kmeans_niters,
-            bsize=bsize,
             index_bsize=index_bsize,
-            doc_maxlen=doc_maxlen,
         )
         self.index_name = index_name
+        self.searcher = None
         self.indexer = Indexer(checkpoint="colbert-ir/colbertv2.0", config=self.config)
         self.documents_ids_to_plaid_ids_path = os.path.join(
             index_folder, f"{index_name}_documents_ids_to_plaid_ids.sqlite"
@@ -127,6 +123,11 @@ class PLAID(Base):
         self.plaid_ids_to_documents_ids_path = os.path.join(
             index_folder, f"{index_name}_plaid_ids_to_documents_ids.sqlite"
         )
+        if override:
+            if os.path.exists(self.documents_ids_to_plaid_ids_path):
+                os.remove(self.documents_ids_to_plaid_ids_path)
+            if os.path.exists(self.plaid_ids_to_documents_ids_path):
+                os.remove(self.plaid_ids_to_documents_ids_path)
 
     def _load_documents_ids_to_plaid_ids(self) -> SqliteDict:
         """Load the SQLite database that maps document IDs to PLAID IDs."""
@@ -150,16 +151,23 @@ class PLAID(Base):
         documents_embeddings = reshape_embeddings(embeddings=documents_embeddings)
         documents_ids_to_plaid_ids = self._load_documents_ids_to_plaid_ids()
         plaid_ids_to_documents_ids = self._load_plaid_ids_to_documents_ids()
-        self.indexer.index(
-            name=f"{self.index_name}",
-            collection=documents_embeddings,
-            overwrite=True,
-        )
+        if self.searcher is None:
+            self.indexer.index(
+                name=f"{self.index_name}",
+                collection=documents_embeddings,
+                overwrite=True,
+            )
+            self.searcher = Searcher(index=self.index_name, config=self.config)
+            plaid_ids = list(range(len(documents_embeddings)))
+        else:
+            index_updater = IndexUpdater(
+                self.config, self.searcher, checkpoint="colbert-ir/colbertv2.0"
+            )
+            plaid_ids = index_updater.add(documents_embeddings)
+            index_updater.persist_to_disk()
 
         # Get total number of existing documents
-        n_docs = len(documents_ids_to_plaid_ids)
-        for i, document_id in enumerate(documents_ids):
-            plaid_id = n_docs + i
+        for plaid_id, document_id in zip(plaid_ids, documents_ids):
             documents_ids_to_plaid_ids[document_id] = plaid_id
             plaid_ids_to_documents_ids[plaid_id] = document_id
 
@@ -180,22 +188,27 @@ class PLAID(Base):
             The documents IDs to remove.
 
         """
-        documents_ids_to_embeddings = self._load_documents_ids_to_embeddings()
-        embeddings_to_documents_ids = self._load_embeddings_to_documents_ids()
-
+        document_ids_to_plaid_ids = self._load_documents_ids_to_plaid_ids()
+        plaid_ids_to_documents_ids = self._load_plaid_ids_to_documents_ids()
+        plaid_ids = [
+            document_ids_to_plaid_ids[document_id] for document_id in documents_ids
+        ]
+        index_updater = IndexUpdater(
+            self.config, self.searcher, checkpoint="colbert-ir/colbertv2.0"
+        )
+        index_updater.remove(plaid_ids)
+        index_updater.persist_to_disk()
         for document_id in documents_ids:
-            embeddings_ids = documents_ids_to_embeddings[document_id]
-            for embedding_id in embeddings_ids:
-                del embeddings_to_documents_ids[embedding_id]
-                self.index.mark_deleted(embedding_id)
-            del documents_ids_to_embeddings[document_id]
+            plaid_id = document_ids_to_plaid_ids[document_id]
+            del document_ids_to_plaid_ids[document_id]
+            del plaid_ids_to_documents_ids[plaid_id]
 
-        documents_ids_to_embeddings.commit()
-        embeddings_to_documents_ids.commit()
+        document_ids_to_plaid_ids.commit()
+        document_ids_to_plaid_ids.close()
 
-        documents_ids_to_embeddings.close()
-        embeddings_to_documents_ids.close()
-        self.index.save(self.index_path)
+        plaid_ids_to_documents_ids.commit()
+        plaid_ids_to_documents_ids.close()
+
         return self
 
     def __call__(
@@ -213,12 +226,12 @@ class PLAID(Base):
             The number of nearest neighbors to return.
 
         """
-        searcher = Searcher(index=self.index_name, config=self.config)
         plaid_ids_to_documents_ids = self._load_plaid_ids_to_documents_ids()
         documents = []
         distances = []
+        # self.searcher = Searcher(index=self.index_name, config=self.config)
         for query_embeddings in queries_embeddings:
-            result = searcher.search(query_embeddings, k=k)
+            result = self.searcher.search(query_embeddings, k=k)
             documents.append([plaid_ids_to_documents_ids[r] for r in result[0]])
             distances.append(result[2])
         results = [
@@ -270,40 +283,4 @@ class PLAID(Base):
     def get_documents_embeddings(
         self, document_ids: list[list[str]]
     ) -> list[list[list[int | float]]]:
-        """Retrieve document embeddings for re-ranking from Voyager."""
-
-        # Load mappings of document IDs to embedding IDs
-        documents_ids_to_embeddings = self._load_documents_ids_to_embeddings()
-
-        # Retrieve embedding IDs in the same structure as document IDs
-        embedding_ids_structure = [
-            [documents_ids_to_embeddings[doc_id] for doc_id in doc_group]
-            for doc_group in document_ids
-        ]
-
-        documents_ids_to_embeddings.close()
-
-        # Flatten the embedding IDs for a single API call
-        flattened_embedding_ids = list(
-            itertools.chain.from_iterable(
-                itertools.chain.from_iterable(embedding_ids_structure)
-            )
-        )
-
-        # Retrieve all embeddings in one API call
-        all_embeddings = self.index.get_vectors(flattened_embedding_ids)
-
-        # Reconstruct embeddings into the original structure
-        reconstructed_embeddings = []
-        embedding_idx = 0
-        for group_embedding_ids in embedding_ids_structure:
-            group_embeddings = []
-            for doc_embedding_ids in group_embedding_ids:
-                num_embeddings = len(doc_embedding_ids)
-                group_embeddings.append(
-                    all_embeddings[embedding_idx : embedding_idx + num_embeddings]
-                )
-                embedding_idx += num_embeddings
-            reconstructed_embeddings.append(group_embeddings)
-
-        return reconstructed_embeddings
+        raise NotImplementedError
