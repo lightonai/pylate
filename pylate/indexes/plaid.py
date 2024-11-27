@@ -108,8 +108,8 @@ class PLAID(Base):
         self.config = ColBERTConfig(
             nbits=nbits,
             nranks=nranks,
-            root=f"{index_folder}/",
-            index_root=f"{index_folder}/",
+            root=f"{index_folder}",
+            index_root=f"{index_folder}",
             overwrite=override,
             kmeans_niters=kmeans_niters,
             index_bsize=index_bsize,
@@ -123,6 +123,8 @@ class PLAID(Base):
         self.plaid_ids_to_documents_ids_path = os.path.join(
             index_folder, f"{index_name}_plaid_ids_to_documents_ids.sqlite"
         )
+        if not os.path.exists(index_folder):
+            os.makedirs(index_folder)
         if override:
             if os.path.exists(self.documents_ids_to_plaid_ids_path):
                 os.remove(self.documents_ids_to_plaid_ids_path)
