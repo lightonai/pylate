@@ -100,6 +100,7 @@ class PLAID(Base):
         index_folder: str = "indexes",
         index_name: str = "colbert",
         override: bool = False,
+        embedding_size: int = 128,
         nbits: int = 2,
         nranks: int = 1,
         kmeans_niters: int = 4,
@@ -113,6 +114,7 @@ class PLAID(Base):
             overwrite=override,
             kmeans_niters=kmeans_niters,
             index_bsize=index_bsize,
+            dim=embedding_size,
         )
         self.index_name = index_name
         self.index_folder = index_folder
