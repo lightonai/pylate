@@ -68,7 +68,7 @@ class CoreConfig:
 
     def __export_value(self, v):
         v = v.provenance() if hasattr(v, "provenance") else v
-        if isinstance(v, list) and len(v) > 100:
+        if isinstance(v, list):
             v = (
                 f"list with {len(v)} elements starting with...",
                 [array.tolist() for array in v[:3]],
