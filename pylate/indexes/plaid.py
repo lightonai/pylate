@@ -109,13 +109,11 @@ class PLAID(Base):
             nbits=nbits,
             nranks=nranks,
             root=f"{index_folder}",
-            avoid_fork_if_possible=True,
             overwrite=override,
             kmeans_niters=kmeans_niters,
             index_bsize=index_bsize,
         )
         self.index_name = index_name
-        self.searcher = None
         self.indexer = Indexer(checkpoint="colbert-ir/colbertv2.0", config=self.config)
         self.documents_ids_to_plaid_ids_path = os.path.join(
             index_folder, f"{index_name}_documents_ids_to_plaid_ids.sqlite"
@@ -128,6 +126,15 @@ class PLAID(Base):
                 os.remove(self.documents_ids_to_plaid_ids_path)
             if os.path.exists(self.plaid_ids_to_documents_ids_path):
                 os.remove(self.plaid_ids_to_documents_ids_path)
+            self.searcher = None
+        else:
+            documents_ids_to_plaid_ids = self._load_documents_ids_to_plaid_ids()
+            # Check if the collection has already been populated and if so, load the searcher
+            if len(documents_ids_to_plaid_ids) == 0:
+                self.searcher = None
+            else:
+                self.searcher = Searcher(index=self.index_name, config=self.config)
+            documents_ids_to_plaid_ids.close()
 
     def _load_documents_ids_to_plaid_ids(self) -> SqliteDict:
         """Load the SQLite database that maps document IDs to PLAID IDs."""
