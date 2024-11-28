@@ -12,9 +12,34 @@ def test_model_creation(**kwargs) -> None:
     torch.manual_seed(42)
     # Creation from a base encoder
     model = models.ColBERT(model_name_or_path="bert-base-uncased")
+    # We don't test the embeddings of newly initied models for now as we need to make it deterministic
+    # queries_embeddings = model.encode(sentences=query, is_query=True)
+    # documents_embeddings = model.encode(sentences=documents, is_query=False)
+    # reranked_documents = rank.rerank(
+    #     documents_ids=[["1", "2"]],
+    #     queries_embeddings=queries_embeddings,
+    #     documents_embeddings=documents_embeddings,
+    # )
+    # assert math.isclose(
+    #     reranked_documents[0][0]["score"], 25.92, rel_tol=0.01, abs_tol=0.01
+    # )
+    # assert math.isclose(reranked_documents[0][1]["score"], 23.7, rel_tol=0.01, abs_tol=0.01)
 
     # Creation from a base sentence-transformer
     model = models.ColBERT(model_name_or_path="sentence-transformers/all-MiniLM-L6-v2")
+    # We don't test the embeddings of newly initied models for now as we need to make it deterministic
+    # queries_embeddings = model.encode(sentences=query, is_query=True)
+    # documents_embeddings = model.encode(sentences=documents, is_query=False)
+    # reranked_documents = rank.rerank(
+    #     documents_ids=[["1", "2"]],
+    #     queries_embeddings=queries_embeddings,
+    #     documents_embeddings=documents_embeddings,
+    # )
+    # assert math.isclose(
+    #     reranked_documents[0][0]["score"], 18.77, rel_tol=0.01, abs_tol=0.01
+    # )
+    # assert math.isclose(
+    #     reranked_documents[0][1]["score"], 18.63, rel_tol=0.01, abs_tol=0.01
 
     # Creation from stanford-nlp (safetensor)
     model = models.ColBERT(model_name_or_path="answerdotai/answerai-colbert-small-v1")

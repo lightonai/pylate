@@ -123,6 +123,7 @@ class Dense(DenseSentenceTransformer):
                     use_auth_token=use_auth_token,
                 )
             except EnvironmentError:
+                print("No safetensor model found, falling back to bin.")
                 model_name_or_path = cached_file(
                     model_name_or_path,
                     filename="pytorch_model.bin",
@@ -140,6 +141,7 @@ class Dense(DenseSentenceTransformer):
                     model_name_or_path, "model.safetensors"
                 )
             else:
+                print("No safetensor model found, falling back to bin.")
                 model_name_or_path = os.path.join(
                     model_name_or_path, "pytorch_model.bin"
                 )
