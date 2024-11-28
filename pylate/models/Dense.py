@@ -2,6 +2,7 @@ import json
 import os
 
 import torch
+from safetensors import safe_open
 from safetensors.torch import load_model as load_safetensors_model
 from sentence_transformers.models import Dense as DenseSentenceTransformer
 from sentence_transformers.util import import_from_string
@@ -110,26 +111,47 @@ class Dense(DenseSentenceTransformer):
         """
         # Check if the model is locally available
         if not (os.path.exists(os.path.join(model_name_or_path))):
-            # Else download the model/use the cached version
-            model_name_or_path = cached_file(
-                model_name_or_path,
-                filename="pytorch_model.bin",
-                cache_dir=cache_folder,
-                revision=revision,
-                local_files_only=local_files_only,
-                token=token,
-                use_auth_token=use_auth_token,
-            )
-        # If the model a local folder, load the PyTorch model
+            # Else download the model/use the cached version. We first try to use the safetensors version and fall back to bin if not existing. All the recent stanford-nlp models are safetensors but we keep bin for compatibility.
+            try:
+                model_name_or_path = cached_file(
+                    model_name_or_path,
+                    filename="model.safetensors",
+                    cache_dir=cache_folder,
+                    revision=revision,
+                    local_files_only=local_files_only,
+                    token=token,
+                    use_auth_token=use_auth_token,
+                )
+            except EnvironmentError:
+                model_name_or_path = cached_file(
+                    model_name_or_path,
+                    filename="pytorch_model.bin",
+                    cache_dir=cache_folder,
+                    revision=revision,
+                    local_files_only=local_files_only,
+                    token=token,
+                    use_auth_token=use_auth_token,
+                )
+        # If the model a local folder, load the safetensor
+        # Again, we first try to load the safetensors version and fall back to bin if not existing.
         else:
-            model_name_or_path = os.path.join(model_name_or_path, "pytorch_model.bin")
-
-        # Load the state dict using torch.load instead of safe_open
-        state_dict = {
-            "linear.weight": torch.load(model_name_or_path, map_location="cpu")[
-                "linear.weight"
-            ]
-        }
+            if os.path.exists(os.path.join(model_name_or_path, "model.safetensors")):
+                model_name_or_path = os.path.join(
+                    model_name_or_path, "model.safetensors"
+                )
+            else:
+                model_name_or_path = os.path.join(
+                    model_name_or_path, "pytorch_model.bin"
+                )
+        if model_name_or_path.endswith("safetensors"):
+            with safe_open(model_name_or_path, framework="pt", device="cpu") as f:
+                state_dict = {"linear.weight": f.get_tensor("linear.weight")}
+        else:
+            state_dict = {
+                "linear.weight": torch.load(model_name_or_path, map_location="cpu")[
+                    "linear.weight"
+                ]
+            }
 
         # Determine input and output dimensions
         in_features = state_dict["linear.weight"].shape[1]
