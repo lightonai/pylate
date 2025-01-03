@@ -188,7 +188,7 @@ class NanoBEIREvaluator(SentenceEvaluator):
         batch_size: int = 32,
         write_csv: bool = True,
         truncate_dim: int | None = None,
-        score_functions: dict[str, Callable[[Tensor, Tensor], Tensor]] = {"MaxSim": colbert_scores},
+        score_functions: dict[str, Callable[[Tensor, Tensor], Tensor]] = None,
         main_score_function: str | SimilarityFunction | None = None,
         aggregate_fn: Callable[[list[float]], float] = np.mean,
         aggregate_key: str = "mean",
