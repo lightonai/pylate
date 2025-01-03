@@ -24,7 +24,7 @@ This is a [PyLate](https://github.com/lightonai/pylate) model{% if base_model %}
 - **Document Length:** {{ document_length }} tokens
 - **Query Length:** {{ query_length }} tokens
 - **Output Dimensionality:** {{ output_dimensionality }} tokens
-- **Similarity Function:** MaxSim
+- **Similarity Function:** {{ similarity_fn_name }}
 {% if train_datasets | selectattr("name") | list -%}
     - **Training Dataset{{"s" if train_datasets | selectattr("name") | list | length > 1 else ""}}:**
     {%- for dataset in (train_datasets | selectattr("name")) %}
