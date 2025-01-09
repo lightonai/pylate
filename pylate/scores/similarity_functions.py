@@ -15,8 +15,8 @@ class SimilarityFunction(Enum):
 
     - ``SimilarityFunction.MAXSIM`` (``"MaxSim"``): Max similarity
     """
-    MAXSIM = "MaxSim"
 
+    MAXSIM = "MaxSim"
 
     @staticmethod
     def to_similarity_fn(
@@ -78,7 +78,7 @@ class SimilarityFunction(Enum):
         similarity_function = SimilarityFunction(similarity_function)
         if similarity_function == SimilarityFunction.MAXSIM:
             return colbert_scores_pairwise
-        
+
     @staticmethod
     def possible_values() -> list[str]:
         """

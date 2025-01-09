@@ -2,14 +2,11 @@ from __future__ import annotations
 
 import heapq
 import logging
-import os
 from contextlib import nullcontext
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
-import numpy as np
 import torch
 from sentence_transformers.evaluation import InformationRetrievalEvaluator
-from sentence_transformers.similarity_functions import SimilarityFunction
 from torch import Tensor
 from tqdm import trange
 
@@ -98,7 +95,10 @@ class PyLateInformationRetrievalEvaluator(InformationRetrievalEvaluator):
     """
 
     def compute_metrices(
-        self, model: SentenceTransformer, corpus_model=None, corpus_embeddings: Tensor | None = None
+        self,
+        model: SentenceTransformer,
+        corpus_model=None,
+        corpus_embeddings: Tensor | None = None,
     ) -> dict[str, float]:
         if corpus_model is None:
             corpus_model = model
@@ -111,7 +111,11 @@ class PyLateInformationRetrievalEvaluator(InformationRetrievalEvaluator):
             max(self.map_at_k),
         )
         # Compute embedding for the queries
-        with nullcontext() if self.truncate_dim is None else model.truncate_sentence_embeddings(self.truncate_dim):
+        with (
+            nullcontext()
+            if self.truncate_dim is None
+            else model.truncate_sentence_embeddings(self.truncate_dim)
+        ):
             query_embeddings = model.encode(
                 self.queries,
                 prompt_name=self.query_prompt_name,
@@ -128,9 +132,15 @@ class PyLateInformationRetrievalEvaluator(InformationRetrievalEvaluator):
 
         # Iterate over chunks of the corpus
         for corpus_start_idx in trange(
-            0, len(self.corpus), self.corpus_chunk_size, desc="Corpus Chunks", disable=not self.show_progress_bar
+            0,
+            len(self.corpus),
+            self.corpus_chunk_size,
+            desc="Corpus Chunks",
+            disable=not self.show_progress_bar,
         ):
-            corpus_end_idx = min(corpus_start_idx + self.corpus_chunk_size, len(self.corpus))
+            corpus_end_idx = min(
+                corpus_start_idx + self.corpus_chunk_size, len(self.corpus)
+            )
 
             # Encode chunk of corpus
             if corpus_embeddings is None:
@@ -139,7 +149,6 @@ class PyLateInformationRetrievalEvaluator(InformationRetrievalEvaluator):
                     if self.truncate_dim is None
                     else corpus_model.truncate_sentence_embeddings(self.truncate_dim)
                 ):
-                    
                     sub_corpus_embeddings = torch.nn.utils.rnn.pad_sequence(
                         corpus_model.encode(
                             self.corpus[corpus_start_idx:corpus_end_idx],
@@ -154,23 +163,30 @@ class PyLateInformationRetrievalEvaluator(InformationRetrievalEvaluator):
                         batch_first=True,
                         padding_value=0,
                     )
-                    
+
             else:
-                sub_corpus_embeddings = corpus_embeddings[corpus_start_idx:corpus_end_idx]
+                sub_corpus_embeddings = corpus_embeddings[
+                    corpus_start_idx:corpus_end_idx
+                ]
 
             # Compute cosine similarites
             for name, score_function in self.score_functions.items():
                 pair_scores = score_function(query_embeddings, sub_corpus_embeddings)
                 # Get top-k values
                 pair_scores_top_k_values, pair_scores_top_k_idx = torch.topk(
-                    pair_scores, min(max_k, len(pair_scores[0])), dim=1, largest=True, sorted=False
+                    pair_scores,
+                    min(max_k, len(pair_scores[0])),
+                    dim=1,
+                    largest=True,
+                    sorted=False,
                 )
                 pair_scores_top_k_values = pair_scores_top_k_values.cpu().tolist()
                 pair_scores_top_k_idx = pair_scores_top_k_idx.cpu().tolist()
 
                 for query_itr in range(len(query_embeddings)):
                     for sub_corpus_id, score in zip(
-                        pair_scores_top_k_idx[query_itr], pair_scores_top_k_values[query_itr]
+                        pair_scores_top_k_idx[query_itr],
+                        pair_scores_top_k_values[query_itr],
                     ):
                         corpus_id = self.corpus_ids[corpus_start_idx + sub_corpus_id]
                         # NOTE: TREC/BEIR/MTEB skips cases where the corpus_id is the same as the query_id, e.g.:
@@ -180,21 +196,31 @@ class PyLateInformationRetrievalEvaluator(InformationRetrievalEvaluator):
                         # sets of integers from 0 as query_ids and corpus_ids.
                         if len(queries_result_list[name][query_itr]) < max_k:
                             # heaqp tracks the quantity of the first element in the tuple
-                            heapq.heappush(queries_result_list[name][query_itr], (score, corpus_id))
+                            heapq.heappush(
+                                queries_result_list[name][query_itr], (score, corpus_id)
+                            )
                         else:
-                            heapq.heappushpop(queries_result_list[name][query_itr], (score, corpus_id))
+                            heapq.heappushpop(
+                                queries_result_list[name][query_itr], (score, corpus_id)
+                            )
 
         for name in queries_result_list:
             for query_itr in range(len(queries_result_list[name])):
                 for doc_itr in range(len(queries_result_list[name][query_itr])):
                     score, corpus_id = queries_result_list[name][query_itr][doc_itr]
-                    queries_result_list[name][query_itr][doc_itr] = {"corpus_id": corpus_id, "score": score}
+                    queries_result_list[name][query_itr][doc_itr] = {
+                        "corpus_id": corpus_id,
+                        "score": score,
+                    }
 
         logger.info(f"Queries: {len(self.queries)}")
         logger.info(f"Corpus: {len(self.corpus)}\n")
 
         # Compute scores
-        scores = {name: self.compute_metrics(queries_result_list[name]) for name in self.score_functions}
+        scores = {
+            name: self.compute_metrics(queries_result_list[name])
+            for name in self.score_functions
+        }
 
         # Output
         for name in self.score_function_names:
@@ -202,4 +228,3 @@ class PyLateInformationRetrievalEvaluator(InformationRetrievalEvaluator):
             self.output_scores(scores[name])
 
         return scores
-

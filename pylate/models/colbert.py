@@ -753,7 +753,7 @@ class ColBERT(SentenceTransformer):
             pooled_embeddings.append(torch.stack(tensors=pooled_document_embeddings))
 
         return pooled_embeddings
-    
+
     @property
     def similarity_fn_name(self) -> Literal["cosine", "dot", "euclidean", "manhattan"]:
         """Return the name of the similarity function used by :meth:`SentenceTransformer.similarity` and :meth:`SentenceTransformer.similarity_pairwise`.
@@ -770,18 +770,18 @@ class ColBERT(SentenceTransformer):
         if self._similarity_fn_name is None:
             self.similarity_fn_name = SimilarityFunction.MAXSIM
         return self._similarity_fn_name
-    
+
     @similarity_fn_name.setter
-    def similarity_fn_name(
-        self, value: Literal["MaxSim"] | SimilarityFunction
-    ) -> None:
+    def similarity_fn_name(self, value: Literal["MaxSim"] | SimilarityFunction) -> None:
         if isinstance(value, SimilarityFunction):
             value = value.value
         self._similarity_fn_name = value
 
         if value is not None:
             self._similarity = SimilarityFunction.to_similarity_fn(value)
-            self._similarity_pairwise = SimilarityFunction.to_similarity_pairwise_fn(value)
+            self._similarity_pairwise = SimilarityFunction.to_similarity_pairwise_fn(
+                value
+            )
 
     @staticmethod
     def skiplist_mask(input_ids: torch.Tensor, skiplist: list[int]) -> torch.Tensor:
@@ -1226,4 +1226,3 @@ class ColBERT(SentenceTransformer):
             if isinstance(module, Transformer)
             or isinstance(module, DenseSentenceTransformer)
         ], module_kwargs
-    

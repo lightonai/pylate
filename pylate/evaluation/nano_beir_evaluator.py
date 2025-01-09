@@ -3,8 +3,7 @@ from __future__ import annotations
 import logging
 from typing import Literal
 
-from sentence_transformers.evaluation.SentenceEvaluator import \
-    SentenceEvaluator
+from sentence_transformers.evaluation.SentenceEvaluator import SentenceEvaluator
 from sentence_transformers.util import is_datasets_available
 
 from .pylate_information_retrieval_evaluator import PyLateInformationRetrievalEvaluator
@@ -160,17 +159,29 @@ class NanoBEIREvaluator(SentenceEvaluator):
             # => 0.8084508771660436
     """
 
-    def _load_dataset(self, dataset_name: DatasetNameType, **ir_evaluator_kwargs) -> PyLateInformationRetrievalEvaluator:
+    def _load_dataset(
+        self, dataset_name: DatasetNameType, **ir_evaluator_kwargs
+    ) -> PyLateInformationRetrievalEvaluator:
         if not is_datasets_available():
-            raise ValueError("datasets is not available. Please install it to use the NanoBEIREvaluator.")
+            raise ValueError(
+                "datasets is not available. Please install it to use the NanoBEIREvaluator."
+            )
         from datasets import load_dataset
 
         dataset_path = dataset_name_to_id[dataset_name.lower()]
         corpus = load_dataset(dataset_path, "corpus", split="train")
         queries = load_dataset(dataset_path, "queries", split="train")
         qrels = load_dataset(dataset_path, "qrels", split="train")
-        corpus_dict = {sample["_id"]: sample["text"] for sample in corpus if len(sample["text"]) > 0}
-        queries_dict = {sample["_id"]: sample["text"] for sample in queries if len(sample["text"]) > 0}
+        corpus_dict = {
+            sample["_id"]: sample["text"]
+            for sample in corpus
+            if len(sample["text"]) > 0
+        }
+        queries_dict = {
+            sample["_id"]: sample["text"]
+            for sample in queries
+            if len(sample["text"]) > 0
+        }
         qrels_dict = {}
         for sample in qrels:
             if sample["query-id"] not in qrels_dict:
@@ -178,9 +189,13 @@ class NanoBEIREvaluator(SentenceEvaluator):
             qrels_dict[sample["query-id"]].add(sample["corpus-id"])
 
         if self.query_prompts is not None:
-            ir_evaluator_kwargs["query_prompt"] = self.query_prompts.get(dataset_name, None)
+            ir_evaluator_kwargs["query_prompt"] = self.query_prompts.get(
+                dataset_name, None
+            )
         if self.corpus_prompts is not None:
-            ir_evaluator_kwargs["corpus_prompt"] = self.corpus_prompts.get(dataset_name, None)
+            ir_evaluator_kwargs["corpus_prompt"] = self.corpus_prompts.get(
+                dataset_name, None
+            )
         human_readable_name = self._get_human_readable_name(dataset_name)
         return PyLateInformationRetrievalEvaluator(
             queries=queries_dict,

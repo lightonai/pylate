@@ -3,8 +3,7 @@ from .colbert_distillation import ColBERTDistillationEvaluator
 from .colbert_triplet import ColBERTTripletEvaluator
 from .custom_dataset import load_custom_dataset
 from .nano_beir_evaluator import NanoBEIREvaluator
-from .pylate_information_retrieval_evaluator import \
-    PyLateInformationRetrievalEvaluator
+from .pylate_information_retrieval_evaluator import PyLateInformationRetrievalEvaluator
 
 __all__ = [
     "ColBERTTripletEvaluator",
@@ -14,5 +13,5 @@ __all__ = [
     "load_beir",
     "load_custom_dataset",
     "evaluate",
-    "PyLateInformationRetrievalEvaluator"
+    "PyLateInformationRetrievalEvaluator",
 ]
