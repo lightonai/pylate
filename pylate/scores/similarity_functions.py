@@ -12,7 +12,6 @@ from ..scores import colbert_scores, colbert_scores_pairwise
 class SimilarityFunction(Enum):
     """
     Enum class for supported score functions. The following functions are supported:
-
     - ``SimilarityFunction.MAXSIM`` (``"MaxSim"``): Max similarity
     """
 
@@ -33,13 +32,6 @@ class SimilarityFunction(Enum):
 
         Raises:
             ValueError: If the provided function is not supported.
-
-        Example:
-            >>> similarity_fn = SimilarityFunction.to_similarity_fn("cosine")
-            >>> similarity_scores = similarity_fn(embeddings1, embeddings2)
-            >>> similarity_scores
-            tensor([[0.3952, 0.0554],
-                    [0.0992, 0.1570]])
         """
         similarity_function = SimilarityFunction(similarity_function)
         if similarity_function == SimilarityFunction.MAXSIM:
@@ -68,12 +60,6 @@ class SimilarityFunction(Enum):
 
         Raises:
             ValueError: If the provided similarity function is not supported.
-
-        Example:
-            >>> pairwise_fn = SimilarityFunction.to_similarity_pairwise_fn("cosine")
-            >>> similarity_scores = pairwise_fn(embeddings1, embeddings2)
-            >>> similarity_scores
-            tensor([0.3952, 0.1570])
         """
         similarity_function = SimilarityFunction(similarity_function)
         if similarity_function == SimilarityFunction.MAXSIM:
