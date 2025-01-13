@@ -43,6 +43,7 @@ setuptools.setup(
     url="https://github.com/lightonai/pylate",
     keywords=[],
     packages=setuptools.find_packages(),
+    package_data={"pylate": ["hf_hub/model_card_template.md"]},
     install_requires=base_packages,
     extras_require={
         "eval": base_packages + eval,
