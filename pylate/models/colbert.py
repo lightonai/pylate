@@ -454,7 +454,7 @@ class ColBERT(SentenceTransformer):
         pool_factor: int = 1,
         protected_tokens: int = 1,
         pooling_fn: Optional[callable] = None,
-        pooling_kwargs: dict | None = None,
+        pooling_kwargs: dict | None = {},
     ) -> list[torch.Tensor] | ndarray | torch.Tensor:
         """
         Computes sentence embeddings.
