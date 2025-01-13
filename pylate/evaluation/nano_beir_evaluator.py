@@ -27,7 +27,7 @@ DatasetNameType = Literal[
 ]
 
 
-dataset_name_to_id = {
+MAPPING_DATASET_NAME_TO_ID = {
     "climatefever": "zeta-alpha-ai/NanoClimateFEVER",
     "dbpedia": "zeta-alpha-ai/NanoDBPedia",
     "fever": "zeta-alpha-ai/NanoFEVER",
@@ -43,7 +43,7 @@ dataset_name_to_id = {
     "touche2020": "zeta-alpha-ai/NanoTouche2020",
 }
 
-dataset_name_to_human_readable = {
+MAPPING_DATASET_NAME_TO_HUMAN_READABLE = {
     "climatefever": "ClimateFEVER",
     "dbpedia": "DBPedia",
     "fever": "FEVER",
@@ -168,7 +168,7 @@ class NanoBEIREvaluator(SentenceEvaluator):
             )
         from datasets import load_dataset
 
-        dataset_path = dataset_name_to_id[dataset_name.lower()]
+        dataset_path = MAPPING_DATASET_NAME_TO_ID[dataset_name.lower()]
         corpus = load_dataset(dataset_path, "corpus", split="train")
         queries = load_dataset(dataset_path, "queries", split="train")
         qrels = load_dataset(dataset_path, "qrels", split="train")
