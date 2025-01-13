@@ -11,92 +11,19 @@ from torch import Tensor
 from tqdm import trange
 
 if TYPE_CHECKING:
-    from sentence_transformers.SentenceTransformer import SentenceTransformer
+    from ..models import ColBERT
 
 logger = logging.getLogger(__name__)
 
 
 class PyLateInformationRetrievalEvaluator(InformationRetrievalEvaluator):
     """
-    This class evaluates an Information Retrieval (IR) setting.
-
-    Given a set of queries and a large corpus set. It will retrieve for each query the top-k most similar document. It measures
-    Mean Reciprocal Rank (MRR), Recall@k, and Normalized Discounted Cumulative Gain (NDCG)
-
-    Example:
-        ::
-
-            import random
-            from sentence_transformers import SentenceTransformer
-            from sentence_transformers.evaluation import InformationRetrievalEvaluator
-            from datasets import load_dataset
-
-            # Load a model
-            model = SentenceTransformer('all-MiniLM-L6-v2')
-
-            # Load the Touche-2020 IR dataset (https://huggingface.co/datasets/BeIR/webis-touche2020, https://huggingface.co/datasets/BeIR/webis-touche2020-qrels)
-            corpus = load_dataset("BeIR/webis-touche2020", "corpus", split="corpus")
-            queries = load_dataset("BeIR/webis-touche2020", "queries", split="queries")
-            relevant_docs_data = load_dataset("BeIR/webis-touche2020-qrels", split="test")
-
-            # For this dataset, we want to concatenate the title and texts for the corpus
-            corpus = corpus.map(lambda x: {'text': x['title'] + " " + x['text']}, remove_columns=['title'])
-
-            # Shrink the corpus size heavily to only the relevant documents + 30,000 random documents
-            required_corpus_ids = set(map(str, relevant_docs_data["corpus-id"]))
-            required_corpus_ids |= set(random.sample(corpus["_id"], k=30_000))
-            corpus = corpus.filter(lambda x: x["_id"] in required_corpus_ids)
-
-            # Convert the datasets to dictionaries
-            corpus = dict(zip(corpus["_id"], corpus["text"]))  # Our corpus (cid => document)
-            queries = dict(zip(queries["_id"], queries["text"]))  # Our queries (qid => question)
-            relevant_docs = {}  # Query ID to relevant documents (qid => set([relevant_cids])
-            for qid, corpus_ids in zip(relevant_docs_data["query-id"], relevant_docs_data["corpus-id"]):
-                qid = str(qid)
-                corpus_ids = str(corpus_ids)
-                if qid not in relevant_docs:
-                    relevant_docs[qid] = set()
-                relevant_docs[qid].add(corpus_ids)
-
-            # Given queries, a corpus and a mapping with relevant documents, the InformationRetrievalEvaluator computes different IR metrics.
-            ir_evaluator = InformationRetrievalEvaluator(
-                queries=queries,
-                corpus=corpus,
-                relevant_docs=relevant_docs,
-                name="BeIR-touche2020-subset-test",
-            )
-            results = ir_evaluator(model)
-            '''
-            Information Retrieval Evaluation of the model on the BeIR-touche2020-test dataset:
-            Queries: 49
-            Corpus: 31923
-
-            Score-Function: cosine
-            Accuracy@1: 77.55%
-            Accuracy@3: 93.88%
-            Accuracy@5: 97.96%
-            Accuracy@10: 100.00%
-            Precision@1: 77.55%
-            Precision@3: 72.11%
-            Precision@5: 71.43%
-            Precision@10: 62.65%
-            Recall@1: 1.72%
-            Recall@3: 4.78%
-            Recall@5: 7.90%
-            Recall@10: 13.86%
-            MRR@10: 0.8580
-            NDCG@10: 0.6606
-            MAP@100: 0.2934
-            '''
-            print(ir_evaluator.primary_metric)
-            # => "BeIR-touche2020-test_cosine_map@100"
-            print(results[ir_evaluator.primary_metric])
-            # => 0.29335196224364596
+    This class evaluates an Information Retrieval (IR) setting. This is a direct extension of the InformationRetrievalEvaluator from the sentence-transformers library, only override the compute_metrices method to be compilatible with PyLate models (define assymetric encoding using is_query params and add padding).
     """
 
     def compute_metrices(
         self,
-        model: SentenceTransformer,
+        model: ColBERT,
         corpus_model=None,
         corpus_embeddings: Tensor | None = None,
     ) -> dict[str, float]:

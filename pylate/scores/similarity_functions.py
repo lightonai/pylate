@@ -24,14 +24,10 @@ class SimilarityFunction(Enum):
         """
         Converts a similarity function name or enum value to the corresponding similarity function.
 
-        Args:
-            similarity_function (Union[str, SimilarityFunction]): The name or enum value of the similarity function.
-
-        Returns:
-            Callable[[Union[Tensor, ndarray], Union[Tensor, ndarray]], Tensor]: The corresponding similarity function.
-
-        Raises:
-            ValueError: If the provided function is not supported.
+        Parameters
+        ----------
+        similarity_function
+            The name or enum value of the similarity function.
         """
         similarity_function = SimilarityFunction(similarity_function)
         if similarity_function == SimilarityFunction.MAXSIM:
@@ -52,14 +48,10 @@ class SimilarityFunction(Enum):
         computes the similarity(a[i], b[i]) for each i in the range of the input tensors, rather than
         computing the similarity between all pairs of a and b.
 
-        Args:
-            similarity_function (Union[str, SimilarityFunction]): The name or enum value of the similarity function.
-
-        Returns:
-            Callable[[Union[Tensor, ndarray], Union[Tensor, ndarray]], Tensor]: The pairwise similarity function.
-
-        Raises:
-            ValueError: If the provided similarity function is not supported.
+        Parameters
+        ----------
+        similarity_function
+            The name or enum value of the similarity function.
         """
         similarity_function = SimilarityFunction(similarity_function)
         if similarity_function == SimilarityFunction.MAXSIM:
@@ -70,12 +62,11 @@ class SimilarityFunction(Enum):
         """
         Returns a list of possible values for the SimilarityFunction enum.
 
-        Returns:
-            list: A list of possible values for the SimilarityFunction enum.
+        Examples
+        --------
 
-        Example:
-            >>> possible_values = SimilarityFunction.possible_values()
-            >>> possible_values
-            ['MaxSim']
+        >>> possible_values = SimilarityFunction.possible_values()
+        >>> possible_values
+        ['MaxSim']
         """
         return [m.value for m in SimilarityFunction]

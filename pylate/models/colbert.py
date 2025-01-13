@@ -755,17 +755,17 @@ class ColBERT(SentenceTransformer):
         return pooled_embeddings
 
     @property
-    def similarity_fn_name(self) -> Literal["cosine", "dot", "euclidean", "manhattan"]:
+    def similarity_fn_name(self) -> Literal["MaxSim"]:
         """Return the name of the similarity function used by :meth:`SentenceTransformer.similarity` and :meth:`SentenceTransformer.similarity_pairwise`.
 
         Returns:
             Optional[str]: The name of the similarity function. Can be None if not set, in which case it will
                 default to "cosine" when first called.
-
-        Example:
-            >>> model = SentenceTransformer("multi-qa-mpnet-base-dot-v1")
-            >>> model.similarity_fn_name
-            'dot'
+        Examples
+        --------
+        >>> model = ColBERT("bert-base-uncased")
+        >>> model.similarity_fn_name
+            'MaxSim'
         """
         if self._similarity_fn_name is None:
             self.similarity_fn_name = SimilarityFunction.MAXSIM
