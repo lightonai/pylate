@@ -98,6 +98,7 @@ class ColBERT(SentenceTransformer):
         is False (as in the original ColBERT codebase).
     skiplist_words
         A list of words to skip from the documents scoring (note that these tokens are used for encoding and are only skipped during the scoring). Default is the list of string.punctuation.
+
     model_kwargs : dict, optional
         Additional model configuration parameters to be passed to the Huggingface Transformers model. Particularly
         useful options are:
@@ -449,6 +450,8 @@ class ColBERT(SentenceTransformer):
         is_query: bool = True,
         pool_factor: int = 1,
         protected_tokens: int = 1,
+        pooling_fn: Optional[callable] = None,
+        pooling_kwargs: dict | None = None,
     ) -> list[torch.Tensor] | ndarray | torch.Tensor:
         """
         Computes sentence embeddings.
@@ -496,6 +499,10 @@ class ColBERT(SentenceTransformer):
             to 1, no pooling is done; if set to 2, 50% of the tokens are kept; if set to 3, 33%, and so on. Defaults to 1.
         protected_tokens
             The number of tokens at the beginning of the sequence that should not be pooled. Defaults to 1 (CLS token).
+        pooling_fn
+            A function to pool the document embeddings. If not set and pooling_factor is set, the default (hierarchical) pooling function is used.
+        pooling_kwargs
+            Additional keyword arguments to pass to the pooling function. Defaults to None.
 
         """
         if isinstance(sentences, list):
@@ -689,13 +696,20 @@ class ColBERT(SentenceTransformer):
                     )
                     embeddings.append(token_embedding)
 
-                # Pool factor must be greater than 1: keeping 1 over pool_factor tokens embeddings.
-                if pool_factor > 1 and not is_query:
-                    embeddings = self.pool_embeddings_hierarchical(
-                        documents_embeddings=embeddings,
-                        pool_factor=pool_factor,
-                        protected_tokens=protected_tokens,
-                    )
+                # We only pool documents
+                if not is_query:
+                    # Use the custom pooling function if provided
+                    if pooling_fn is not None:
+                        embeddings = pooling_fn(
+                            embeddings=embeddings, **(pooling_kwargs or {})
+                        )
+                    # Else, use hierarchical pooling. pool factor must be greater than 1: keeping 1 over pool_factor tokens embeddings.
+                    elif pool_factor > 1:
+                        embeddings = self.pool_embeddings_hierarchical(
+                            documents_embeddings=embeddings,
+                            pool_factor=pool_factor,
+                            protected_tokens=protected_tokens,
+                        )
 
                 # fixes for #522 and #487 to avoid oom problems on gpu with large datasets
                 if convert_to_numpy:
