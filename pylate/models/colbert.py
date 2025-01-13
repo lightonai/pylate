@@ -11,7 +11,6 @@ from typing import Iterable, Literal, Optional
 import numpy as np
 import torch
 from numpy import ndarray
-from scipy.cluster import hierarchy
 from sentence_transformers import SentenceTransformer
 from sentence_transformers.models import Dense as DenseSentenceTransformer
 from sentence_transformers.models import Transformer
@@ -21,7 +20,12 @@ from torch import nn
 from tqdm.autonotebook import trange
 from transformers.utils import cached_file
 
+<<<<<<< HEAD
 from ..hf_hub.model_card import PylateModelCardData
+=======
+from ..hf_hub.model_card import PylateModelCardData, generate_model_card
+from ..pooling import hierarchical_pooling
+>>>>>>> 75f6654 (Creating pooling module and adding late chunking)
 from ..scores import SimilarityFunction
 from ..utils import _start_multi_process_pool
 from .Dense import Dense
@@ -98,7 +102,6 @@ class ColBERT(SentenceTransformer):
         is False (as in the original ColBERT codebase).
     skiplist_words
         A list of words to skip from the documents scoring (note that these tokens are used for encoding and are only skipped during the scoring). Default is the list of string.punctuation.
-
     model_kwargs : dict, optional
         Additional model configuration parameters to be passed to the Huggingface Transformers model. Particularly
         useful options are:
@@ -500,7 +503,7 @@ class ColBERT(SentenceTransformer):
         protected_tokens
             The number of tokens at the beginning of the sequence that should not be pooled. Defaults to 1 (CLS token).
         pooling_fn
-            A function to pool the document embeddings. If not set and pooling_factor is set, the default (hierarchical) pooling function is used.
+            A function to pool the document embeddings. If not set and pooling_factor is set, the default (hierarchical) pooling function is used. Must take a list of embeddings and return a list of pooled embeddings. Defaults to None.
         pooling_kwargs
             Additional keyword arguments to pass to the pooling function. Defaults to None.
 
@@ -701,11 +704,11 @@ class ColBERT(SentenceTransformer):
                     # Use the custom pooling function if provided
                     if pooling_fn is not None:
                         embeddings = pooling_fn(
-                            embeddings=embeddings, **(pooling_kwargs or {})
+                            document_embeddings=embeddings, **(pooling_kwargs or {})
                         )
                     # Else, use hierarchical pooling. pool factor must be greater than 1: keeping 1 over pool_factor tokens embeddings.
                     elif pool_factor > 1:
-                        embeddings = self.pool_embeddings_hierarchical(
+                        embeddings = hierarchical_pooling(
                             documents_embeddings=embeddings,
                             pool_factor=pool_factor,
                             protected_tokens=protected_tokens,
@@ -753,72 +756,6 @@ class ColBERT(SentenceTransformer):
             ]
 
         return all_embeddings[0] if input_was_string else all_embeddings
-
-    def pool_embeddings_hierarchical(
-        self,
-        documents_embeddings: list[torch.Tensor],
-        pool_factor: int = 1,
-        protected_tokens: int = 1,
-    ) -> list[torch.Tensor]:
-        """
-        Pools the embeddings hierarchically by clustering and averaging them.
-
-        Parameters
-        ----------
-        document_embeddings_list
-            A list of embeddings for each document.
-        pool_factor
-            Factor to determine the number of clusters. Defaults to 1.
-        protected_tokens
-            Number of tokens to protect from pooling at the start of each document. Defaults to 1.
-
-        Returns
-        -------
-            A list of pooled embeddings for each document.
-        """
-        device = torch.device(device="cuda" if torch.cuda.is_available() else "cpu")
-        pooled_embeddings = []
-
-        for document_embeddings in documents_embeddings:
-            document_embeddings = document_embeddings.to(device=device)
-
-            # Separate protected tokens from the rest
-            protected_embeddings = document_embeddings[:protected_tokens]
-            embeddings_to_pool = document_embeddings[protected_tokens:]
-
-            # Compute cosine similarity and convert to distance matrix
-            cosine_similarities = torch.mm(
-                input=embeddings_to_pool, mat2=embeddings_to_pool.t()
-            )
-            distance_matrix = 1 - cosine_similarities.cpu().numpy()
-
-            # Perform hierarchical clustering using Ward's method
-            clusters = hierarchy.linkage(distance_matrix, method="ward")
-            num_embeddings = len(embeddings_to_pool)
-
-            # Determine the number of clusters based on pool_factor
-            num_clusters = max(num_embeddings // pool_factor, 1)
-            cluster_labels = hierarchy.fcluster(
-                clusters, t=num_clusters, criterion="maxclust"
-            )
-
-            # Pool embeddings within each cluster
-            pooled_document_embeddings = []
-            for cluster_id in range(1, num_clusters + 1):
-                cluster_indices = torch.where(
-                    condition=torch.tensor(
-                        data=cluster_labels == cluster_id, device=device
-                    )
-                )[0]
-                if cluster_indices.numel() > 0:
-                    cluster_embedding = embeddings_to_pool[cluster_indices].mean(dim=0)
-                    pooled_document_embeddings.append(cluster_embedding)
-
-            # Re-append protected embeddings
-            pooled_document_embeddings.extend(protected_embeddings)
-            pooled_embeddings.append(torch.stack(tensors=pooled_document_embeddings))
-
-        return pooled_embeddings
 
     @property
     def similarity_fn_name(self) -> Literal["MaxSim"]:
