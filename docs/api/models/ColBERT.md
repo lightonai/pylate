@@ -26,7 +26,7 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     The name of the prompt that should be used by default. If not set, no prompt will be applied.
 
-- **similarity_fn_name** (*Union[str, sentence_transformers.similarity_functions.SimilarityFunction, NoneType]*) – defaults to `None`
+- **similarity_fn_name** (*Union[str, [scores.SimilarityFunction](../../scores/SimilarityFunction), NoneType]*) – defaults to `None`
 
     The name of the similarity function to use. Valid options are "cosine", "dot", "euclidean", and "manhattan". If not set, it is automatically set to "cosine" if `similarity` or `similarity_pairwise` are called while `model.similarity_fn_name` is still `None`.
 
@@ -108,7 +108,7 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     Additional model configuration parameters to be passed to the Huggingface Transformers config. See the `AutoConfig.from_pretrained <https://huggingface.co/docs/transformers/en/model_doc/auto#transformers.AutoConfig.from_pretrained>`_ documentation for more details.
 
-- **model_card_data** (*Optional[sentence_transformers.model_card.SentenceTransformerModelCardData]*) – defaults to `None`
+- **model_card_data** (*pylate.hf_hub.model_card.PylateModelCardData | None*) – defaults to `None`
 
     A model card data object that contains information about the model. This is used to generate a model card when saving the model. If not set, a default model card data object is created.
 
@@ -129,7 +129,7 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
 - **similarity_fn_name**
 
-    Return the name of the similarity function used by :meth:`SentenceTransformer.similarity` and :meth:`SentenceTransformer.similarity_pairwise`.  Returns:     Optional[str]: The name of the similarity function. Can be None if not set, in which case any uses of     :meth:`SentenceTransformer.similarity` and :meth:`SentenceTransformer.similarity_pairwise` default to "cosine".  Example:     >>> model = SentenceTransformer("multi-qa-mpnet-base-dot-v1")     >>> model.similarity_fn_name     'dot'
+    Return the name of the similarity function used by :meth:`SentenceTransformer.similarity` and :meth:`SentenceTransformer.similarity_pairwise`.  Returns:     Optional[str]: The name of the similarity function. Can be None if not set, in which case it will         default to "cosine" when first called. Examples -------- >>> model = ColBERT("bert-base-uncased") >>> model.similarity_fn_name     'MaxSim'
 
 - **similarity_pairwise**
 
@@ -200,6 +200,26 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
     - **args**    
     - **kwargs**    
     
+???- note "active_adapter"
+
+???- note "active_adapters"
+
+    If you are not familiar with adapters and PEFT methods, we invite you to read more about them on the PEFT official documentation: https://huggingface.co/docs/peft
+
+    Gets the current active adapters of the model. In case of multi-adapter inference (combining multiple adapters for inference) returns the list of all active adapters so that users can deal with them accordingly.  For previous PEFT versions (that does not support multi-adapter inference), `module.active_adapter` will return a single string.
+
+    
+???- note "add_adapter"
+
+    Adds a fresh new adapter to the current model for training purposes. If no adapter name is passed, a default name is assigned to the adapter to follow the convention of PEFT library (in PEFT we use "default" as the default adapter name).
+
+    Requires peft as a backend to load the adapter weights and the underlying model to be compatible with PEFT.  Args:     *args:         Positional arguments to pass to the underlying AutoModel `add_adapter` function. More information can be found in the transformers documentation         https://huggingface.co/docs/transformers/main/en/peft#transformers.integrations.PeftAdapterMixin.add_adapter     **kwargs:         Keyword arguments to pass to the underlying AutoModel `add_adapter` function. More information can be found in the transformers documentation         https://huggingface.co/docs/transformers/main/en/peft#transformers.integrations.PeftAdapterMixin.add_adapter
+
+    **Parameters**
+
+    - **args**    
+    - **kwargs**    
+    
 ???- note "add_module"
 
     Add a child module to the current module.
@@ -248,6 +268,8 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     - **recurse**     (*bool*)     – defaults to `True`    
     
+???- note "check_peft_compatible_model"
+
 ???- note "children"
 
     Return an iterator over immediate children modules.
@@ -284,11 +306,21 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
     - **device**     (*Union[int, torch.device, NoneType]*)     – defaults to `None`    
         Device (like "cuda", "cpu", "mps", "npu") that should be used for computation. If None, checks if a GPU can be used.
     
+???- note "disable_adapters"
+
+    Disable all adapters that are attached to the model. This leads to inferring with the base model only.
+
+    
 ???- note "double"
 
     Casts all floating point parameters and buffers to ``double`` datatype.
 
     .. note::     This method modifies the module in-place.  Returns:     Module: self
+
+    
+???- note "enable_adapters"
+
+    Enable adapters that are attached to the model. The model will use `self.active_adapter()`
 
     
 ???- note "encode"
@@ -347,8 +379,8 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **evaluator**     (*sentence_transformers.evaluation.SentenceEvaluator.SentenceEvaluator*)    
-    - **output_path**     (*str*)     – defaults to `None`    
+    - **evaluator**     (*'SentenceEvaluator'*)    
+    - **output_path**     (*'str'*)     – defaults to `None`    
     
 ???- note "extend"
 
@@ -367,25 +399,25 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **train_objectives**     (*Iterable[Tuple[torch.utils.data.dataloader.DataLoader, torch.nn.modules.module.Module]]*)    
-    - **evaluator**     (*sentence_transformers.evaluation.SentenceEvaluator.SentenceEvaluator*)     – defaults to `None`    
-    - **epochs**     (*int*)     – defaults to `1`    
+    - **train_objectives**     (*'Iterable[tuple[DataLoader, nn.Module]]'*)    
+    - **evaluator**     (*'SentenceEvaluator'*)     – defaults to `None`    
+    - **epochs**     (*'int'*)     – defaults to `1`    
     - **steps_per_epoch**     – defaults to `None`    
-    - **scheduler**     (*str*)     – defaults to `WarmupLinear`    
-    - **warmup_steps**     (*int*)     – defaults to `10000`    
-    - **optimizer_class**     (*Type[torch.optim.optimizer.Optimizer]*)     – defaults to `<class 'torch.optim.adamw.AdamW'>`    
-    - **optimizer_params**     (*Dict[str, object]*)     – defaults to `{'lr': 2e-05}`    
-    - **weight_decay**     (*float*)     – defaults to `0.01`    
-    - **evaluation_steps**     (*int*)     – defaults to `0`    
-    - **output_path**     (*str*)     – defaults to `None`    
-    - **save_best_model**     (*bool*)     – defaults to `True`    
-    - **max_grad_norm**     (*float*)     – defaults to `1`    
-    - **use_amp**     (*bool*)     – defaults to `False`    
-    - **callback**     (*Callable[[float, int, int], NoneType]*)     – defaults to `None`    
-    - **show_progress_bar**     (*bool*)     – defaults to `True`    
-    - **checkpoint_path**     (*str*)     – defaults to `None`    
-    - **checkpoint_save_steps**     (*int*)     – defaults to `500`    
-    - **checkpoint_save_total_limit**     (*int*)     – defaults to `0`    
+    - **scheduler**     (*'str'*)     – defaults to `WarmupLinear`    
+    - **warmup_steps**     (*'int'*)     – defaults to `10000`    
+    - **optimizer_class**     (*'type[Optimizer]'*)     – defaults to `<class 'torch.optim.adamw.AdamW'>`    
+    - **optimizer_params**     (*'dict[str, object]'*)     – defaults to `{'lr': 2e-05}`    
+    - **weight_decay**     (*'float'*)     – defaults to `0.01`    
+    - **evaluation_steps**     (*'int'*)     – defaults to `0`    
+    - **output_path**     (*'str'*)     – defaults to `None`    
+    - **save_best_model**     (*'bool'*)     – defaults to `True`    
+    - **max_grad_norm**     (*'float'*)     – defaults to `1`    
+    - **use_amp**     (*'bool'*)     – defaults to `False`    
+    - **callback**     (*'Callable[[float, int, int], None]'*)     – defaults to `None`    
+    - **show_progress_bar**     (*'bool'*)     – defaults to `True`    
+    - **checkpoint_path**     (*'str'*)     – defaults to `None`    
+    - **checkpoint_save_steps**     (*'int'*)     – defaults to `500`    
+    - **checkpoint_save_total_limit**     (*'int'*)     – defaults to `0`    
     
 ???- note "float"
 
@@ -402,7 +434,26 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **input**     (*Any*)    
+    - **input**     (*'dict[str, Tensor]'*)    
+    - **kwargs**    
+    
+???- note "get_adapter_state_dict"
+
+    If you are not familiar with adapters and PEFT methods, we invite you to read more about them on the PEFT official documentation: https://huggingface.co/docs/peft
+
+    Gets the adapter state dict that should only contain the weights tensors of the specified adapter_name adapter. If no adapter_name is passed, the active adapter is used.  Args:     *args:         Positional arguments to pass to the underlying AutoModel `get_adapter_state_dict` function. More information can be found in the transformers documentation         https://huggingface.co/docs/transformers/main/en/peft#transformers.integrations.PeftAdapterMixin.get_adapter_state_dict     **kwargs:         Keyword arguments to pass to the underlying AutoModel `get_adapter_state_dict` function. More information can be found in the transformers documentation         https://huggingface.co/docs/transformers/main/en/peft#transformers.integrations.PeftAdapterMixin.get_adapter_state_dict
+
+    **Parameters**
+
+    - **args**    
+    - **kwargs**    
+    
+???- note "get_backend"
+
+    Return the backend used for inference, which can be one of "torch", "onnx", or "openvino".
+
+    Returns:     str: The backend used for inference.
+
     
 ???- note "get_buffer"
 
@@ -466,6 +517,8 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
     .. note::     This method modifies the module in-place.  Returns:     Module: self
 
     
+???- note "has_peft_compatible_model"
+
 ???- note "insert"
 
 ???- note "insert_prefix_token"
@@ -490,11 +543,22 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
     
 ???- note "load"
 
+???- note "load_adapter"
+
+    Load adapter weights from file or remote Hub folder." If you are not familiar with adapters and PEFT methods, we invite you to read more about them on PEFT official documentation: https://huggingface.co/docs/peft
+
+    Requires peft as a backend to load the adapter weights and the underlying model to be compatible with PEFT.  Args:     *args:         Positional arguments to pass to the underlying AutoModel `load_adapter` function. More information can be found in the transformers documentation         https://huggingface.co/docs/transformers/main/en/peft#transformers.integrations.PeftAdapterMixin.load_adapter     **kwargs:         Keyword arguments to pass to the underlying AutoModel `load_adapter` function. More information can be found in the transformers documentation         https://huggingface.co/docs/transformers/main/en/peft#transformers.integrations.PeftAdapterMixin.load_adapter
+
+    **Parameters**
+
+    - **args**    
+    - **kwargs**    
+    
 ???- note "load_state_dict"
 
     Copy parameters and buffers from :attr:`state_dict` into this module and its descendants.
 
-    If :attr:`strict` is ``True``, then the keys of :attr:`state_dict` must exactly match the keys returned by this module's :meth:`~torch.nn.Module.state_dict` function.  .. warning::     If :attr:`assign` is ``True`` the optimizer must be created after     the call to :attr:`load_state_dict` unless     :func:`~torch.__future__.get_swap_module_params_on_conversion` is ``True``.  Args:     state_dict (dict): a dict containing parameters and         persistent buffers.     strict (bool, optional): whether to strictly enforce that the keys         in :attr:`state_dict` match the keys returned by this module's         :meth:`~torch.nn.Module.state_dict` function. Default: ``True``     assign (bool, optional): When ``False``, the properties of the tensors         in the current module are preserved while when ``True``, the         properties of the Tensors in the state dict are preserved. The only         exception is the ``requires_grad`` field of :class:`~torch.nn.Parameter`s         for which the value from the module is preserved.         Default: ``False``  Returns:     ``NamedTuple`` with ``missing_keys`` and ``unexpected_keys`` fields:         * **missing_keys** is a list of str containing any keys that are expected             by this module but missing from the provided ``state_dict``.         * **unexpected_keys** is a list of str containing the keys that are not             expected by this module but present in the provided ``state_dict``.  Note:     If a parameter or buffer is registered as ``None`` and its corresponding key     exists in :attr:`state_dict`, :meth:`load_state_dict` will raise a     ``RuntimeError``.
+    If :attr:`strict` is ``True``, then the keys of :attr:`state_dict` must exactly match the keys returned by this module's :meth:`~torch.nn.Module.state_dict` function.  .. warning::     If :attr:`assign` is ``True`` the optimizer must be created after     the call to :attr:`load_state_dict` unless     :func:`~torch.__future__.get_swap_module_params_on_conversion` is ``True``.  Args:     state_dict (dict): a dict containing parameters and         persistent buffers.     strict (bool, optional): whether to strictly enforce that the keys         in :attr:`state_dict` match the keys returned by this module's         :meth:`~torch.nn.Module.state_dict` function. Default: ``True``     assign (bool, optional): When ``False``, the properties of the tensors         in the current module are preserved while when ``True``, the         properties of the Tensors in the state dict are preserved. The only         exception is the ``requires_grad`` field of :class:`~torch.nn.Parameter`s         for which the value from the module is preserved.         Default: ``False``  Returns:     ``NamedTuple`` with ``missing_keys`` and ``unexpected_keys`` fields:         * **missing_keys** is a list of str containing the missing keys         * **unexpected_keys** is a list of str containing the unexpected keys  Note:     If a parameter or buffer is registered as ``None`` and its corresponding key     exists in :attr:`state_dict`, :meth:`load_state_dict` will raise a     ``RuntimeError``.
 
     **Parameters**
 
@@ -560,25 +624,25 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **train_objectives**     (*Iterable[Tuple[torch.utils.data.dataloader.DataLoader, torch.nn.modules.module.Module]]*)    
-    - **evaluator**     (*sentence_transformers.evaluation.SentenceEvaluator.SentenceEvaluator*)     – defaults to `None`    
-    - **epochs**     (*int*)     – defaults to `1`    
+    - **train_objectives**     (*'Iterable[tuple[DataLoader, nn.Module]]'*)    
+    - **evaluator**     (*'SentenceEvaluator'*)     – defaults to `None`    
+    - **epochs**     (*'int'*)     – defaults to `1`    
     - **steps_per_epoch**     – defaults to `None`    
-    - **scheduler**     (*str*)     – defaults to `WarmupLinear`    
-    - **warmup_steps**     (*int*)     – defaults to `10000`    
-    - **optimizer_class**     (*Type[torch.optim.optimizer.Optimizer]*)     – defaults to `<class 'torch.optim.adamw.AdamW'>`    
-    - **optimizer_params**     (*Dict[str, object]*)     – defaults to `{'lr': 2e-05}`    
-    - **weight_decay**     (*float*)     – defaults to `0.01`    
-    - **evaluation_steps**     (*int*)     – defaults to `0`    
-    - **output_path**     (*str*)     – defaults to `None`    
-    - **save_best_model**     (*bool*)     – defaults to `True`    
-    - **max_grad_norm**     (*float*)     – defaults to `1`    
-    - **use_amp**     (*bool*)     – defaults to `False`    
-    - **callback**     (*Callable[[float, int, int], NoneType]*)     – defaults to `None`    
-    - **show_progress_bar**     (*bool*)     – defaults to `True`    
-    - **checkpoint_path**     (*str*)     – defaults to `None`    
-    - **checkpoint_save_steps**     (*int*)     – defaults to `500`    
-    - **checkpoint_save_total_limit**     (*int*)     – defaults to `0`    
+    - **scheduler**     (*'str'*)     – defaults to `WarmupLinear`    
+    - **warmup_steps**     (*'int'*)     – defaults to `10000`    
+    - **optimizer_class**     (*'type[Optimizer]'*)     – defaults to `<class 'torch.optim.adamw.AdamW'>`    
+    - **optimizer_params**     (*'dict[str, object]'*)     – defaults to `{'lr': 2e-05}`    
+    - **weight_decay**     (*'float'*)     – defaults to `0.01`    
+    - **evaluation_steps**     (*'int'*)     – defaults to `0`    
+    - **output_path**     (*'str'*)     – defaults to `None`    
+    - **save_best_model**     (*'bool'*)     – defaults to `True`    
+    - **max_grad_norm**     (*'float'*)     – defaults to `1`    
+    - **use_amp**     (*'bool'*)     – defaults to `False`    
+    - **callback**     (*'Callable[[float, int, int], None]'*)     – defaults to `None`    
+    - **show_progress_bar**     (*'bool'*)     – defaults to `True`    
+    - **checkpoint_path**     (*'str'*)     – defaults to `None`    
+    - **checkpoint_save_steps**     (*'int'*)     – defaults to `500`    
+    - **checkpoint_save_total_limit**     (*'int'*)     – defaults to `0`    
     
 ???- note "parameters"
 
@@ -610,20 +674,23 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     Uploads all elements of this Sentence Transformer to a new HuggingFace Hub repository.
 
-    Args:     repo_id (str): Repository name for your model in the Hub, including the user or organization.     token (str, optional): An authentication token (See https://huggingface.co/settings/token)     private (bool, optional): Set to true, for hosting a private model     safe_serialization (bool, optional): If true, save the model using safetensors. If false, save the model the traditional PyTorch way     commit_message (str, optional): Message to commit while pushing.     local_model_path (str, optional): Path of the model locally. If set, this file path will be uploaded. Otherwise, the current model will be uploaded     exist_ok (bool, optional): If true, saving to an existing repository is OK. If false, saving only to a new repository is possible     replace_model_card (bool, optional): If true, replace an existing model card in the hub with the automatically created model card     train_datasets (List[str], optional): Datasets used to train the model. If set, the datasets will be added to the model card in the Hub.  Returns:     str: The url of the commit of your model in the repository on the Hugging Face Hub.
+    Args:     repo_id (str): Repository name for your model in the Hub, including the user or organization.     token (str, optional): An authentication token (See https://huggingface.co/settings/token)     private (bool, optional): Set to true, for hosting a private model     safe_serialization (bool, optional): If true, save the model using safetensors. If false, save the model the traditional PyTorch way     commit_message (str, optional): Message to commit while pushing.     local_model_path (str, optional): Path of the model locally. If set, this file path will be uploaded. Otherwise, the current model will be uploaded     exist_ok (bool, optional): If true, saving to an existing repository is OK. If false, saving only to a new repository is possible     replace_model_card (bool, optional): If true, replace an existing model card in the hub with the automatically created model card     train_datasets (List[str], optional): Datasets used to train the model. If set, the datasets will be added to the model card in the Hub.     revision (str, optional): Branch to push the uploaded files to     create_pr (bool, optional): If True, create a pull request instead of pushing directly to the main branch  Returns:     str: The url of the commit of your model in the repository on the Hugging Face Hub.
 
     **Parameters**
 
-    - **repo_id**     (*str*)    
-    - **token**     (*Optional[str]*)     – defaults to `None`    
+    - **repo_id**     (*'str'*)    
+    - **token**     (*'str | None'*)     – defaults to `None`    
         Hugging Face authentication token to download private models.
-    - **private**     (*Optional[bool]*)     – defaults to `None`    
-    - **safe_serialization**     (*bool*)     – defaults to `True`    
-    - **commit_message**     (*str*)     – defaults to `Add new SentenceTransformer model.`    
-    - **local_model_path**     (*Optional[str]*)     – defaults to `None`    
-    - **exist_ok**     (*bool*)     – defaults to `False`    
-    - **replace_model_card**     (*bool*)     – defaults to `False`    
-    - **train_datasets**     (*Optional[List[str]]*)     – defaults to `None`    
+    - **private**     (*'bool | None'*)     – defaults to `None`    
+    - **safe_serialization**     (*'bool'*)     – defaults to `True`    
+    - **commit_message**     (*'str | None'*)     – defaults to `None`    
+    - **local_model_path**     (*'str | None'*)     – defaults to `None`    
+    - **exist_ok**     (*'bool'*)     – defaults to `False`    
+    - **replace_model_card**     (*'bool'*)     – defaults to `False`    
+    - **train_datasets**     (*'list[str] | None'*)     – defaults to `None`    
+    - **revision**     (*'str | None'*)     – defaults to `None`    
+        The specific model version to use. It can be a branch name, a tag name, or a commit id, for a stored model on Hugging Face.
+    - **create_pr**     (*'bool'*)     – defaults to `False`    
     
 ???- note "register_backward_hook"
 
@@ -766,11 +833,11 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **path**     (*str*)    
-    - **model_name**     (*Optional[str]*)     – defaults to `None`    
-    - **create_model_card**     (*bool*)     – defaults to `True`    
-    - **train_datasets**     (*Optional[List[str]]*)     – defaults to `None`    
-    - **safe_serialization**     (*bool*)     – defaults to `True`    
+    - **path**     (*'str'*)    
+    - **model_name**     (*'str | None'*)     – defaults to `None`    
+    - **create_model_card**     (*'bool'*)     – defaults to `True`    
+    - **train_datasets**     (*'list[str] | None'*)     – defaults to `None`    
+    - **safe_serialization**     (*'bool'*)     – defaults to `True`    
     
 ???- note "save_to_hub"
 
@@ -780,17 +847,28 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **repo_id**     (*str*)    
-    - **organization**     (*Optional[str]*)     – defaults to `None`    
-    - **token**     (*Optional[str]*)     – defaults to `None`    
+    - **repo_id**     (*'str'*)    
+    - **organization**     (*'str | None'*)     – defaults to `None`    
+    - **token**     (*'str | None'*)     – defaults to `None`    
         Hugging Face authentication token to download private models.
-    - **private**     (*Optional[bool]*)     – defaults to `None`    
-    - **safe_serialization**     (*bool*)     – defaults to `True`    
-    - **commit_message**     (*str*)     – defaults to `Add new SentenceTransformer model.`    
-    - **local_model_path**     (*Optional[str]*)     – defaults to `None`    
-    - **exist_ok**     (*bool*)     – defaults to `False`    
-    - **replace_model_card**     (*bool*)     – defaults to `False`    
-    - **train_datasets**     (*Optional[List[str]]*)     – defaults to `None`    
+    - **private**     (*'bool | None'*)     – defaults to `None`    
+    - **safe_serialization**     (*'bool'*)     – defaults to `True`    
+    - **commit_message**     (*'str'*)     – defaults to `Add new SentenceTransformer model.`    
+    - **local_model_path**     (*'str | None'*)     – defaults to `None`    
+    - **exist_ok**     (*'bool'*)     – defaults to `False`    
+    - **replace_model_card**     (*'bool'*)     – defaults to `False`    
+    - **train_datasets**     (*'list[str] | None'*)     – defaults to `None`    
+    
+???- note "set_adapter"
+
+    Sets a specific adapter by forcing the model to use a that adapter and disable the other adapters.
+
+    Args:     *args:         Positional arguments to pass to the underlying AutoModel `set_adapter` function. More information can be found in the transformers documentation         https://huggingface.co/docs/transformers/main/en/peft#transformers.integrations.PeftAdapterMixin.set_adapter     **kwargs:         Keyword arguments to pass to the underlying AutoModel `set_adapter` function. More information can be found in the transformers documentation         https://huggingface.co/docs/transformers/main/en/peft#transformers.integrations.PeftAdapterMixin.set_adapter
+
+    **Parameters**
+
+    - **args**    
+    - **kwargs**    
     
 ???- note "set_extra_state"
 
@@ -810,7 +888,7 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **include_prompt**     (*bool*)    
+    - **include_prompt**     (*'bool'*)    
     
 ???- note "share_memory"
 
@@ -834,7 +912,7 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **batch**     (*List[ForwardRef('InputExample')]*)    
+    - **batch**     (*'list[InputExample]'*)    
     
 ???- note "start_multi_process_pool"
 
@@ -867,7 +945,7 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     Args:     pool (Dict[str, object]): A dictionary containing the input queue, output queue, and process list.  Returns:     None
 
-    - **pool**     (*Dict[Literal['input', 'output', 'processes'], Any]*)    
+    - **pool**     (*"dict[Literal['input', 'output', 'processes'], Any]"*)    
     
 ???- note "to"
 
@@ -922,7 +1000,7 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **truncate_dim**     (*Optional[int]*)    
+    - **truncate_dim**     (*'int | None'*)    
         The dimension to truncate sentence embeddings to. `None` does no truncation. Truncation is only applicable during inference when :meth:`SentenceTransformer.encode` is called.
     
 ???- note "type"

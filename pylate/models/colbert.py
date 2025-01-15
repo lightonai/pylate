@@ -16,12 +16,12 @@ from sentence_transformers import SentenceTransformer
 from sentence_transformers.models import Dense as DenseSentenceTransformer
 from sentence_transformers.models import Transformer
 from sentence_transformers.quantization import quantize_embeddings
-from sentence_transformers.similarity_functions import SimilarityFunction
 from sentence_transformers.util import batch_to_device, load_file_path
 from torch import nn
 from tqdm.autonotebook import trange
 
 from ..hf_hub.model_card import PylateModelCardData, generate_model_card
+from ..scores import SimilarityFunction
 from ..utils import _start_multi_process_pool
 from .Dense import Dense
 
@@ -223,6 +223,8 @@ class ColBERT(SentenceTransformer):
         self.attend_to_expansion_tokens = attend_to_expansion_tokens
         self.skiplist_words = skiplist_words
         model_card_data = model_card_data or PylateModelCardData()
+        if similarity_fn_name is None:
+            similarity_fn_name = "MaxSim"
 
         super(ColBERT, self).__init__(
             model_name_or_path=model_name_or_path,
@@ -751,6 +753,35 @@ class ColBERT(SentenceTransformer):
             pooled_embeddings.append(torch.stack(tensors=pooled_document_embeddings))
 
         return pooled_embeddings
+
+    @property
+    def similarity_fn_name(self) -> Literal["MaxSim"]:
+        """Return the name of the similarity function used by :meth:`SentenceTransformer.similarity` and :meth:`SentenceTransformer.similarity_pairwise`.
+
+        Returns:
+            Optional[str]: The name of the similarity function. Can be None if not set, in which case it will
+                default to "cosine" when first called.
+        Examples
+        --------
+        >>> model = ColBERT("bert-base-uncased")
+        >>> model.similarity_fn_name
+            'MaxSim'
+        """
+        if self._similarity_fn_name is None:
+            self.similarity_fn_name = SimilarityFunction.MAXSIM
+        return self._similarity_fn_name
+
+    @similarity_fn_name.setter
+    def similarity_fn_name(self, value: Literal["MaxSim"] | SimilarityFunction) -> None:
+        if isinstance(value, SimilarityFunction):
+            value = value.value
+        self._similarity_fn_name = value
+
+        if value is not None:
+            self._similarity = SimilarityFunction.to_similarity_fn(value)
+            self._similarity_pairwise = SimilarityFunction.to_similarity_pairwise_fn(
+                value
+            )
 
     @staticmethod
     def skiplist_mask(input_ids: torch.Tensor, skiplist: list[int]) -> torch.Tensor:
