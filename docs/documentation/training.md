@@ -92,6 +92,11 @@ trainer.train()
 
     Refer to this [documentation](https://sbert.net/docs/sentence_transformer/training/distributed.html) for more information.
 
+???+ tip
+    PyLate now features [NanoBEIREvaluator](https://x.com/tomaarsen/status/1857434642569138243), an evaluator that allows to run small versions of the BEIR datasets to get an idea of the performance on BEIR without taking too long to run.
+
+    To use NanoBEIREvaluator, you can simply use ``evaluator=evaluation.NanoBEIREvaluator()`` as an argument of the ``SentenceTransformerTrainer``. You can select to run only a subset of the evaluations by specifying ``dataset_names``, e.g, ``evaluation.NanoBEIREvaluator(dataset_names=["SciFact", NFCorpus])``
+
 ## Knowledge Distillation Training
 
 Training late-interaction models, such as ColBERT, has been shown to benefit from knowledge distillation compared to simpler contrastive learning approaches. Knowledge distillation training focuses on teaching ColBERT models to replicate the outputs of a more capable teacher model (e.g., a cross-encoder). This is achieved using a dataset that includes queries, documents, and the scores assigned by the teacher model to each query/document pair.
