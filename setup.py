@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import setuptools
 
 from pylate.__version__ import __version__

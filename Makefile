@@ -3,10 +3,10 @@ test:
 	pytest tests
 
 ruff:
-	ruff format pylate
+	ruff format .
 
 lint:
-	ruff check pylate
+	ruff check .
 
 livedoc:
 	python docs/parse
