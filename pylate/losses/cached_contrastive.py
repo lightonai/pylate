@@ -223,25 +223,21 @@ class CachedContrastive(nn.Module):
                 ],
                 dim=1,
             )
-            # scores = self.score_metric(rep_anchor[b:e], rep_others, mask_others)
-            loss_mbatch = (
-                F.cross_entropy(
-                    input=scores,
-                    target=labels[b:e],
-                    reduction="mean" if self.size_average else "sum",
-                )
-                * len(scores)
-                / batch_size
+            # We don't want to average the loss across the mini-batch as mini-batch sizes can vary, which would create an issue similar to this one: https://huggingface.co/blog/gradient_accumulation#where-does-it-stem-from
+            loss_mbatch = F.cross_entropy(
+                input=scores,
+                target=labels[b:e],
+                reduction="sum",
             )
-            # loss_mbatch = F.cross_entropy(
-            #     scores, labels[b:e] * len(scores) / batch_size
-            # )
+
             if with_backward:
                 loss_mbatch.backward()
                 loss_mbatch = loss_mbatch.detach()
             losses.append(loss_mbatch)
 
         loss = sum(losses)
+        if self.size_average:
+            loss /= batch_size
 
         return loss
 
