@@ -269,7 +269,7 @@ class CachedContrastive(nn.Module):
                 reps_mbs.append(reps_mb.detach().requires_grad_())
                 random_state_mbs.append(random_state)
             reps.append(reps_mbs)
-        self.random_states.append(random_state_mbs)
+            self.random_states.append(random_state_mbs)
         if torch.is_grad_enabled():
             # Step (2): Calculate the loss, backward up to the embeddings and cache the gradients wrt. to the embeddings
             loss = self.calculate_loss_and_cache_gradients(reps, masks)
