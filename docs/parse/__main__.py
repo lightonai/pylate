@@ -3,6 +3,8 @@ docs/api. The script scans through all the modules, classes, and functions. It p
 the __doc__ of each object and formats it so that MkDocs can process it in turn.
 """
 
+from __future__ import annotations
+
 import functools
 import importlib
 import inspect

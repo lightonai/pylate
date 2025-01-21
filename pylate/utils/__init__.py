@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from .collator import ColBERTCollator
 from .huggingface_models import HUGGINGFACE_MODELS
 from .iter_batch import iter_batch

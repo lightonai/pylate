@@ -1,5 +1,7 @@
 """Evaluation script for the SciFact dataset using the Beir library."""
 
+from __future__ import annotations
+
 from pylate import evaluation, indexes, models, retrieve
 
 model = models.ColBERT(model_name_or_path="lightonai/colbertv2.0", document_length=300)

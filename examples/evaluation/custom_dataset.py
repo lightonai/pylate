@@ -1,5 +1,7 @@
 """Evaluation script for the custom dataset."""
 
+from __future__ import annotations
+
 from pylate import evaluation, indexes, models, retrieve
 
 model = models.ColBERT(

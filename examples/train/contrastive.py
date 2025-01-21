@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import torch
 from datasets import load_dataset
 from sentence_transformers import (

@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+
 def load_custom_dataset(path: str, split: str = "test") -> tuple[list, list, dict]:
     """Load a custom dataset.
 
