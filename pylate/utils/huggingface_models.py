@@ -1,6 +1,8 @@
 """Relevant constants for the project."""
 
 # List of models that do not have a family in the Hugging Face model hub.
+from __future__ import annotations
+
 HUGGINGFACE_MODELS = [
     "albert-base-v1",
     "albert-base-v2",

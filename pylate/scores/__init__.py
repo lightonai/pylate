@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from .scores import colbert_kd_scores, colbert_scores, colbert_scores_pairwise
 from .similarity_functions import SimilarityFunction
 

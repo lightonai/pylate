@@ -1,4 +1,5 @@
 """Neural Cherche evaluation module for BEIR datasets."""
+from __future__ import annotations
 
 import random
 from collections import defaultdict
