@@ -181,6 +181,12 @@ trainer.train()
 
     Refer to this [documentation](https://sbert.net/docs/sentence_transformer/training/distributed.html) for more information.
 
+Note that the Distillation also support min-max normalizing the output scores, which have been shown to improve results if the teacher scores are also normalized in [JaColBERTv2.5](https://arxiv.org/pdf/2407.20750) but the gains are not guaranteed as shown in [Jina-ColBERT-v2](https://arxiv.org/abs/2408.16672).
+To normalize the output scores, simply use the ```normalize_scores``` parameter when creating the loss object (you still have to normalize the scores in your dataset):
+```python
+train_loss = losses.Distillation(model=model, normalize_scores=True)
+```
+
 ## ColBERT parameters
 All the parameters of the ColBERT modeling can be found [here](https://lightonai.github.io/pylate/api/models/ColBERT/#parameters). Important parameters to consider are:
 
