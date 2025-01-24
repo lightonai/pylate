@@ -216,13 +216,17 @@ class CachedContrastive(nn.Module):
             disable=not self.show_progress_bar,
         ):
             e = b + self.mini_batch_size
-            scores = torch.cat(
-                [
-                    self.score_metric(embeddings_anchor[b:e], group_embeddings, mask)
-                    for group_embeddings, mask in zip(embeddings_other, masks[1:])
-                ],
-                dim=1,
-            )
+            scores = torch.cat([
+                torch.cat([
+                    self.score_metric(
+                        embeddings_anchor[b:e],
+                        group_embeddings[g_start:min(g_start + self.mini_batch_size, len(group_embeddings))],
+                        mask[g_start:min(g_start + self.mini_batch_size, len(group_embeddings))]
+                    )
+                    for g_start in range(0, len(group_embeddings), self.mini_batch_size)
+                ], dim=1)
+                for group_embeddings, mask in zip(embeddings_other, masks[1:])
+            ], dim=1)
             # We don't want to average the loss across the mini-batch as mini-batch sizes can vary, which would create an issue similar to this one: https://huggingface.co/blog/gradient_accumulation#where-does-it-stem-from
             loss_mbatch = F.cross_entropy(
                 input=scores,
