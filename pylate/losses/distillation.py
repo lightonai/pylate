@@ -56,7 +56,7 @@ class Distillation(torch.nn.Module):
         model: ColBERT,
         score_metric: Callable = colbert_kd_scores,
         size_average: bool = True,
-        normalize_scores: bool = False,
+        normalize_scores: bool = True,
     ) -> None:
         super(Distillation, self).__init__()
         self.score_metric = score_metric
