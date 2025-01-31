@@ -19,7 +19,7 @@ if __name__ == "__main__":
 
     documents_embeddings = model.encode(
         sentences=[document["text"] for document in documents],
-        batch_size=2000,
+        batch_size=10,
         is_query=False,
         show_progress_bar=True,
     )

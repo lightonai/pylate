@@ -114,9 +114,9 @@ def set_seed(seed):
 
 def run_process_without_mp(callee, config, *args):
     set_seed(12345)
-    os.environ["CUDA_VISIBLE_DEVICES"] = ",".join(
-        map(str, config.gpus_[: config.nranks])
-    )
+    # os.environ["CUDA_VISIBLE_DEVICES"] = ",".join(
+    #     map(str, config.gpus_[: config.nranks])
+    # )
 
     with Run().context(config, inherit_config=False):
         return_val = callee(config, *args)
@@ -137,7 +137,7 @@ def setup_new_process(callee, port, return_value_queue, config, *args):
     os.environ["RANK"] = str(config.rank)
 
     # TODO: Ideally the gpus "getter" handles this max-nranks thing!
-    os.environ["CUDA_VISIBLE_DEVICES"] = ",".join(map(str, config.gpus_[:nranks]))
+    # os.environ["CUDA_VISIBLE_DEVICES"] = ",".join(map(str, config.gpus_[:nranks]))
 
     nranks_, distributed_ = distributed.init(rank)
     assert nranks_ == nranks

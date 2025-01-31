@@ -81,10 +81,10 @@ class CoreConfig:
 
     def export(self):
         d = dataclasses.asdict(self)
-
-        for k, v in d.items():
-            # if v is a numpy array, cast to list
-            d[k] = self.__export_value(v)
+        del d["collection"]
+        # for k, v in d.items():
+        #     # if v is a numpy array, cast to list
+        #     d[k] = self.__export_value(v)
         # Remove "collection" item
         # del d["collection"]
         return d
