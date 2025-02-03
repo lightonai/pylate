@@ -49,27 +49,26 @@ index = indexes.Voyager(
 )
 ```
 
-???+ tip
 
-    #### Pooling document embeddings
+#### Pooling document embeddings
 
-    [In this blog post](https://www.answer.ai/posts/colbert-pooling.html), we showed that similar tokens in document embeddings can be pooled together to reduce the overall cost of ColBERT indexing without without losing much performance. 
-    
-    You can use this feature by setting the `pool_factor` parameter when encoding the documents to only keep 1 / `pool_factor` tokens. 
-    
-    The results show that using a `pool_factor` of 2 cut the memory requirement of the index in half with virtually 0 performance drop. Higher compression can be achieved at the cost of some performance, please refer to the blog post for all the details and results.
+[In this blog post](https://www.answer.ai/posts/colbert-pooling.html), we showed that similar tokens in document embeddings can be pooled together to reduce the overall cost of ColBERT indexing without without losing much performance. 
 
-    This simple modification to the encoding call thus save a lot of space with a very contained impact on the performances:
+You can use this feature by setting the `pool_factor` parameter when encoding the documents to only keep 1 / `pool_factor` tokens. 
 
-    ```python
-    documents_embeddings = model.encode(
-        documents,
-        batch_size=32,
-        is_query=False,  # Ensure that it is set to False to indicate that these are documents, not queries
-        pool_factor=2,
-        show_progress_bar=True,
-    )
-    ```
+The results show that using a `pool_factor` of 2 cut the memory requirement of the index in half with virtually 0 performance drop. Higher compression can be achieved at the cost of some performance, please refer to the blog post for all the details and results.
+
+This simple modification to the encoding call thus save a lot of space with a very contained impact on the performances:
+
+```python
+documents_embeddings = model.encode(
+    documents,
+    batch_size=32,
+    is_query=False,  # Ensure that it is set to False to indicate that these are documents, not queries
+    pool_factor=2,
+    show_progress_bar=True,
+)
+```
 
 ### Retrieving top-k documents for queries
 
@@ -124,25 +123,25 @@ The retrieval is not an exact search, which mean that certain parameters can aff
 
 Refer to [HNSW documentation for more details](https://www.pinecone.io/learn/series/faiss/hnsw/). 
 
-???+ info
+> [!IMPORTANT]  
     Another parameter that significantly influences search quality is **k_token**. This parameter determines the **number of neighbors retrieved for each query token**. Higher values of k_token will consider more candidates, leading to better results but at the cost of slower search performance.
 
-    ```python
-    index = indexes.Voyager(
-        index_folder="pylate-index",
-        index_name="index",
-        override=True,  # This overwrites the existing index if any
-        M=M,
-        ef_construction=ef_construction,
-        ef_search=ef_search,
-    )
+```python
+index = indexes.Voyager(
+    index_folder="pylate-index",
+    index_name="index",
+    override=True,  # This overwrites the existing index if any
+    M=M,
+    ef_construction=ef_construction,
+    ef_search=ef_search,
+)
 
-    scores = retriever.retrieve(
-        queries_embeddings=queries_embeddings, 
-        k=10,  # Retrieve the top 10 matches for each query
-        k_token=200 # retrieve 200 candidates per query token
-    )
-    ```
+scores = retriever.retrieve(
+    queries_embeddings=queries_embeddings, 
+    k=10,  # Retrieve the top 10 matches for each query
+    k_token=200 # retrieve 200 candidates per query token
+)
+```
 
 ### Remove documents from the index
 
