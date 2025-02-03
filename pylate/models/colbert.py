@@ -271,7 +271,7 @@ class ColBERT(SentenceTransformer):
                     self.query_prefix = "[unused0]"
                 if self.document_prefix is None:
                     self.document_prefix = "[unused1]"
-                logger.warning("Configuration from a Stanford NLP ColBERT model has been applied. Ensure this aligns with your expected setup.")
+                logger.warning("The loaded model follows the Stanford NLP style. Ensure this aligns with your expected setup.")
             else:
                 # Add a linear projection layer to the model in order to project the embeddings to the desired size
                 embedding_size = embedding_size or 128
