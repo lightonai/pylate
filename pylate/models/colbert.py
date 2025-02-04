@@ -6,8 +6,6 @@ import logging
 import math
 import os
 import string
-import traceback
-from pathlib import Path
 from typing import Iterable, Literal, Optional
 
 import numpy as np
@@ -22,7 +20,7 @@ from sentence_transformers.util import batch_to_device, load_file_path
 from torch import nn
 from tqdm.autonotebook import trange
 
-from ..hf_hub.model_card import PylateModelCardData, generate_model_card
+from ..hf_hub.model_card import PylateModelCardData
 from ..scores import SimilarityFunction
 from ..utils import _start_multi_process_pool
 from .Dense import Dense
