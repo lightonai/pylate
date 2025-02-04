@@ -343,7 +343,7 @@ class ColBERT(SentenceTransformer):
 
         self.to(device)
         self.is_hpu_graph_enabled = False
-        # Override the configuration values with the provided arguments, if any.
+        # Override the configuration values with the provided arguments, if any. If not set and values have not been read from configs, set to default values.
         self.query_prefix = (
             query_prefix if query_prefix is not None else self.query_prefix or "[Q] "
         )
