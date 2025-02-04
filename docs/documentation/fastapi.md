@@ -15,8 +15,8 @@ curl -X POST http://localhost:8002/v1/embeddings \
 ```
 If you want to encode queries, simply set ```ìs_query``` to ```True```.
 
-> [!TIP]
-> Note that the server leverages [batched](https://github.com/mixedbread-ai/batched), so you can do batch processing by sending multiple separate calls and it will create batches dynamically to fill up the GPU.
+???+ tip
+    Note that the server leverages [batched](https://github.com/mixedbread-ai/batched), so you can do batch processing by sending multiple separate calls and it will create batches dynamically to fill up the GPU.
 
 For now, the server only support one loaded model, which you can define by using the ```--model``` argument when launching the server.
 

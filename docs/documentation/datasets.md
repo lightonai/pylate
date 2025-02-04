@@ -119,7 +119,7 @@ Example entry:
 }
 ```
 
-> [!WARNING]  
+???+ warning
     Ensure that the length of `document_ids` matches the length of `scores`.
 
 ### Queries

@@ -1,10 +1,12 @@
 # ColBERT Training
 PyLate training is based on Sentence Transformer (and thus transformers) trainer, enabling a lot of functionality such multi-GPU and FP16/BF16 training as well as logging to Weights & Biases out-of-the-box. This allows efficient, and scalable training. 
 
-> [!NOTE]  
->    There are two primary ways to train ColBERT models using PyLate:
->    1. **Contrastive Loss**: Simplest method, it only requires a dataset containing triplets, each consisting of a query, a positive document (relevant to the query), and a negative document (irrelevant to the query). This method trains the model to maximize the similarity between the query and the positive document, while minimizing it with the negative document.
->    2. **Knowledge Distillation**: To train a ColBERT model using knowledge distillation, you need to provide a dataset with three components: queries, documents, and the relevance scores between them. This method compresses the knowledge of a larger model / more accurate model (cross-encoder) into a smaller one, using the relevance scores to guide the training process.
+???+ info
+    There are two primary ways to train ColBERT models using PyLate:
+
+    1. **Contrastive Loss**: Simplest method, it only requires a dataset containing triplets, each consisting of a query, a positive document (relevant to the query), and a negative document (irrelevant to the query). This method trains the model to maximize the similarity between the query and the positive document, while minimizing it with the negative document.
+
+    2. **Knowledge Distillation**: To train a ColBERT model using knowledge distillation, you need to provide a dataset with three components: queries, documents, and the relevance scores between them. This method compresses the knowledge of a larger model / more accurate model (cross-encoder) into a smaller one, using the relevance scores to guide the training process.
 
 ## Contrastive Training
 
@@ -85,14 +87,15 @@ trainer.train()
 
 ```
 
-> [!TIP]
+???+ tip
     Please note that for multi-GPU training, running ``python training.py`` **will use Data Parallel (DP) by default**. We strongly suggest using using Distributed Data Parallelism (DDP) using accelerate or torchrun: ``accelerate launch --num_processes num_gpu training.py``.
 
     Refer to this [documentation](https://sbert.net/docs/sentence_transformer/training/distributed.html) for more information.
 
-> [!TIP]
+???+ tip
     PyLate now features [NanoBEIREvaluator](https://x.com/tomaarsen/status/1857434642569138243), an evaluator that allows to run small versions of the BEIR datasets to get an idea of the performance on BEIR without taking too long to run.
->    To use NanoBEIREvaluator, you can simply use ``evaluator=evaluation.NanoBEIREvaluator()`` as an argument of the ``SentenceTransformerTrainer``. You can select to run only a subset of the evaluations by specifying ``dataset_names``, e.g, ``evaluation.NanoBEIREvaluator(dataset_names=["SciFact", NFCorpus])``
+
+    To use NanoBEIREvaluator, you can simply use ``evaluator=evaluation.NanoBEIREvaluator()`` as an argument of the ``SentenceTransformerTrainer``. You can select to run only a subset of the evaluations by specifying ``dataset_names``, e.g, ``evaluation.NanoBEIREvaluator(dataset_names=["SciFact", NFCorpus])``
 
 ## Knowledge Distillation Training
 
@@ -173,14 +176,15 @@ trainer.train()
 
 ```
 
-> [!TIP]
+???+ tip
     Please note that for multi-GPU training, running ``python training.py`` **will use Data Parallel (DP) by default**. We strongly suggest using using Distributed Data Parallelism (DDP) using accelerate or torchrun: ``accelerate launch --num_processes num_gpu training.py``.
->    Refer to this [documentation](https://sbert.net/docs/sentence_transformer/training/distributed.html) for more information.
+
+    Refer to this [documentation](https://sbert.net/docs/sentence_transformer/training/distributed.html) for more information.
 
 ## ColBERT parameters
 All the parameters of the ColBERT modeling can be found [here](https://lightonai.github.io/pylate/api/models/ColBERT/#parameters). Important parameters to consider are:
 
-> [!TIP]
+???+ info
     - `model_name_or_path` the name of the base encoder model or PyLate model to init from.
     - `embedding_size` the output size of the projection layer. Large values give more capacity to the model but are heavier to store.
     - `query_prefix` and `document_prefix` represents the strings that will be prepended to query and document respectively.

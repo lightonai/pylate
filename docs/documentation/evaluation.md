@@ -95,10 +95,12 @@ The output is a dictionary containing various evaluation metrics. Here’s a sam
 ```
 
 
-> [!NOTE]
-> 1. is_query flag: Always set is_query=True when encoding queries and is_query=False when encoding documents. This ensures the model applies the correct prefixes for queries and documents.
-> 2. Evaluation metrics: The pipeline supports a wide range of evaluation metrics, including NDCG, hits, MAP, recall, and precision, with different cutoff points.
-> 3. Relevance judgments (qrels): The qrels are used to calculate how well the retrieved documents match the ground truth.
+???+ info
+    1. is_query flag: Always set is_query=True when encoding queries and is_query=False when encoding documents. This ensures the model applies the correct prefixes for queries and documents.
+
+    2. Evaluation metrics: The pipeline supports a wide range of evaluation metrics, including NDCG, hits, MAP, recall, and precision, with different cutoff points.
+
+    3. Relevance judgments (qrels): The qrels are used to calculate how well the retrieved documents match the ground truth.
 
 ### BEIR datasets
 
