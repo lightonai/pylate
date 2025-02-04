@@ -21,9 +21,6 @@ from transformers.integrations import CodeCarbonCallback
 
 from ..__version__ import __version__ as pylate_version
 
-if is_datasets_available():
-    pass
-
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
@@ -249,6 +246,10 @@ year={2024}
         for key in IGNORED_FIELDS:
             super_dict.pop(key, None)
         return super_dict
+
+    # For now, set_widget_examples is not compatible with our transform/map operations, so we make it a no-op until it is fixed
+    def set_widget_examples(self, dataset) -> None:
+        pass
 
 
 def generate_model_card(model: SentenceTransformer) -> str:
