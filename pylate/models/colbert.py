@@ -390,7 +390,11 @@ class ColBERT(SentenceTransformer):
         self.skiplist = [
             self.tokenizer.convert_tokens_to_ids(word) for word in self.skiplist_words
         ]
-        self.attend_to_expansion_tokens = attend_to_expansion_tokens or False
+        self.attend_to_expansion_tokens = (
+            attend_to_expansion_tokens
+            if attend_to_expansion_tokens is not None
+            else self.attend_to_expansion_tokens or False
+        )
 
     @staticmethod
     def load(input_path) -> "ColBERT":
