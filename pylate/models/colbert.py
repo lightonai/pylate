@@ -343,11 +343,15 @@ class ColBERT(SentenceTransformer):
 
         self.to(device)
         self.is_hpu_graph_enabled = False
-
-        if self.query_prefix is None:
-            self.query_prefix = "[Q] "
-        if self.document_prefix is None:
-            self.document_prefix = "[D] "
+        # Override the configuration values with the provided arguments, if any.
+        self.query_prefix = (
+            query_prefix if query_prefix is not None else self.query_prefix or "[Q] "
+        )
+        self.document_prefix = (
+            document_prefix
+            if document_prefix is not None
+            else self.document_prefix or "[D] "
+        )
 
         # Try adding the prefixes to the tokenizer. We call resize_token_embeddings twice to ensure the tokens are added only if resize_token_embeddings works. There should be a better way to do this.
         try:
@@ -369,7 +373,6 @@ class ColBERT(SentenceTransformer):
         # Set the padding token ID to be the same as the mask token ID for queries.
         self.tokenizer.pad_token_id = self.tokenizer.mask_token_id
 
-        # Override the configuration values with the provided arguments, if any.
         self.document_length = (
             document_length
             if document_length is not None
