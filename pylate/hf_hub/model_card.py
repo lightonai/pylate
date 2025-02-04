@@ -228,19 +228,11 @@ year={2024}
             self.model.get_sentence_embedding_dimension()
         )
         super_dict["model_string"] = str(self.model)
-        if self.model.similarity_fn_name:
-            super_dict["similarity_fn_name"] = {
-                "cosine": "Cosine Similarity",
-                "dot": "Dot Product",
-                "euclidean": "Euclidean Distance",
-                "manhattan": "Manhattan Distance",
-            }.get(
-                self.model.similarity_fn_name,
-                self.model.similarity_fn_name.replace("_", " ").title(),
-            )
-        else:
-            super_dict["similarity_fn_name"] = "Cosine Similarity"
 
+        if self.model.similarity_fn_name:
+            super_dict["similarity_fn_name"] = self.model.similarity_fn_name
+        else:
+            super_dict["similarity_fn_name"] = "MaxSim"
         self.first_save = False
 
         for key in IGNORED_FIELDS:
