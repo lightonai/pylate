@@ -19,6 +19,7 @@ from sentence_transformers.quantization import quantize_embeddings
 from sentence_transformers.util import batch_to_device, load_file_path
 from torch import nn
 from tqdm.autonotebook import trange
+from transformers.utils import cached_file
 
 from ..hf_hub.model_card import PylateModelCardData
 from ..scores import SimilarityFunction
@@ -209,7 +210,7 @@ class ColBERT(SentenceTransformer):
         truncation: bool = True,
         query_length: int | None = None,
         document_length: int | None = None,
-        attend_to_expansion_tokens: bool = False,
+        attend_to_expansion_tokens: bool | None = None,
         skiplist_words: list[str] | None = None,
         model_kwargs: dict | None = None,
         tokenizer_kwargs: dict | None = None,
@@ -264,12 +265,42 @@ class ColBERT(SentenceTransformer):
                         use_auth_token,
                     )
                 )
-                # Setting the prefixes from stanford-nlp models
-                if self.query_prefix is None:
-                    self.query_prefix = "[unused0]"
-                if self.document_prefix is None:
-                    self.document_prefix = "[unused1]"
-                logger.warning("Loaded the ColBERT model from Stanford NLP.")
+                logger.warning("Loaded the weights from Stanford NLP model.")
+                try:
+                    metadata = cached_file(
+                        model_name_or_path,
+                        filename="artifact.metadata",
+                        cache_dir=cache_folder,
+                        revision=revision,
+                        local_files_only=local_files_only,
+                        token=token,
+                        use_auth_token=use_auth_token,
+                    )
+                    with open(metadata, "r") as f:
+                        metadata = json.load(f)
+                        # If the user do not override the values, read from config file
+                        if self.query_prefix is None:
+                            self.query_prefix = metadata["query_token_id"]
+                        if self.document_prefix is None:
+                            self.document_prefix = metadata["doc_token_id"]
+                        if self.query_length is None:
+                            self.query_length = metadata["query_maxlen"]
+                        if self.document_length is None:
+                            self.document_length = metadata["doc_maxlen"]
+                        if self.attend_to_expansion_tokens is None:
+                            self.attend_to_expansion_tokens = metadata[
+                                "attend_to_mask_tokens"
+                            ]
+                    logger.warning("Loaded the configuration from Stanford NLP model.")
+                except EnvironmentError:
+                    if self.query_prefix is None:
+                        self.query_prefix = "[unused0]"
+                    if self.document_prefix is None:
+                        self.document_prefix = "[unused1]"
+                    # We do not set the query/doc length as they'll be set to the default values afterwards. We do it for prefixes as the default from stanford is different from ours
+                    logger.warning(
+                        "Could not load the configuration file from Stanford NLP model, using default values."
+                    )
             else:
                 # Add a linear projection layer to the model in order to project the embeddings to the desired size
                 embedding_size = embedding_size or 128
@@ -359,6 +390,7 @@ class ColBERT(SentenceTransformer):
         self.skiplist = [
             self.tokenizer.convert_tokens_to_ids(word) for word in self.skiplist_words
         ]
+        self.attend_to_expansion_tokens = attend_to_expansion_tokens or False
 
     @staticmethod
     def load(input_path) -> "ColBERT":
