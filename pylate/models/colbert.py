@@ -265,7 +265,7 @@ class ColBERT(SentenceTransformer):
                         use_auth_token,
                     )
                 )
-                logger.warning("Loaded the weights from Stanford NLP model.")
+                logger.info("Loaded the weights from Stanford NLP model.")
                 try:
                     metadata = cached_file(
                         model_name_or_path,
@@ -291,7 +291,7 @@ class ColBERT(SentenceTransformer):
                             self.attend_to_expansion_tokens = metadata[
                                 "attend_to_mask_tokens"
                             ]
-                    logger.warning("Loaded the configuration from Stanford NLP model.")
+                    logger.info("Loaded the configuration from Stanford NLP model.")
                 except EnvironmentError:
                     if self.query_prefix is None:
                         self.query_prefix = "[unused0]"
@@ -305,10 +305,10 @@ class ColBERT(SentenceTransformer):
                 # Add a linear projection layer to the model in order to project the embeddings to the desired size
                 embedding_size = embedding_size or 128
 
-                logger.warning(
+                logger.info(
                     f"The checkpoint does not contain a linear projection layer. Adding one with output dimensions ({hidden_size}, {embedding_size})."
                 )
-                logger.warning("Created a PyLate model from base encoder.")
+                logger.info("Created a PyLate model from base encoder.")
                 self.append(
                     Dense(
                         in_features=hidden_size, out_features=embedding_size, bias=bias
@@ -332,7 +332,7 @@ class ColBERT(SentenceTransformer):
             )
             self[1] = Dense.from_sentence_transformers(dense=self[1])
         else:
-            logger.warning("PyLate model loaded successfully.")
+            logger.info("PyLate model loaded successfully.")
 
         # Ensure all tensors in the model are of the same dtype as the first tensor
         try:
