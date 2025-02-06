@@ -6,8 +6,6 @@ import logging
 import math
 import os
 import string
-import traceback
-from pathlib import Path
 from typing import Iterable, Literal, Optional
 
 import numpy as np
@@ -22,7 +20,7 @@ from sentence_transformers.util import batch_to_device, load_file_path
 from torch import nn
 from tqdm.autonotebook import trange
 
-from ..hf_hub.model_card import PylateModelCardData, generate_model_card
+from ..hf_hub.model_card import PylateModelCardData
 from ..scores import SimilarityFunction
 from ..utils import _start_multi_process_pool
 from .Dense import Dense
@@ -1049,46 +1047,6 @@ class ColBERT(SentenceTransformer):
             config["attend_to_expansion_tokens"] = self.attend_to_expansion_tokens
             config["skiplist_words"] = self.skiplist_words
             json.dump(config, fOut, indent=2)
-
-    def _create_model_card(
-        self,
-        path: str,
-        model_name: str | None = None,
-        train_datasets: list[str] | None = None,
-    ) -> None:
-        """
-        Create an automatic model and stores it in the specified path. If no training was done and the loaded model
-        was a Sentence Transformer model already, then its model card is reused.
-
-        Parameters
-        ----------
-        path
-            The path where the model card will be stored.
-        model_name
-            The name of the model.
-        """
-        if model_name:
-            model_path = Path(model_name)
-            if not model_path.exists() and not self.model_card_data.model_id:
-                self.model_card_data.model_id = model_name
-
-        # If we loaded a Sentence Transformer model from the Hub, and no training was done, then
-        # we don't generate a new model card, but reuse the old one instead.
-        if self._model_card_text and self.model_card_data.trainer is None:
-            model_card = self._model_card_text
-        else:
-            try:
-                model_card = generate_model_card(model=self)
-            except Exception:
-                logger.error(
-                    f"Error while generating model card:\n{traceback.format_exc()}"
-                    "Consider opening an issue on https://github.com/UKPLab/sentence-transformers/issues with this traceback.\n"
-                    "Skipping model card creation."
-                )
-                return
-
-        with open(os.path.join(path, "README.md"), "w", encoding="utf8") as fOut:
-            fOut.write(model_card)
 
     def _load_auto_model(
         self,

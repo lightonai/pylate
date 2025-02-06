@@ -21,9 +21,6 @@ from transformers.integrations import CodeCarbonCallback
 
 from ..__version__ import __version__ as pylate_version
 
-if is_datasets_available():
-    pass
-
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
@@ -231,24 +228,27 @@ year={2024}
             self.model.get_sentence_embedding_dimension()
         )
         super_dict["model_string"] = str(self.model)
-        if self.model.similarity_fn_name:
-            super_dict["similarity_fn_name"] = {
-                "cosine": "Cosine Similarity",
-                "dot": "Dot Product",
-                "euclidean": "Euclidean Distance",
-                "manhattan": "Manhattan Distance",
-            }.get(
-                self.model.similarity_fn_name,
-                self.model.similarity_fn_name.replace("_", " ").title(),
-            )
-        else:
-            super_dict["similarity_fn_name"] = "Cosine Similarity"
 
+        if self.model.similarity_fn_name:
+            super_dict["similarity_fn_name"] = self.model.similarity_fn_name
+        else:
+            super_dict["similarity_fn_name"] = "MaxSim"
         self.first_save = False
 
         for key in IGNORED_FIELDS:
             super_dict.pop(key, None)
         return super_dict
+
+    def set_widget_examples(self, dataset) -> None:
+        """
+        A function to create widget examples from a dataset. For now, set_widget_examples is not compatible with our transform/map operations, so we make it a no-op until it is fixed
+
+        Parameters
+        ----------
+        dataset
+            The dataset to create widget examples from.
+        """
+        pass
 
 
 def generate_model_card(model: SentenceTransformer) -> str:
