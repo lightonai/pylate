@@ -239,8 +239,15 @@ year={2024}
             super_dict.pop(key, None)
         return super_dict
 
-    # For now, set_widget_examples is not compatible with our transform/map operations, so we make it a no-op until it is fixed
     def set_widget_examples(self, dataset) -> None:
+        """
+        A function to create widget examples from a dataset. For now, set_widget_examples is not compatible with our transform/map operations, so we make it a no-op until it is fixed
+
+        Parameters
+        ----------
+        dataset
+            The dataset to create widget examples from.
+        """
         pass
 
 
