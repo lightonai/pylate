@@ -6,7 +6,6 @@
 import itertools
 import os
 
-from pylate.indexes.stanford_nlp.evaluation.loaders import load_collection
 from pylate.indexes.stanford_nlp.infra.run import Run
 
 

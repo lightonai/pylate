@@ -6,14 +6,14 @@ from typing import Union
 import torch
 from tqdm import tqdm
 
-from pylate.indexes.stanford_nlp.data import Collection, Queries, Ranking
+from pylate.indexes.stanford_nlp.data import Collection
 from pylate.indexes.stanford_nlp.infra.config import ColBERTConfig
 from pylate.indexes.stanford_nlp.infra.launcher import print_memory_stats
 from pylate.indexes.stanford_nlp.infra.provenance import Provenance
 from pylate.indexes.stanford_nlp.infra.run import Run
 from pylate.indexes.stanford_nlp.search.index_storage import IndexScorer
 
-TextQueries = Union[str, "list[str]", "dict[int, str]", Queries]
+
 
 
 class Searcher:

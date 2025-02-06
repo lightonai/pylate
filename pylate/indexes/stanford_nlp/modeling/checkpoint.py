@@ -3,10 +3,6 @@ from scipy.cluster.hierarchy import fcluster, linkage
 from tqdm import tqdm
 
 from pylate.indexes.stanford_nlp.modeling.colbert import ColBERT
-from pylate.indexes.stanford_nlp.modeling.tokenization import (
-    DocTokenizer,
-    QueryTokenizer,
-)
 from pylate.indexes.stanford_nlp.utils.amp import MixedPrecisionManager
 
 

@@ -2,7 +2,6 @@ import os
 
 import ujson
 
-from pylate.indexes.stanford_nlp.evaluation.loaders import load_queries
 from pylate.indexes.stanford_nlp.infra.run import Run
 
 # TODO: Look up path in some global [per-thread or thread-safe] list.
