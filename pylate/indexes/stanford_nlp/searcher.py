@@ -38,8 +38,7 @@ class Searcher:
         self.index_config = ColBERTConfig.load_from_index(self.index)
 
         self.config = ColBERTConfig.from_existing(self.index_config, initial_config)
-        self.collection = Collection.cast(collection or self.config.collection)
-        self.configure(collection=self.collection)
+        self.configure()
 
         use_gpu = self.config.total_visible_gpus > 0
 
