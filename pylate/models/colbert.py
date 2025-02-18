@@ -979,7 +979,7 @@ class ColBERT(SentenceTransformer):
         )  # Subtract 1 for the prefix token
 
         # Pad queries (query expansion) and handle padding for documents if specified
-        tokenize_args = {"padding": "max_length"} if pad_document or is_query else {}
+        tokenize_args = {"padding": "max_length"} if pad_document else {}
 
         # Tokenize the texts
         tokenized_outputs = self._first_module().tokenize(texts, **tokenize_args)
