@@ -19,6 +19,7 @@ from sentence_transformers.quantization import quantize_embeddings
 from sentence_transformers.util import batch_to_device, load_file_path
 from torch import nn
 from tqdm.autonotebook import trange
+from transformers.utils import cached_file
 
 from ..hf_hub.model_card import PylateModelCardData
 from ..scores import SimilarityFunction
@@ -209,7 +210,7 @@ class ColBERT(SentenceTransformer):
         truncation: bool = True,
         query_length: int | None = None,
         document_length: int | None = None,
-        attend_to_expansion_tokens: bool = False,
+        attend_to_expansion_tokens: bool | None = None,
         skiplist_words: list[str] | None = None,
         model_kwargs: dict | None = None,
         tokenizer_kwargs: dict | None = None,
@@ -264,20 +265,50 @@ class ColBERT(SentenceTransformer):
                         use_auth_token,
                     )
                 )
-                # Setting the prefixes from stanford-nlp models
-                if self.query_prefix is None:
-                    self.query_prefix = "[unused0]"
-                if self.document_prefix is None:
-                    self.document_prefix = "[unused1]"
-                logger.warning("Loaded the ColBERT model from Stanford NLP.")
+                logger.info("Loaded the weights from Stanford NLP model.")
+                try:
+                    metadata = cached_file(
+                        model_name_or_path,
+                        filename="artifact.metadata",
+                        cache_dir=cache_folder,
+                        revision=revision,
+                        local_files_only=local_files_only,
+                        token=token,
+                        use_auth_token=use_auth_token,
+                    )
+                    with open(metadata, "r") as f:
+                        metadata = json.load(f)
+                        # If the user do not override the values, read from config file
+                        if self.query_prefix is None:
+                            self.query_prefix = metadata["query_token_id"]
+                        if self.document_prefix is None:
+                            self.document_prefix = metadata["doc_token_id"]
+                        if self.query_length is None:
+                            self.query_length = metadata["query_maxlen"]
+                        if self.document_length is None:
+                            self.document_length = metadata["doc_maxlen"]
+                        if self.attend_to_expansion_tokens is None:
+                            self.attend_to_expansion_tokens = metadata[
+                                "attend_to_mask_tokens"
+                            ]
+                    logger.info("Loaded the configuration from Stanford NLP model.")
+                except EnvironmentError:
+                    if self.query_prefix is None:
+                        self.query_prefix = "[unused0]"
+                    if self.document_prefix is None:
+                        self.document_prefix = "[unused1]"
+                    # We do not set the query/doc length as they'll be set to the default values afterwards. We do it for prefixes as the default from stanford is different from ours
+                    logger.warning(
+                        "Could not load the configuration file from Stanford NLP model, using default values."
+                    )
             else:
                 # Add a linear projection layer to the model in order to project the embeddings to the desired size
                 embedding_size = embedding_size or 128
 
-                logger.warning(
+                logger.info(
                     f"The checkpoint does not contain a linear projection layer. Adding one with output dimensions ({hidden_size}, {embedding_size})."
                 )
-                logger.warning("Created a PyLate model from base encoder.")
+                logger.info("Created a PyLate model from base encoder.")
                 self.append(
                     Dense(
                         in_features=hidden_size, out_features=embedding_size, bias=bias
@@ -301,7 +332,7 @@ class ColBERT(SentenceTransformer):
             )
             self[1] = Dense.from_sentence_transformers(dense=self[1])
         else:
-            logger.warning("PyLate model loaded successfully.")
+            logger.info("PyLate model loaded successfully.")
 
         # Ensure all tensors in the model are of the same dtype as the first tensor
         try:
@@ -312,11 +343,15 @@ class ColBERT(SentenceTransformer):
 
         self.to(device)
         self.is_hpu_graph_enabled = False
-
-        if self.query_prefix is None:
-            self.query_prefix = "[Q] "
-        if self.document_prefix is None:
-            self.document_prefix = "[D] "
+        # Override the configuration values with the provided arguments, if any. If not set and values have not been read from configs, set to default values.
+        self.query_prefix = (
+            query_prefix if query_prefix is not None else self.query_prefix or "[Q] "
+        )
+        self.document_prefix = (
+            document_prefix
+            if document_prefix is not None
+            else self.document_prefix or "[D] "
+        )
 
         # Try adding the prefixes to the tokenizer. We call resize_token_embeddings twice to ensure the tokens are added only if resize_token_embeddings works. There should be a better way to do this.
         try:
@@ -338,7 +373,6 @@ class ColBERT(SentenceTransformer):
         # Set the padding token ID to be the same as the mask token ID for queries.
         self.tokenizer.pad_token_id = self.tokenizer.mask_token_id
 
-        # Override the configuration values with the provided arguments, if any.
         self.document_length = (
             document_length
             if document_length is not None
@@ -359,6 +393,11 @@ class ColBERT(SentenceTransformer):
         self.skiplist = [
             self.tokenizer.convert_tokens_to_ids(word) for word in self.skiplist_words
         ]
+        self.attend_to_expansion_tokens = (
+            attend_to_expansion_tokens
+            if attend_to_expansion_tokens is not None
+            else self.attend_to_expansion_tokens or False
+        )
 
     @staticmethod
     def load(input_path) -> "ColBERT":
