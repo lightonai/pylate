@@ -280,24 +280,24 @@ class ColBERT(SentenceTransformer):
                         metadata = json.load(f)
                         # If the user do not override the values, read from config file
                         meta_query_token_id =  metadata.get("query_token_id", None)
-                        if self.query_prefix is None and meta_query_token_id is not None:
+                        if self.query_prefix is None and meta_query_token_id:
                             self.query_prefix = meta_query_token_id
 
                         meta_doc_token_id = metadata.get("doc_token_id", None)
-                        if self.document_prefix is None and meta_doc_token_id is not None:
+                        if self.document_prefix is None and meta_doc_token_id:
                             self.document_prefix = meta_doc_token_id
 
                         meta_query_maxlen = metadata.get("query_maxlen", None)    
-                        if self.query_length is None and meta_query_maxlen is not None:
+                        if self.query_length is None and meta_query_maxlen:
                             self.query_length = meta_query_maxlen
                 
 
                         meta_doc_maxlen = metadata.get("doc_maxlen", None)
-                        if self.document_length is None and meta_doc_maxlen is not None:
+                        if self.document_length is None and meta_doc_maxlen:
                             self.document_length = meta_doc_maxlen
 
                         meta_attend_to_mask_tokens = metadata.get("attend_to_mask_tokens", None)
-                        if self.attend_to_expansion_tokens is None and meta_attend_to_mask_tokens is not None:
+                        if self.attend_to_expansion_tokens is None and meta_attend_to_mask_tokens:
                             self.attend_to_expansion_tokens = meta_attend_to_mask_tokens
                             
                     logger.info("Loaded the configuration from Stanford NLP model.")
