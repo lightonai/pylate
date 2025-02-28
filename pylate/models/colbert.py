@@ -6,6 +6,8 @@ import logging
 import math
 import os
 import string
+import traceback
+from pathlib import Path
 from typing import Iterable, Literal, Optional
 
 import numpy as np
@@ -21,7 +23,7 @@ from torch import nn
 from tqdm.autonotebook import trange
 from transformers.utils import cached_file
 
-from ..hf_hub.model_card import PylateModelCardData
+from ..hf_hub.model_card import PylateModelCardData, generate_model_card
 from ..scores import SimilarityFunction
 from ..utils import _start_multi_process_pool
 from .Dense import Dense
@@ -1234,3 +1236,41 @@ class ColBERT(SentenceTransformer):
             if isinstance(module, Transformer)
             or isinstance(module, DenseSentenceTransformer)
         ], module_kwargs
+    
+    def _create_model_card(
+        self, path: str, model_name: str | None = None, train_datasets: list[str] | None = "deprecated"
+    ) -> None:
+        """
+        Create an automatic model and stores it in the specified path. If no training was done and the loaded model
+        was a Sentence Transformer model already, then its model card is reused.
+
+        Args:
+            path (str): The path where the model card will be stored.
+            model_name (Optional[str], optional): The name of the model. Defaults to None.
+            train_datasets (Optional[List[str]], optional): Deprecated argument. Defaults to "deprecated".
+
+        Returns:
+            None
+        """
+        if model_name:
+            model_path = Path(model_name)
+            if not model_path.exists() and not self.model_card_data.model_id:
+                self.model_card_data.model_id = model_name
+
+        # If we loaded a Sentence Transformer model from the Hub, and no training was done, then
+        # we don't generate a new model card, but reuse the old one instead.
+        if self._model_card_text and "generated_from_trainer" not in self.model_card_data.tags:
+            model_card = self._model_card_text
+        else:
+            try:
+                model_card = generate_model_card(self)
+            except Exception:
+                logger.error(
+                    f"Error while generating model card:\n{traceback.format_exc()}"
+                    "Consider opening an issue on https://github.com/UKPLab/sentence-transformers/issues with this traceback.\n"
+                    "Skipping model card creation."
+                )
+                return
+
+        with open(os.path.join(path, "README.md"), "w", encoding="utf8") as fOut:
+            fOut.write(model_card)
