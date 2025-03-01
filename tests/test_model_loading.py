@@ -11,8 +11,8 @@ from pylate import models
         (
             "colbert-ir/colbertv2.0",
             "c1e84128e85ef755c096a95bdb06b47793b13acf",
-            "[unused0]",
-            "[unused1]",
+            "[Q]\\s",
+            "[D]\\s",
             512,
             32,
             {},

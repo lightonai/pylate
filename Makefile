@@ -15,3 +15,7 @@ livedoc:
 
 deploydoc:
 	mkdocs gh-deploy --force
+
+
+install: 
+	pip install -e ".[dev]"
