@@ -28,6 +28,8 @@ dev = [
     "mkdocs-jupyter == 0.24.8",
     "mkdocs_charts_plugin == 0.0.10",
     "numpydoc == 1.8.0",
+    "einops==0.8.1",
+    "flash_attn==2.7.4.post1"
 ]
 
 eval = ["ranx >= 0.3.16", "beir >= 2.0.0"]
