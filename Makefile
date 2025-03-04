@@ -1,6 +1,6 @@
 test:
-	pytest pylate
-	pytest tests
+	pytest pylate --durations=5 -n auto
+	pytest tests --durations=5 -n auto
 
 ruff:
 	ruff format .
@@ -19,3 +19,7 @@ deploydoc:
 
 install: 
 	pip install -e ".[dev]"
+
+install-test:
+	python -m pip install --upgrade pip
+	pip install ".[dev]"

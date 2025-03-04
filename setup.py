@@ -21,6 +21,7 @@ base_packages = [
 dev = [
     "ruff >= 0.4.9",
     "pytest-cov >= 5.0.0",
+    "pytest-xdist >=3.6.0",
     "pytest >= 8.2.1",
     "pandas >= 2.2.1",
     "mkdocs-material == 9.5.32",
