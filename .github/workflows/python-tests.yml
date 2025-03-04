@@ -6,13 +6,14 @@ on:
       - '**'
 
 jobs:
-  test:
+  test-:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
         python-version: ["3.9", "3.10", "3.11", "3.12"]
+        test-target: ["tests", "pylate"]
 
     steps:
     - name: Checkout code
@@ -27,10 +28,6 @@ jobs:
       run: |
         make install-test
 
-    - name: Run tests training
+    - name: Run tests
       run: |
-        pytest tests -n auto --durations=5
-      
-    - name: Run tests library
-      run: |
-        pytest pylate -n auto --durations=5
+        pytest ${{ matrix.test-target }} -n auto --durations=5
