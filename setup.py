@@ -21,6 +21,7 @@ base_packages = [
 dev = [
     "ruff >= 0.4.9",
     "pytest-cov >= 5.0.0",
+    "pytest-xdist >=3.6.0",
     "pytest >= 8.2.1",
     "pandas >= 2.2.1",
     "mkdocs-material == 9.5.32",
@@ -28,6 +29,7 @@ dev = [
     "mkdocs-jupyter == 0.24.8",
     "mkdocs_charts_plugin == 0.0.10",
     "numpydoc == 1.8.0",
+    "einops>=0.8.1",
 ]
 
 eval = ["ranx >= 0.3.16", "beir >= 2.0.0"]
