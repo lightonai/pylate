@@ -72,7 +72,7 @@ First install the PyLate library:
 pip install -U pylate
 ```
 
-### Retrieval 
+### Retrieval
 
 PyLate provides a streamlined interface to index and retrieve documents using ColBERT models. The index leverages the Voyager HNSW index to efficiently handle document embeddings and enable fast retrieval.
 
@@ -142,7 +142,7 @@ queries_embeddings = model.encode(
 
 # Step 3: Retrieve top-k documents
 scores = retriever.retrieve(
-    queries_embeddings=queries_embeddings, 
+    queries_embeddings=queries_embeddings,
     k=10,  # Retrieve the top 10 matches for each query
 )
 ```

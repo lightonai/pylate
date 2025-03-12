@@ -30,7 +30,7 @@ For evaluation dependencies, use:
 pip install "pylate[eval]"
 ```
 
-## Documentation 
+## Documentation
 
 The complete documentation is available [here](https://lightonai.github.io/pylate/), which includes in-depth guides, examples, and API references.
 
@@ -329,7 +329,7 @@ queries_embeddings = model.encode(
 )
 
 scores = retriever.retrieve(
-    queries_embeddings=queries_embeddings, 
+    queries_embeddings=queries_embeddings,
     k=10,
 )
 

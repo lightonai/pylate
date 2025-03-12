@@ -65,13 +65,13 @@ This class evaluates an Information Retrieval (IR) setting. This is a direct ext
 
     **Parameters**
 
-    - **model**     (*'SentenceTransformer'*)    
-    - **output_path**     (*'str'*)     – defaults to `None`    
-    - **epoch**     (*'int'*)     – defaults to `-1`    
-    - **steps**     (*'int'*)     – defaults to `-1`    
-    - **args**    
-    - **kwargs**    
-    
+    - **model**     (*'SentenceTransformer'*)
+    - **output_path**     (*'str'*)     – defaults to `None`
+    - **epoch**     (*'int'*)     – defaults to `-1`
+    - **steps**     (*'int'*)     – defaults to `-1`
+    - **args**
+    - **kwargs**
+
 ???- note "compute_dcg_at_k"
 
 ???- note "compute_metrices"
@@ -83,4 +83,3 @@ This class evaluates an Information Retrieval (IR) setting. This is a direct ext
 ???- note "prefix_name_to_metrics"
 
 ???- note "store_metrics_in_model_card_data"
-

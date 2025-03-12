@@ -1,6 +1,6 @@
 # Project information
 site_name: pylate
-site_description: Neural Search 
+site_description: Neural Search
 site_author: Raphael Sourty
 site_url: https://lightonai.github.io/pylate
 
@@ -31,7 +31,7 @@ theme:
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
-  
+
   font:
     text: Fira Sans
     code: Fira Code
@@ -70,7 +70,7 @@ markdown_extensions:
       custom_fences:
         - name: vegalite
           class: vegalite
-          format: !!python/name:mkdocs_charts_plugin.fences.fence_vegalite
+          format: "!!python/name:mkdocs_charts_plugin.fences.fence_vegalite"
 
 
 plugins:
@@ -90,4 +90,3 @@ extra_javascript:
 extra_css:
   - stylesheets/extra.css
   - css/version-select.css
-

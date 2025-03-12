@@ -99,12 +99,11 @@ ColBERT Distillation Evaluator. This class is used to monitor the distillation p
 
     **Parameters**
 
-    - **model**     (*'SentenceTransformer'*)    
-    - **output_path**     (*str*)     – defaults to `None`    
-    - **epoch**     (*int*)     – defaults to `-1`    
-    - **steps**     (*int*)     – defaults to `-1`    
-    
+    - **model**     (*'SentenceTransformer'*)
+    - **output_path**     (*str*)     – defaults to `None`
+    - **epoch**     (*int*)     – defaults to `-1`
+    - **steps**     (*int*)     – defaults to `-1`
+
 ???- note "prefix_name_to_metrics"
 
 ???- note "store_metrics_in_model_card_data"
-

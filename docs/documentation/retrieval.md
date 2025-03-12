@@ -53,10 +53,10 @@ index = indexes.Voyager(
 
     #### Pooling document embeddings
 
-    [In this blog post](https://www.answer.ai/posts/colbert-pooling.html), we showed that similar tokens in document embeddings can be pooled together to reduce the overall cost of ColBERT indexing without without losing much performance. 
-    
-    You can use this feature by setting the `pool_factor` parameter when encoding the documents to only keep 1 / `pool_factor` tokens. 
-    
+    [In this blog post](https://www.answer.ai/posts/colbert-pooling.html), we showed that similar tokens in document embeddings can be pooled together to reduce the overall cost of ColBERT indexing without without losing much performance.
+
+    You can use this feature by setting the `pool_factor` parameter when encoding the documents to only keep 1 / `pool_factor` tokens.
+
     The results show that using a `pool_factor` of 2 cut the memory requirement of the index in half with virtually 0 performance drop. Higher compression can be achieved at the cost of some performance, please refer to the blog post for all the details and results.
 
     This simple modification to the encoding call thus save a lot of space with a very contained impact on the performances:
@@ -90,7 +90,7 @@ queries_embeddings = model.encode(
 
 # Step 3: Retrieve top-k documents
 scores = retriever.retrieve(
-    queries_embeddings=queries_embeddings, 
+    queries_embeddings=queries_embeddings,
     k=10,  # Retrieve the top 10 matches for each query
 )
 
@@ -122,7 +122,7 @@ The retrieval is not an exact search, which mean that certain parameters can aff
 - `ef_construction`: the maximum number of neighbors for a node during the creation of the index. Higher values increase the quality of the index but increase the creation time of the index.
 - `ef_search`: the maximum number of neighbors for a node during the search. Higher values increase the quality of the search but also the search time.
 
-Refer to [HNSW documentation for more details](https://www.pinecone.io/learn/series/faiss/hnsw/). 
+Refer to [HNSW documentation for more details](https://www.pinecone.io/learn/series/faiss/hnsw/).
 
 ???+ info
     Another parameter that significantly influences search quality is **k_token**. This parameter determines the **number of neighbors retrieved for each query token**. Higher values of k_token will consider more candidates, leading to better results but at the cost of slower search performance.
@@ -138,7 +138,7 @@ Refer to [HNSW documentation for more details](https://www.pinecone.io/learn/ser
     )
 
     scores = retriever.retrieve(
-        queries_embeddings=queries_embeddings, 
+        queries_embeddings=queries_embeddings,
         k=10,  # Retrieve the top 10 matches for each query
         k_token=200 # retrieve 200 candidates per query token
     )
@@ -200,7 +200,7 @@ Sample output:
 ```
 [
     [
-        {"id": 1, "score": 13.866096496582031}, 
+        {"id": 1, "score": 13.866096496582031},
         {"id": 2, "score": 7.363473415374756}
     ],
     [

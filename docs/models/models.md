@@ -1,6 +1,6 @@
 # Available models
 
-!!! tip 
+!!! tip
     Following an update, all the models trained using the stanford-nlp ColBERT library or RAGatouille should be compatible with PyLate natively.
     You can simply load the model in PyLate:
 

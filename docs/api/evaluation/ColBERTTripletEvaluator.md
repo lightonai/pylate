@@ -99,14 +99,13 @@ Evaluate a model based on a set of triples. The evaluation will compare the scor
 
     **Parameters**
 
-    - **model**     (*pylate.models.colbert.ColBERT*)    
-    - **output_path**     (*str*)     – defaults to `None`    
-    - **epoch**     (*int*)     – defaults to `-1`    
-    - **steps**     (*int*)     – defaults to `-1`    
-    
+    - **model**     (*pylate.models.colbert.ColBERT*)
+    - **output_path**     (*str*)     – defaults to `None`
+    - **epoch**     (*int*)     – defaults to `-1`
+    - **steps**     (*int*)     – defaults to `-1`
+
 ???- note "from_input_examples"
 
 ???- note "prefix_name_to_metrics"
 
 ???- note "store_metrics_in_model_card_data"
-
