@@ -66,8 +66,8 @@ To load a local dataset stored in a Parquet file:
 from datasets import load_dataset
 
 dataset = load_dataset(
-    path="parquet", 
-    data_files="dataset.parquet", 
+    path="parquet",
+    data_files="dataset.parquet",
     split="train"
 )
 
@@ -78,7 +78,7 @@ train_dataset, test_dataset = dataset.train_test_split(test_size=0.001)
 
 ## Knowledge distillation dataset
 
-For fine-tuning a model using knowledge distillation loss, three distinct dataset files are required: train, queries, and documents. 
+For fine-tuning a model using knowledge distillation loss, three distinct dataset files are required: train, queries, and documents.
 
 ???+ info
     Each file contains unique and complementary information necessary for the distillation process:
@@ -249,4 +249,3 @@ documents = Dataset.from_list(mapping=documents)
 
 queries = Dataset.from_list(mapping=queries)
 ```
-

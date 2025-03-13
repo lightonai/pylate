@@ -17,8 +17,9 @@ deploydoc:
 	mkdocs gh-deploy --force
 
 
-install: 
+install:
 	pip install -e ".[dev]"
+	pre-commit install
 
 install-test:
 	python -m pip install --upgrade pip

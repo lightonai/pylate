@@ -68,4 +68,3 @@
 
 - [convert_to_tensor](../utils/convert-to-tensor)
 - [iter_batch](../utils/iter-batch)
-

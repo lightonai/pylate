@@ -30,6 +30,7 @@ dev = [
     "mkdocs_charts_plugin == 0.0.10",
     "numpydoc == 1.8.0",
     "einops>=0.8.1",
+    "pre-commit>=4.1.0",
 ]
 
 eval = ["ranx >= 0.3.16", "beir >= 2.0.0"]

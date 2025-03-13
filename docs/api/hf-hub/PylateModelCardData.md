@@ -75,10 +75,10 @@ A dataclass for storing data used in the model card.
 
     **Parameters**
 
-    - **dataset**     (*'Dataset | IterableDataset | None'*)    
-    - **dataset_info**     (*'dict[str, Any]'*)    
-    - **loss**     (*'dict[str, nn.Module] | nn.Module | None'*)    
-    
+    - **dataset**     (*'Dataset | IterableDataset | None'*)
+    - **dataset_info**     (*'dict[str, Any]'*)
+    - **loss**     (*'dict[str, nn.Module] | nn.Module | None'*)
+
 ???- note "extract_dataset_metadata"
 
 ???- note "format_eval_metrics"
@@ -87,7 +87,7 @@ A dataclass for storing data used in the model card.
 
     The following keys will be returned: - eval_metrics: A list of dictionaries containing the class name, description, dataset name, and a markdown table   This is used to display the evaluation metrics in the model card. - metrics: A list of all metric keys. This is used in the model card metadata. - model-index: A list of dictionaries containing the task name, task type, dataset type, dataset name, metric name,   metric type, and metric value. This is used to display the evaluation metrics in the model card metadata.
 
-    
+
 ???- note "format_training_logs"
 
 ???- note "get"
@@ -96,9 +96,9 @@ A dataclass for storing data used in the model card.
 
     **Parameters**
 
-    - **key**     (*str*)    
-    - **default**     (*Any*)     – defaults to `None`    
-    
+    - **key**     (*str*)
+    - **default**     (*Any*)     – defaults to `None`
+
 ???- note "get_codecarbon_data"
 
 ???- note "infer_datasets"
@@ -109,9 +109,9 @@ A dataclass for storing data used in the model card.
 
     **Parameters**
 
-    - **key**     (*str*)    
-    - **default**     (*Any*)     – defaults to `None`    
-    
+    - **key**     (*str*)
+    - **default**     (*Any*)     – defaults to `None`
+
 ???- note "register_model"
 
 ???- note "set_base_model"
@@ -138,7 +138,7 @@ A dataclass for storing data used in the model card.
 
     Returns:     `dict`: CardData represented as a dictionary ready to be dumped to a YAML     block for inclusion in a README.md file.
 
-    
+
 ???- note "to_yaml"
 
     Dumps CardData to a YAML block for inclusion in a README.md file.
@@ -147,9 +147,8 @@ A dataclass for storing data used in the model card.
 
     **Parameters**
 
-    - **line_break**     – defaults to `None`    
-    
+    - **line_break**     – defaults to `None`
+
 ???- note "try_to_set_base_model"
 
 ???- note "validate_datasets"
-

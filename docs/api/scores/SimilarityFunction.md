@@ -19,7 +19,3 @@ Enum class for supported score functions. The following functions are supported:
 - **start** – defaults to `1`
 
 - **boundary** – defaults to `None`
-
-
-
-

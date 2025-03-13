@@ -57,14 +57,13 @@ The collection is a set of datasets based on the BEIR collection, but with a sig
 
     **Parameters**
 
-    - **model**     (*'SentenceTransformer'*)    
-    - **output_path**     (*'str'*)     – defaults to `None`    
-    - **epoch**     (*'int'*)     – defaults to `-1`    
-    - **steps**     (*'int'*)     – defaults to `-1`    
-    - **args**    
-    - **kwargs**    
-    
+    - **model**     (*'SentenceTransformer'*)
+    - **output_path**     (*'str'*)     – defaults to `None`
+    - **epoch**     (*'int'*)     – defaults to `-1`
+    - **steps**     (*'int'*)     – defaults to `-1`
+    - **args**
+    - **kwargs**
+
 ???- note "prefix_name_to_metrics"
 
 ???- note "store_metrics_in_model_card_data"
-
