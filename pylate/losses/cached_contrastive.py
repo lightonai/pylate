@@ -227,20 +227,21 @@ class CachedContrastive(nn.Module):
             range(batch_size), dtype=torch.long, device=reps[0][0].device
         )  # (bsz, (1 + nneg) * bsz)  Example a[i] should match with b[i]
         losses: list[torch.Tensor] = []
-        for b in tqdm.trange(
+        for begin in tqdm.trange(
             0,
             batch_size,
             self.mini_batch_size,
             desc="Preparing caches",
             disable=not self.show_progress_bar,
         ):
-            e = b + self.mini_batch_size
+            end = begin + self.mini_batch_size
+            # We chunk the scores computation to avoid OOM because MaxSim can get expensive with large batch sizes/long documents
             scores = torch.cat(
                 [
                     torch.cat(
                         [
                             self.score_metric(
-                                embeddings_anchor[b:e],
+                                embeddings_anchor[begin:end],
                                 group_embeddings[
                                     g_start : min(
                                         g_start + self.mini_batch_size,
@@ -267,7 +268,7 @@ class CachedContrastive(nn.Module):
             # We don't want to average the loss across the mini-batch as mini-batch sizes can vary, which would create an issue similar to this one: https://huggingface.co/blog/gradient_accumulation#where-does-it-stem-from
             loss_mbatch = F.cross_entropy(
                 input=scores,
-                target=labels[b:e],
+                target=labels[begin:end],
                 reduction="sum",
             )
 
