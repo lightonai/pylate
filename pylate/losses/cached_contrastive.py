@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 from contextlib import nullcontext
 from functools import partial
-from typing import Iterable, Optional
+from typing import Callable, Iterable, Optional
 
 import torch
 import torch.nn.functional as F
@@ -79,13 +79,13 @@ class CachedContrastive(nn.Module):
     ----------
     model :
         A PyLate ColBERT model
-    score_metric : Callable
+    score_metric
         ColBERT scoring function. Defaults to colbert_scores.
-    mini_batch_size : int
+    mini_batch_size
         Chunk size for the forward pass. You can keep this small to avoid OOM on large batch sizes.
-    size_average : bool
+    size_average
         Whether to average or sum the cross-entropy loss across the mini-batch.
-    show_progress_bar : bool
+    show_progress_bar
         Whether to show a TQDM progress bar for the embedding steps.
 
     Examples
@@ -119,7 +119,7 @@ class CachedContrastive(nn.Module):
     def __init__(
         self,
         model: ColBERT,
-        score_metric=colbert_scores,
+        score_metric: Callable = colbert_scores,
         mini_batch_size: int = 32,
         size_average: bool = True,
         show_progress_bar: bool = False,
@@ -214,9 +214,18 @@ class CachedContrastive(nn.Module):
         return loss
 
     def calculate_loss(self, reps, masks, with_backward: bool = False) -> Tensor:
-        """Calculate the cross-entropy loss. No need to cache the gradients. Each sub-list in reps is a list of mini-batch chunk embeddings"""
-        # We first cat them chunk-wise for anchor, positives, negatives
+        """Calculate the cross-entropy loss. No need to cache the gradients. Each sub-list in reps is a list of mini-batch chunk embeddings
 
+        Parameters
+        ----------
+        reps :
+            A list of list of mini-batch chunk embeddings. The first list are the anchors, the second are the positives and the remaining are negatives.
+        masks
+            Tensors containing the skiplist masks assocaited with each sentence feature (anchor, positives, negatives).
+        with_backward
+            Whether to compute the backward pass or not.
+        """
+        # We first cat them chunk-wise for anchor, positives, negatives
         embeddings_anchor = torch.cat(reps[0])  # (bsz, hdim)
         embeddings_other = [
             torch.cat([chunk_embed for chunk_embed in r]) for r in reps[1:]
