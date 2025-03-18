@@ -17,8 +17,7 @@ from .contrastive import extract_skiplist_mask
 
 
 class RandContext:
-    """
-    Random-state context manager class. Reference: https://github.com/luyug/GradCache.
+    """Random-state context manager class. Reference: https://github.com/luyug/GradCache.
 
     This class will back up the pytorch's random state during initialization. Then when the context is activated,
     the class will set up the random state with the backed-up one.
@@ -44,8 +43,7 @@ def _backward_hook(
     sentence_features: Iterable[dict[str, Tensor]],
     loss_obj,
 ) -> None:
-    """
-    A backward hook that re-runs the forward for each mini-batch with gradients enabled
+    """A backward hook that re-runs the forward for each mini-batch with gradients enabled
     and uses the cached partial derivatives w.r.t. the embeddings to backprop.
     """
     assert loss_obj.cache is not None
@@ -72,8 +70,7 @@ def _backward_hook(
 
 
 class CachedContrastive(nn.Module):
-    """
-    A cached, in-batch negatives contrastive loss for PyLate, analogous to
+    """A cached, in-batch negatives contrastive loss for PyLate, analogous to
     SentenceTransformers' CachedMultipleNegativesRankingLoss. This allows
     large effective batch sizes by chunking the embeddings pass and caching
     gradients w.r.t. those embeddings.
@@ -90,6 +87,7 @@ class CachedContrastive(nn.Module):
         Whether to average or sum the cross-entropy loss across the mini-batch.
     show_progress_bar : bool
         Whether to show a TQDM progress bar for the embedding steps.
+
     Examples
     --------
     >>> from pylate import models, losses
@@ -148,8 +146,7 @@ class CachedContrastive(nn.Module):
         copy_random_state: bool,
         random_state: RandContext | None = None,
     ) -> tuple[Tensor, RandContext | None]:
-        """
-        Forward pass on a slice [begin:end] of sentence_feature. If 'with_grad' is False,
+        """Forward pass on a slice [begin:end] of sentence_feature. If 'with_grad' is False,
         we run under torch.no_grad. If 'copy_random_state' is True, we create and return
         a RandContext so that we can exactly reproduce this forward pass later.
         """
@@ -179,8 +176,7 @@ class CachedContrastive(nn.Module):
         copy_random_state: bool,
         random_states: list[RandContext] | None = None,
     ) -> Iterator[tuple[Tensor, RandContext | None]]:
-        """
-        Yields chunks of embeddings (and corresponding RandContext) for the given
+        """Yields chunks of embeddings (and corresponding RandContext) for the given
         sentence_feature, respecting the mini_batch_size limit.
         """
         input_ids = sentence_feature["input_ids"]
