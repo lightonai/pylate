@@ -214,12 +214,9 @@ class CachedContrastive(nn.Module):
         return loss
 
     def calculate_loss(self, reps, masks, with_backward: bool = False) -> Tensor:
-        """Calculate the cross-entropy loss. No need to cache the gradients."""
-        # Each sub-list in reps is a list of mini-batch chunk embeddings
+        """Calculate the cross-entropy loss. No need to cache the gradients. Each sub-list in reps is a list of mini-batch chunk embeddings"""
         # We first cat them chunk-wise for anchor, positives, negatives
 
-        # mask_anchor = torch.cat(masks[0], dim=0)  # shape (B, T)
-        # mask_others = [torch.cat(m, dim=0) for m in masks[1:]]
         embeddings_anchor = torch.cat(reps[0])  # (bsz, hdim)
         embeddings_other = [
             torch.cat([chunk_embed for chunk_embed in r]) for r in reps[1:]
