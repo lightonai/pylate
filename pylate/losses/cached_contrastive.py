@@ -90,6 +90,32 @@ class CachedContrastive(nn.Module):
         Whether to average or sum the cross-entropy loss across the mini-batch.
     show_progress_bar : bool
         Whether to show a TQDM progress bar for the embedding steps.
+    Examples
+    --------
+    >>> from pylate import models, losses
+
+    >>> model = models.ColBERT(
+    ...     model_name_or_path="sentence-transformers/all-MiniLM-L6-v2", device="cpu"
+    ... )
+
+    >>> loss = losses.CachedContrastive(model=model, mini_batch_size=1)
+
+    >>> anchors = model.tokenize([
+    ...     "fruits are healthy.", "chips are not healthy."
+    ... ], is_query=True)
+
+    >>> positives = model.tokenize([
+    ...     "fruits are good for health.", "chips are not good for health."
+    ... ], is_query=False)
+
+    >>> negatives = model.tokenize([
+    ...     "fruits are bad for health.", "chips are good for health."
+    ... ], is_query=False)
+
+    >>> sentence_features = [anchors, positives, negatives]
+
+    >>> loss = loss(sentence_features=sentence_features)
+    >>> assert isinstance(loss.item(), float)
     """
 
     def __init__(
