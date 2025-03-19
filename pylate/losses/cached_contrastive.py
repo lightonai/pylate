@@ -240,6 +240,7 @@ class CachedContrastive(nn.Module):
         if self.gather_across_devices:
             embeddings_anchor = torch.cat(all_gather(embeddings_anchor))
             embeddings_other = [torch.cat(all_gather(embeddings)) for embeddings in embeddings_other]
+            masks = [torch.cat(all_gather(mask)) for mask in masks]
    
             
         batch_size = len(embeddings_anchor)

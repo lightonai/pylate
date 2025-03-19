@@ -8,6 +8,7 @@ from torch import Tensor, nn
 
 from ..models import ColBERT
 from ..scores import colbert_scores
+from ..utils import all_gather
 
 
 def extract_skiplist_mask(
@@ -80,6 +81,8 @@ class Contrastive(nn.Module):
         ColBERT scoring function. Defaults to colbert_scores.
     size_average
         Average by the size of the mini-batch.
+    gather_across_devices
+        Whether to gather the embeddings across devices to have more in batch negatives. We recommand making sure the sampling across GPUs use the same dataset in case of multi-dataset training to make sure the negatives are plausible.
 
     Examples
     --------
@@ -115,11 +118,13 @@ class Contrastive(nn.Module):
         model: ColBERT,
         score_metric=colbert_scores,
         size_average: bool = True,
+        gather_across_devices: bool = False,
     ) -> None:
         super(Contrastive, self).__init__()
         self.score_metric = score_metric
         self.model = model
         self.size_average = size_average
+        self.gather_across_devices = gather_across_devices
 
     def forward(
         self,
@@ -148,7 +153,10 @@ class Contrastive(nn.Module):
         masks = extract_skiplist_mask(
             sentence_features=sentence_features, skiplist=skiplist
         )
-
+        # Possibly gather the embeddings across devices to have more in-batch negatives.
+        if self.gather_across_devices:
+            embeddings = [all_gather(embedding) for embedding in embeddings]
+            masks = [all_gather(mask) for mask in masks]
         # Note: the queries mask is not used, if added, take care that the expansion tokens are not masked from scoring (because they might be masked during encoding).
         # We might not need to compute the mask for queries but I let the logic there for now
         scores = torch.cat(
