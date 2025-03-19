@@ -13,8 +13,8 @@ from torch.utils.checkpoint import get_device_states, set_device_states
 
 from ..models import ColBERT
 from ..scores import colbert_scores
-from .contrastive import extract_skiplist_mask
 from ..utils import all_gather
+from .contrastive import extract_skiplist_mask
 
 
 class RandContext:
@@ -141,7 +141,6 @@ class CachedContrastive(nn.Module):
         # Will hold random states for each chunk, so we can re-run the embedding pass with grads
         self.random_states: list[list[RandContext]] | None = None
 
-
     def embed_minibatch(
         self,
         sentence_feature: dict[str, Tensor],
@@ -239,10 +238,11 @@ class CachedContrastive(nn.Module):
         # Possibly gather the embeddings across devices to have more in-batch negatives. For GradCache, we only need to gather them to compute the scores matrix and nowhere else.
         if self.gather_across_devices:
             embeddings_anchor = torch.cat(all_gather(embeddings_anchor))
-            embeddings_other = [torch.cat(all_gather(embeddings)) for embeddings in embeddings_other]
+            embeddings_other = [
+                torch.cat(all_gather(embeddings)) for embeddings in embeddings_other
+            ]
             masks = [torch.cat(all_gather(mask)) for mask in masks]
-   
-            
+
         batch_size = len(embeddings_anchor)
         labels = torch.tensor(
             range(batch_size), dtype=torch.long, device=reps[0][0].device
@@ -370,6 +370,3 @@ class CachedContrastive(nn.Module):
     primaryClass={cs.LG}
 }
 """
-
-
-
