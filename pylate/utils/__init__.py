@@ -6,6 +6,7 @@ from .iter_batch import iter_batch
 from .multi_process import _start_multi_process_pool
 from .processing import KDProcessing
 from .tensor import convert_to_tensor
+from .distributed import all_gather
 
 __all__ = [
     "HUGGINGFACE_MODELS",
@@ -14,4 +15,5 @@ __all__ = [
     "ColBERTCollator",
     "KDProcessing",
     "_start_multi_process_pool",
+    "all_gather",
 ]
