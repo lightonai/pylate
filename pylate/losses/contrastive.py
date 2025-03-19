@@ -158,8 +158,8 @@ class Contrastive(nn.Module):
         )
         # Possibly gather the embeddings across devices to have more in-batch negatives.
         if self.gather_across_devices:
-            embeddings = [all_gather(embedding) for embedding in embeddings]
-            masks = [all_gather(mask) for mask in masks]
+            embeddings = [torch.cat(all_gather(embedding)) for embedding in embeddings]
+            masks = [torch.cat(all_gather(mask)) for mask in masks]
         # Note: the queries mask is not used, if added, take care that the expansion tokens are not masked from scoring (because they might be masked during encoding).
         # We might not need to compute the mask for queries but I let the logic there for now
         scores = torch.cat(
