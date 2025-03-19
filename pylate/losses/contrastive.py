@@ -124,7 +124,6 @@ class Contrastive(nn.Module):
     def forward(
         self,
         sentence_features: Iterable[dict[str, Tensor]],
-        labels: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """Compute the Constrastive loss.
 
