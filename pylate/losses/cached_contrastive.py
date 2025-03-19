@@ -62,8 +62,8 @@ def _backward_hook(
                 ),
                 grad,
             ):
-                # Dot the embedding chunk with the cached gradient chunk,
-                # scaled by grad_output from the top-level backward pass
+                # Plug back the cached gradients into the backward pass by dotting them with the corresponding representations
+                # Scale by grad_output from the top-level backward pass to account for gradient of downstream operations (not useful in this setup)
                 surrogate = (
                     torch.dot(reps_mb.flatten(), grad_mb.flatten()) * grad_output
                 )
