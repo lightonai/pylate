@@ -129,6 +129,7 @@ class Contrastive(nn.Module):
     def forward(
         self,
         sentence_features: Iterable[dict[str, Tensor]],
+        labels: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """Compute the Constrastive loss.
 
@@ -136,6 +137,8 @@ class Contrastive(nn.Module):
         ----------
         sentence_features
             List of tokenized sentences. The first sentence is the anchor and the rest are the positive and negative examples.
+        labels
+            The labels for the contrastive loss. Not used in this implementation, but kept for compatibility with Trainer.
 
         """
         embeddings = [

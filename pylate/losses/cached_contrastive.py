@@ -307,7 +307,17 @@ class CachedContrastive(nn.Module):
     def forward(
         self,
         sentence_features: Iterable[dict[str, Tensor]],
+        labels: Optional[Tensor] = None,
     ) -> Tensor:
+        """Compute the CachedConstrastive loss.
+
+        Parameters
+        ----------
+        sentence_features
+            List of tokenized sentences. The first sentence is the anchor and the rest are the positive and negative examples.
+        labels
+            The labels for the contrastive loss. Not used in this implementation, but kept for compatibility with Trainer.
+        """
         # Step (1): A quick embedding step without gradients/computation graphs to get all the embeddings
         reps = []
         self.random_states = []  # Copy random states to guarantee exact reproduction of the embeddings during the second forward pass, i.e. step (3)
