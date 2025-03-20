@@ -13,6 +13,7 @@ from torch.utils.checkpoint import get_device_states, set_device_states
 
 from ..models import ColBERT
 from ..scores import colbert_scores
+from ..utils import all_gather
 from .contrastive import extract_skiplist_mask
 
 
@@ -61,8 +62,8 @@ def _backward_hook(
                 ),
                 grad,
             ):
-                # Dot the embedding chunk with the cached gradient chunk,
-                # scaled by grad_output from the top-level backward pass
+                # Plug back the cached gradients into the backward pass by dotting them with the corresponding representations
+                # Scale by grad_output from the top-level backward pass to account for gradient of downstream operations (not useful in this setup)
                 surrogate = (
                     torch.dot(reps_mb.flatten(), grad_mb.flatten()) * grad_output
                 )
@@ -85,6 +86,8 @@ class CachedContrastive(nn.Module):
         Chunk size for the forward pass. You can keep this small to avoid OOM on large batch sizes.
     size_average
         Whether to average or sum the cross-entropy loss across the mini-batch.
+    gather_across_devices
+        Whether to gather the embeddings across devices to have more in batch negatives. We recommand making sure the sampling across GPUs use the same dataset in case of multi-dataset training to make sure the negatives are plausible.
     show_progress_bar
         Whether to show a TQDM progress bar for the embedding steps.
 
@@ -122,6 +125,7 @@ class CachedContrastive(nn.Module):
         score_metric: Callable = colbert_scores,
         mini_batch_size: int = 32,
         size_average: bool = True,
+        gather_across_devices: bool = False,
         show_progress_bar: bool = False,
     ) -> None:
         super(CachedContrastive, self).__init__()
@@ -129,13 +133,13 @@ class CachedContrastive(nn.Module):
         self.score_metric = score_metric
         self.mini_batch_size = mini_batch_size
         self.size_average = size_average
+        self.gather_across_devices = gather_across_devices
         self.show_progress_bar = show_progress_bar
 
         # Will hold partial derivatives for each embedding chunk
         self.cache: list[list[Tensor]] | None = None
         # Will hold random states for each chunk, so we can re-run the embedding pass with grads
         self.random_states: list[list[RandContext]] | None = None
-        self.show_progress_bar = show_progress_bar
 
     def embed_minibatch(
         self,
@@ -231,6 +235,14 @@ class CachedContrastive(nn.Module):
             torch.cat([chunk_embed for chunk_embed in r]) for r in reps[1:]
         ]  # [(nneg * bsz, hdim)]
 
+        # Possibly gather the embeddings across devices to have more in-batch negatives. For GradCache, we only need to gather them to compute the scores matrix and nowhere else.
+        if self.gather_across_devices:
+            embeddings_anchor = torch.cat(all_gather(embeddings_anchor))
+            embeddings_other = [
+                torch.cat(all_gather(embeddings)) for embeddings in embeddings_other
+            ]
+            masks = [torch.cat(all_gather(mask)) for mask in masks]
+
         batch_size = len(embeddings_anchor)
         labels = torch.tensor(
             range(batch_size), dtype=torch.long, device=reps[0][0].device
@@ -297,6 +309,15 @@ class CachedContrastive(nn.Module):
         sentence_features: Iterable[dict[str, Tensor]],
         labels: Optional[Tensor] = None,
     ) -> Tensor:
+        """Compute the CachedConstrastive loss.
+
+        Parameters
+        ----------
+        sentence_features
+            List of tokenized sentences. The first sentence is the anchor and the rest are the positive and negative examples.
+        labels
+            The labels for the contrastive loss. Not used in this implementation, but kept for compatibility with Trainer.
+        """
         # Step (1): A quick embedding step without gradients/computation graphs to get all the embeddings
         reps = []
         self.random_states = []  # Copy random states to guarantee exact reproduction of the embeddings during the second forward pass, i.e. step (3)

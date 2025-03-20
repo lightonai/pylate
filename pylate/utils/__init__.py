@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from .collator import ColBERTCollator
+from .distributed import all_gather
 from .huggingface_models import HUGGINGFACE_MODELS
 from .iter_batch import iter_batch
 from .multi_process import _start_multi_process_pool
@@ -14,4 +15,5 @@ __all__ = [
     "ColBERTCollator",
     "KDProcessing",
     "_start_multi_process_pool",
+    "all_gather",
 ]
