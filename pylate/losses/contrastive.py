@@ -8,7 +8,7 @@ from torch import Tensor, nn
 
 from ..models import ColBERT
 from ..scores import colbert_scores
-from ..utils import all_gather
+from ..utils import all_gather, all_gather_with_gradients
 
 
 def extract_skiplist_mask(
@@ -156,10 +156,32 @@ class Contrastive(nn.Module):
         masks = extract_skiplist_mask(
             sentence_features=sentence_features, skiplist=skiplist
         )
+        batch_size = embeddings[0].size(0)
+        # create corresponding labels
+        labels = torch.arange(0, batch_size, device=embeddings[0].device)
         # Possibly gather the embeddings across devices to have more in-batch negatives.
         if self.gather_across_devices:
-            embeddings = [torch.cat(all_gather(embedding)) for embedding in embeddings]
-            masks = [torch.cat(all_gather(mask)) for mask in masks]
+            # Note that we only gather the documents embeddings and not the queries embeddings (embeddings[0]), but are keeping gradients. This is to lower the memory usage, see https://github.com/mlfoundations/open_clip/issues/616
+            embeddings = [
+                embeddings[0],
+                *[
+                    torch.cat(all_gather_with_gradients(embedding))
+                    for embedding in embeddings[1:]
+                ],
+            ]
+            # Masks [0] is the anchor mask so we do not need to gather it (even though we are not using it for now anyways)
+            # Also, we do gather without gradients for the masks as we do not backpropagate through them
+            masks = [
+                masks[0],
+                *[torch.cat(all_gather(mask)) for mask in masks[1:]],
+            ]
+            rank = (
+                torch.distributed.get_rank()
+                if torch.distributed.is_initialized()
+                else 0
+            )
+            # Adjust the labels to match the gathered embeddings positions
+            labels = labels + rank * batch_size
         # Note: the queries mask is not used, if added, take care that the expansion tokens are not masked from scoring (because they might be masked during encoding).
         # We might not need to compute the mask for queries but I let the logic there for now
         scores = torch.cat(
@@ -170,9 +192,6 @@ class Contrastive(nn.Module):
             dim=1,
         )
 
-        # create corresponding labels
-        # labels = torch.arange(0, rep_anchor.size(0), device=rep_anchor.device)
-        labels = torch.arange(0, embeddings[0].size(0), device=embeddings[0].device)
         # compute constrastive loss using cross-entropy over the scores
 
         return F.cross_entropy(

@@ -13,7 +13,7 @@ from torch.utils.checkpoint import get_device_states, set_device_states
 
 from ..models import ColBERT
 from ..scores import colbert_scores
-from ..utils import all_gather
+from ..utils import all_gather, all_gather_with_gradients
 from .contrastive import extract_skiplist_mask
 
 
@@ -235,18 +235,30 @@ class CachedContrastive(nn.Module):
             torch.cat([chunk_embed for chunk_embed in r]) for r in reps[1:]
         ]  # [(nneg * bsz, hdim)]
 
-        # Possibly gather the embeddings across devices to have more in-batch negatives. For GradCache, we only need to gather them to compute the scores matrix and nowhere else.
-        if self.gather_across_devices:
-            embeddings_anchor = torch.cat(all_gather(embeddings_anchor))
-            embeddings_other = [
-                torch.cat(all_gather(embeddings)) for embeddings in embeddings_other
-            ]
-            masks = [torch.cat(all_gather(mask)) for mask in masks]
-
         batch_size = len(embeddings_anchor)
         labels = torch.tensor(
             range(batch_size), dtype=torch.long, device=reps[0][0].device
         )  # (bsz, (1 + nneg) * bsz)  Example a[i] should match with b[i]
+        # Possibly gather the embeddings across devices to have more in-batch negatives. For GradCache, we only need to gather them to compute the scores matrix and nowhere else.
+        # Note that we only gather the documents embeddings and not the queries embeddings, but are keeping gradients. This is to lower the memory usage, see https://github.com/mlfoundations/open_clip/issues/616
+        if self.gather_across_devices:
+            embeddings_other = [
+                torch.cat(all_gather_with_gradients(embeddings))
+                for embeddings in embeddings_other
+            ]
+            # Masks [0] is the anchor mask so we do not need to gather it (even though we are not using it for now anyways)
+            # Also, we do gather without gradients for the masks as we do not backpropagate through them
+            masks = [
+                masks[0],
+                *[torch.cat(all_gather(mask)) for mask in masks[1:]],
+            ]
+            rank = (
+                torch.distributed.get_rank()
+                if torch.distributed.is_initialized()
+                else 0
+            )
+            # Adjust the labels to match the gathered embeddings positions
+            labels = labels + rank * batch_size
         losses: list[torch.Tensor] = []
         for begin in tqdm.trange(
             0,

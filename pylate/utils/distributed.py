@@ -61,3 +61,44 @@ def all_gather(tensor: torch.Tensor) -> Sequence[torch.Tensor]:
         _has_warned_dist_not_initialized = True
 
     return [tensor]
+
+
+def all_gather_with_gradients(tensor: torch.Tensor) -> Sequence[torch.Tensor]:
+    """Gathers a tensor from each distributed rank into a list. All the tensors will retain gradients.
+    This is the same as `all_gather`, but all the tensors will retain gradients and is used to compute contrastive with local queries only to lower the memory usage, see https://github.com/mlfoundations/open_clip/issues/616
+
+    - If torch.distributed is available and initialized, gather all the tensors (with gradients) from each rank into a list
+
+    - If torch.distributed is either unavailable, uninitialized, or
+      `world_size == 1`, it returns a list containing only the
+      original tensor and throws a warning to notify the user (helpful when using a single GPU setup).
+
+    Parameters
+    ----------
+    tensor:
+        The input tensor to be gathered from each rank.
+
+    Returns
+    -------
+    Sequence:
+        A list of tensors collected from each rank. On a single GPU or when distributed is uninitialized, the list will contain only the original tensor.
+
+    """
+    global _has_warned_dist_not_initialized
+
+    # Check if torch.distributed is properly available and initialized.
+    if dist.is_available() and dist.is_initialized():
+        tensor = torch.distributed.nn.all_gather(tensor)
+        return tensor
+
+    # Warn once about uninitialized or single-GPU usage.
+    if not _has_warned_dist_not_initialized:
+        warning = """
+            Trying to gather while torch.distributed is not available or has not been initialized, 
+             returning the original (local) tensor. This is expected if you are 
+             only using one GPU; consider not using gathering to remove this warning.
+       """
+        logger.warning(warning)
+        _has_warned_dist_not_initialized = True
+
+    return [tensor]
