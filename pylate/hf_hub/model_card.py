@@ -130,6 +130,9 @@ class PylateModelCardData(SentenceTransformerModelCardData):
     pipeline_tag: str = field(default="sentence-similarity", init=False)
     library_name: str = field(default="PyLate", init=False)
     version: dict[str, str] = field(default_factory=get_versions, init=False)
+    template_path: Path = field(
+        default=Path(__file__).parent / "model_card_template.md", init=False
+    )
 
     # Passed via `register_model` only
     model: SentenceTransformer | None = field(default=None, init=False, repr=False)

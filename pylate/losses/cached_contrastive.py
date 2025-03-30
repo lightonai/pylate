@@ -26,7 +26,10 @@ class RandContext:
 
     def __init__(self, *tensors) -> None:
         self.fwd_cpu_state = torch.get_rng_state()
-        self.fwd_gpu_devices, self.fwd_gpu_states = get_device_states(*tensors)
+        if torch.backends.mps.is_available():
+            self.fwd_gpu_devices, self.fwd_gpu_states = [], []
+        else:
+            self.fwd_gpu_devices, self.fwd_gpu_states = get_device_states(*tensors)
 
     def __enter__(self) -> None:
         self._fork = torch.random.fork_rng(devices=self.fwd_gpu_devices, enabled=True)

@@ -65,8 +65,8 @@ from pylate import models
             "[unused1]",
             514,
             32,
-            {}, 
-        )
+            {},
+        ),
     ],
 )
 def test_load_model(
