@@ -5,6 +5,7 @@ import pytest
 from pylate import models
 
 
+@pytest.mark.flaky(reruns=3, reruns_delay=5)
 @pytest.mark.parametrize(
     "model_name_or_path, revision, query_prefix, document_prefix, max_seq_length, query_length, config",
     [
