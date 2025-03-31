@@ -6,6 +6,8 @@ import os
 import shutil
 
 import pandas as pd
+import pytest
+import torch
 from datasets import load_dataset
 from sentence_transformers import (
     SentenceTransformerTrainer,
@@ -16,6 +18,7 @@ from sentence_transformers.training_args import BatchSamplers
 from pylate import evaluation, losses, models, utils
 
 
+@pytest.mark.skipif(torch.backends.mps.is_available(), reason="MPS is not supported")
 def test_contrastive_training() -> None:
     """Test constrastive training."""
     if os.path.exists(path="tests/contrastive"):

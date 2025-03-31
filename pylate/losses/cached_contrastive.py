@@ -27,7 +27,9 @@ class RandContext:
     def __init__(self, *tensors) -> None:
         self.fwd_cpu_state = torch.get_rng_state()
         if torch.backends.mps.is_available():
-            self.fwd_gpu_devices, self.fwd_gpu_states = [], []
+            raise RuntimeError(
+                "MPS backend is not supported for this operation. Please use CPU or CUDA."
+            )
         else:
             self.fwd_gpu_devices, self.fwd_gpu_states = get_device_states(*tensors)
 
