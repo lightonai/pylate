@@ -16,6 +16,13 @@ jobs:
         test-target: ["tests", "pylate"]
 
     steps:
+    - name: Cache Hugging Face Hub
+      id: cache-hf
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/huggingface
+        key: ${{ runner.os }}-hf
+
     - name: Checkout code
       uses: actions/checkout@v3
 
