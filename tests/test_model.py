@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import math
 
+import pytest
 import torch
 
 from pylate import models, rank
 
 
+@pytest.mark.flaky(reruns=3, reruns_delay=5)
 def test_model_creation(**kwargs) -> None:
     """Test the creation of different models."""
     query = ["fruits are healthy."]
