@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING, Any, Literal
 
 import torch
 import transformers
-from huggingface_hub import ModelCard
 from sentence_transformers import SentenceTransformerModelCardData
 from sentence_transformers import __version__ as sentence_transformers_version
 from sentence_transformers.util import (
@@ -252,11 +251,3 @@ year={2024}
             The dataset to create widget examples from.
         """
         pass
-
-
-def generate_model_card(model: SentenceTransformer) -> str:
-    template_path = Path(__file__).parent / "model_card_template.md"
-    model_card = ModelCard.from_template(
-        card_data=model.model_card_data, template_path=template_path, hf_emoji="🐕"
-    )
-    return model_card.content
