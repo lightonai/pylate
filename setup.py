@@ -8,7 +8,7 @@ with open(file="README.md", mode="r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 base_packages = [
-    "sentence-transformers == 4.0.1",
+    "sentence-transformers == 4.0.2",
     "datasets >= 2.20.0",
     "accelerate >= 0.31.0",
     "voyager >= 2.0.9",
