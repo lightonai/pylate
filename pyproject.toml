@@ -1,0 +1,131 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pylate"
+# The version is dynamically loaded from pylate.__version__
+dynamic = ["version"]
+description = "A library for training and retrieval with ColBERT"
+readme = "README.md"
+authors = [
+    {name = "LightON"},
+]
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "sentence-transformers == 4.0.2",
+    "datasets >= 2.20.0",
+    "accelerate >= 0.31.0",
+    "voyager >= 2.0.9",
+    "sqlitedict >= 2.1.0",
+    "pandas >= 2.2.1",
+    "transformers == 4.48.2",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/lightonai/pylate"
+
+[project.optional-dependencies]
+eval = [
+    "ranx >= 0.3.16",
+    "beir >= 2.0.0",
+]
+api = [
+    "fastapi >= 0.114.1",
+    "uvicorn >= 0.30.6",
+    "batched >= 0.1.2",
+]
+dev = [
+    "ruff >= 0.4.9",
+    "pytest-cov >= 5.0.0",
+    "pytest-xdist >=3.6.0",
+    "pytest-rerunfailures >= 15.0.0",
+    "pytest >= 8.2.1",
+    "pandas >= 2.2.1",
+    "mkdocs-material == 9.5.32",
+    "mkdocs-awesome-pages-plugin == 2.9.3",
+    "mkdocs-jupyter == 0.24.8",
+    "mkdocs_charts_plugin == 0.0.10",
+    "numpydoc == 1.8.0",
+    "einops>=0.8.1",
+    "pre-commit>=4.1.0",
+]
+
+[tool.setuptools]
+packages = ["pylate"]
+package-data = {"pylate" = ["hf_hub/model_card_template.md"]}
+
+[tool.setuptools.dynamic]
+version = {attr = "pylate.__version__.__version__"}
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::RuntimeWarning",
+    "ignore::UserWarning",
+]
+addopts = "--doctest-modules --verbose -ra --cov-config=.coveragerc -m 'not web and not slow'"
+doctest_optionflags = "NORMALIZE_WHITESPACE NUMBER"
+norecursedirs = [
+    "build",
+    "docs",
+    "node_modules",
+    "pylate/server",
+]
+markers = [
+    "web: tests that require using the Internet",
+    "slow: tests that take a long time to run",
+]
+
+[tool.ruff]
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".ipynb_checkpoints",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pyenv",
+    ".pytest_cache",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    ".vscode",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "site-packages",
+    "venv",
+]
+line-length = 88
+indent-width = 4
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
+fixable = ["ALL"]
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.lint.isort]
+required-imports = ["from __future__ import annotations"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+docstring-code-format = false
+docstring-code-line-length = "dynamic"
