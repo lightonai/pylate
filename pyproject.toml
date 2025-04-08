@@ -58,6 +58,10 @@ dev = [
 [tool.setuptools]
 package-data = {"pylate" = ["hf_hub/model_card_template.md"]}
 
+[tool.setuptools.packages.find]
+include = ["pylate*"]
+namespaces = false
+
 [tool.setuptools.dynamic]
 version = {attr = "pylate.__version__.__version__"}
 
