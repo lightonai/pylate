@@ -56,7 +56,6 @@ dev = [
 ]
 
 [tool.setuptools]
-packages = ["pylate"]
 package-data = {"pylate" = ["hf_hub/model_card_template.md"]}
 
 [tool.setuptools.dynamic]
