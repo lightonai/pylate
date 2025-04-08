@@ -27,7 +27,9 @@ dependencies = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/lightonai/pylate"
+Homepage = "https://github.com/lightonai/pylate"
+Repository = "https://github.com/lightonai/pylate"
+Documentation = "https://lightonai.github.io/pylate/"
 
 [project.optional-dependencies]
 eval = [
