@@ -91,32 +91,31 @@ Voyager index. The Voyager index is a fast and efficient index for approximate n
 
     **Parameters**
 
-    - **queries_embeddings**     (*numpy.ndarray | torch.Tensor*)    
-    - **k**     (*int*)     – defaults to `10`    
-    
+    - **queries_embeddings**     (*numpy.ndarray | torch.Tensor*)
+    - **k**     (*int*)     – defaults to `10`
+
 ???- note "add_documents"
 
     Add documents to the index.
 
     **Parameters**
 
-    - **documents_ids**     (*str | list[str]*)    
-    - **documents_embeddings**     (*list[numpy.ndarray | torch.Tensor]*)    
-    - **batch_size**     (*int*)     – defaults to `2000`    
-    
+    - **documents_ids**     (*str | list[str]*)
+    - **documents_embeddings**     (*list[numpy.ndarray | torch.Tensor]*)
+    - **batch_size**     (*int*)     – defaults to `2000`
+
 ???- note "get_documents_embeddings"
 
     Retrieve document embeddings for re-ranking from Voyager.
 
     **Parameters**
 
-    - **document_ids**     (*list[list[str]]*)    
-    
+    - **document_ids**     (*list[list[str]]*)
+
 ???- note "remove_documents"
 
     Remove documents from the index.
 
     **Parameters**
 
-    - **documents_ids**     (*list[str]*)    
-    
+    - **documents_ids**     (*list[str]*)

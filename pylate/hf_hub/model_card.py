@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING, Any, Literal
 
 import torch
 import transformers
-from huggingface_hub import ModelCard
 from sentence_transformers import SentenceTransformerModelCardData
 from sentence_transformers import __version__ as sentence_transformers_version
 from sentence_transformers.util import (
@@ -130,6 +129,9 @@ class PylateModelCardData(SentenceTransformerModelCardData):
     pipeline_tag: str = field(default="sentence-similarity", init=False)
     library_name: str = field(default="PyLate", init=False)
     version: dict[str, str] = field(default_factory=get_versions, init=False)
+    template_path: Path = field(
+        default=Path(__file__).parent / "model_card_template.md", init=False
+    )
 
     # Passed via `register_model` only
     model: SentenceTransformer | None = field(default=None, init=False, repr=False)
@@ -249,11 +251,3 @@ year={2024}
             The dataset to create widget examples from.
         """
         pass
-
-
-def generate_model_card(model: SentenceTransformer) -> str:
-    template_path = Path(__file__).parent / "model_card_template.md"
-    model_card = ModelCard.from_template(
-        card_data=model.model_card_data, template_path=template_path, hf_emoji="🐕"
-    )
-    return model_card.content

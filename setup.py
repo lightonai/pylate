@@ -8,7 +8,7 @@ with open(file="README.md", mode="r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 base_packages = [
-    "sentence-transformers == 3.4.1",
+    "sentence-transformers == 4.0.2",
     "datasets >= 2.20.0",
     "accelerate >= 0.31.0",
     "voyager >= 2.0.9",
@@ -22,6 +22,7 @@ dev = [
     "ruff >= 0.4.9",
     "pytest-cov >= 5.0.0",
     "pytest-xdist >=3.6.0",
+    "pytest-rerunfailures >= 15.0.0",
     "pytest >= 8.2.1",
     "pandas >= 2.2.1",
     "mkdocs-material == 9.5.32",

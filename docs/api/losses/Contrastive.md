@@ -57,9 +57,9 @@ Contrastive loss. Expects as input two texts and a label of either 0 or 1. If th
 
     **Parameters**
 
-    - **args**    
-    - **kwargs**    
-    
+    - **args**
+    - **kwargs**
+
 ???- note "add_module"
 
     Add a child module to the current module.
@@ -68,9 +68,9 @@ Contrastive loss. Expects as input two texts and a label of either 0 or 1. If th
 
     **Parameters**
 
-    - **name**     (*str*)    
-    - **module**     (*Optional[ForwardRef('Module')]*)    
-    
+    - **name**     (*str*)
+    - **module**     (*Optional[ForwardRef('Module')]*)
+
 ???- note "apply"
 
     Apply ``fn`` recursively to every submodule (as returned by ``.children()``) as well as self.
@@ -79,15 +79,15 @@ Contrastive loss. Expects as input two texts and a label of either 0 or 1. If th
 
     **Parameters**
 
-    - **fn**     (*Callable[[ForwardRef('Module')], NoneType]*)    
-    
+    - **fn**     (*Callable[[ForwardRef('Module')], NoneType]*)
+
 ???- note "bfloat16"
 
     Casts all floating point parameters and buffers to ``bfloat16`` datatype.
 
     .. note::     This method modifies the module in-place.  Returns:     Module: self
 
-    
+
 ???- note "buffers"
 
     Return an iterator over module buffers.
@@ -96,15 +96,15 @@ Contrastive loss. Expects as input two texts and a label of either 0 or 1. If th
 
     **Parameters**
 
-    - **recurse**     (*bool*)     – defaults to `True`    
-    
+    - **recurse**     (*bool*)     – defaults to `True`
+
 ???- note "children"
 
     Return an iterator over immediate children modules.
 
     Yields:     Module: a child module
 
-    
+
 ???- note "compile"
 
     Compile this Module's forward using :func:`torch.compile`.
@@ -113,16 +113,16 @@ Contrastive loss. Expects as input two texts and a label of either 0 or 1. If th
 
     **Parameters**
 
-    - **args**    
-    - **kwargs**    
-    
+    - **args**
+    - **kwargs**
+
 ???- note "cpu"
 
     Move all model parameters and buffers to the CPU.
 
     .. note::     This method modifies the module in-place.  Returns:     Module: self
 
-    
+
 ???- note "cuda"
 
     Move all model parameters and buffers to the GPU.
@@ -131,45 +131,45 @@ Contrastive loss. Expects as input two texts and a label of either 0 or 1. If th
 
     **Parameters**
 
-    - **device**     (*Union[int, torch.device, NoneType]*)     – defaults to `None`    
-    
+    - **device**     (*Union[int, torch.device, NoneType]*)     – defaults to `None`
+
 ???- note "double"
 
     Casts all floating point parameters and buffers to ``double`` datatype.
 
     .. note::     This method modifies the module in-place.  Returns:     Module: self
 
-    
+
 ???- note "eval"
 
     Set the module in evaluation mode.
 
     This has any effect only on certain modules. See documentations of particular modules for details of their behaviors in training/evaluation mode, if they are affected, e.g. :class:`Dropout`, :class:`BatchNorm`, etc.  This is equivalent with :meth:`self.train(False) <torch.nn.Module.train>`.  See :ref:`locally-disable-grad-doc` for a comparison between `.eval()` and several similar mechanisms that may be confused with it.  Returns:     Module: self
 
-    
+
 ???- note "extra_repr"
 
     Set the extra representation of the module.
 
     To print customized extra information, you should re-implement this method in your own modules. Both single-line and multi-line strings are acceptable.
 
-    
+
 ???- note "float"
 
     Casts all floating point parameters and buffers to ``float`` datatype.
 
     .. note::     This method modifies the module in-place.  Returns:     Module: self
 
-    
+
 ???- note "forward"
 
     Compute the Constrastive loss.
 
     **Parameters**
 
-    - **sentence_features**     (*Iterable[dict[str, torch.Tensor]]*)    
-    - **labels**     (*torch.Tensor | None*)     – defaults to `None`    
-    
+    - **sentence_features**     (*Iterable[dict[str, torch.Tensor]]*)
+    - **labels**     (*torch.Tensor | None*)     – defaults to `None`
+
 ???- note "get_buffer"
 
     Return the buffer given by ``target`` if it exists, otherwise throw an error.
@@ -178,15 +178,15 @@ Contrastive loss. Expects as input two texts and a label of either 0 or 1. If th
 
     **Parameters**
 
-    - **target**     (*str*)    
-    
+    - **target**     (*str*)
+
 ???- note "get_extra_state"
 
     Return any extra state to include in the module's state_dict.
 
     Implement this and a corresponding :func:`set_extra_state` for your module if you need to store extra state. This function is called when building the module's `state_dict()`.  Note that extra state should be picklable to ensure working serialization of the state_dict. We only provide provide backwards compatibility guarantees for serializing Tensors; other objects may break backwards compatibility if their serialized pickled form changes.  Returns:     object: Any extra state to store in the module's state_dict
 
-    
+
 ???- note "get_parameter"
 
     Return the parameter given by ``target`` if it exists, otherwise throw an error.
@@ -195,8 +195,8 @@ Contrastive loss. Expects as input two texts and a label of either 0 or 1. If th
 
     **Parameters**
 
-    - **target**     (*str*)    
-    
+    - **target**     (*str*)
+
 ???- note "get_submodule"
 
     Return the submodule given by ``target`` if it exists, otherwise throw an error.
@@ -205,15 +205,15 @@ Contrastive loss. Expects as input two texts and a label of either 0 or 1. If th
 
     **Parameters**
 
-    - **target**     (*str*)    
-    
+    - **target**     (*str*)
+
 ???- note "half"
 
     Casts all floating point parameters and buffers to ``half`` datatype.
 
     .. note::     This method modifies the module in-place.  Returns:     Module: self
 
-    
+
 ???- note "ipu"
 
     Move all model parameters and buffers to the IPU.
@@ -222,8 +222,8 @@ Contrastive loss. Expects as input two texts and a label of either 0 or 1. If th
 
     **Parameters**
 
-    - **device**     (*Union[int, torch.device, NoneType]*)     – defaults to `None`    
-    
+    - **device**     (*Union[int, torch.device, NoneType]*)     – defaults to `None`
+
 ???- note "load_state_dict"
 
     Copy parameters and buffers from :attr:`state_dict` into this module and its descendants.
@@ -232,17 +232,17 @@ Contrastive loss. Expects as input two texts and a label of either 0 or 1. If th
 
     **Parameters**
 
-    - **state_dict**     (*Mapping[str, Any]*)    
-    - **strict**     (*bool*)     – defaults to `True`    
-    - **assign**     (*bool*)     – defaults to `False`    
-    
+    - **state_dict**     (*Mapping[str, Any]*)
+    - **strict**     (*bool*)     – defaults to `True`
+    - **assign**     (*bool*)     – defaults to `False`
+
 ???- note "modules"
 
     Return an iterator over all modules in the network.
 
     Yields:     Module: a module in the network  Note:     Duplicate modules are returned only once. In the following     example, ``l`` will be returned only once.  Example::      >>> l = nn.Linear(2, 2)     >>> net = nn.Sequential(l, l)     >>> for idx, m in enumerate(net.modules()):     ...     print(idx, '->', m)      0 -> Sequential(       (0): Linear(in_features=2, out_features=2, bias=True)       (1): Linear(in_features=2, out_features=2, bias=True)     )     1 -> Linear(in_features=2, out_features=2, bias=True)
 
-    
+
 ???- note "named_buffers"
 
     Return an iterator over module buffers, yielding both the name of the buffer as well as the buffer itself.
@@ -251,17 +251,17 @@ Contrastive loss. Expects as input two texts and a label of either 0 or 1. If th
 
     **Parameters**
 
-    - **prefix**     (*str*)     – defaults to ``    
-    - **recurse**     (*bool*)     – defaults to `True`    
-    - **remove_duplicate**     (*bool*)     – defaults to `True`    
-    
+    - **prefix**     (*str*)     – defaults to ``
+    - **recurse**     (*bool*)     – defaults to `True`
+    - **remove_duplicate**     (*bool*)     – defaults to `True`
+
 ???- note "named_children"
 
     Return an iterator over immediate children modules, yielding both the name of the module as well as the module itself.
 
     Yields:     (str, Module): Tuple containing a name and child module  Example::      >>> # xdoctest: +SKIP("undefined vars")     >>> for name, module in model.named_children():     >>>     if name in ['conv4', 'conv5']:     >>>         print(module)
 
-    
+
 ???- note "named_modules"
 
     Return an iterator over all modules in the network, yielding both the name of the module as well as the module itself.
@@ -270,10 +270,10 @@ Contrastive loss. Expects as input two texts and a label of either 0 or 1. If th
 
     **Parameters**
 
-    - **memo**     (*Optional[Set[ForwardRef('Module')]]*)     – defaults to `None`    
-    - **prefix**     (*str*)     – defaults to ``    
-    - **remove_duplicate**     (*bool*)     – defaults to `True`    
-    
+    - **memo**     (*Optional[Set[ForwardRef('Module')]]*)     – defaults to `None`
+    - **prefix**     (*str*)     – defaults to ``
+    - **remove_duplicate**     (*bool*)     – defaults to `True`
+
 ???- note "named_parameters"
 
     Return an iterator over module parameters, yielding both the name of the parameter as well as the parameter itself.
@@ -282,10 +282,10 @@ Contrastive loss. Expects as input two texts and a label of either 0 or 1. If th
 
     **Parameters**
 
-    - **prefix**     (*str*)     – defaults to ``    
-    - **recurse**     (*bool*)     – defaults to `True`    
-    - **remove_duplicate**     (*bool*)     – defaults to `True`    
-    
+    - **prefix**     (*str*)     – defaults to ``
+    - **recurse**     (*bool*)     – defaults to `True`
+    - **remove_duplicate**     (*bool*)     – defaults to `True`
+
 ???- note "parameters"
 
     Return an iterator over module parameters.
@@ -294,8 +294,8 @@ Contrastive loss. Expects as input two texts and a label of either 0 or 1. If th
 
     **Parameters**
 
-    - **recurse**     (*bool*)     – defaults to `True`    
-    
+    - **recurse**     (*bool*)     – defaults to `True`
+
 ???- note "register_backward_hook"
 
     Register a backward hook on the module.
@@ -304,8 +304,8 @@ Contrastive loss. Expects as input two texts and a label of either 0 or 1. If th
 
     **Parameters**
 
-    - **hook**     (*Callable[[ForwardRef('Module'), Union[Tuple[torch.Tensor, ...], torch.Tensor], Union[Tuple[torch.Tensor, ...], torch.Tensor]], Union[NoneType, Tuple[torch.Tensor, ...], torch.Tensor]]*)    
-    
+    - **hook**     (*Callable[[ForwardRef('Module'), Union[Tuple[torch.Tensor, ...], torch.Tensor], Union[Tuple[torch.Tensor, ...], torch.Tensor]], Union[NoneType, Tuple[torch.Tensor, ...], torch.Tensor]]*)
+
 ???- note "register_buffer"
 
     Add a buffer to the module.
@@ -314,10 +314,10 @@ Contrastive loss. Expects as input two texts and a label of either 0 or 1. If th
 
     **Parameters**
 
-    - **name**     (*str*)    
-    - **tensor**     (*Optional[torch.Tensor]*)    
-    - **persistent**     (*bool*)     – defaults to `True`    
-    
+    - **name**     (*str*)
+    - **tensor**     (*Optional[torch.Tensor]*)
+    - **persistent**     (*bool*)     – defaults to `True`
+
 ???- note "register_forward_hook"
 
     Register a forward hook on the module.
@@ -326,11 +326,11 @@ Contrastive loss. Expects as input two texts and a label of either 0 or 1. If th
 
     **Parameters**
 
-    - **hook**     (*Union[Callable[[~T, Tuple[Any, ...], Any], Optional[Any]], Callable[[~T, Tuple[Any, ...], Dict[str, Any], Any], Optional[Any]]]*)    
-    - **prepend**     (*bool*)     – defaults to `False`    
-    - **with_kwargs**     (*bool*)     – defaults to `False`    
-    - **always_call**     (*bool*)     – defaults to `False`    
-    
+    - **hook**     (*Union[Callable[[~T, Tuple[Any, ...], Any], Optional[Any]], Callable[[~T, Tuple[Any, ...], Dict[str, Any], Any], Optional[Any]]]*)
+    - **prepend**     (*bool*)     – defaults to `False`
+    - **with_kwargs**     (*bool*)     – defaults to `False`
+    - **always_call**     (*bool*)     – defaults to `False`
+
 ???- note "register_forward_pre_hook"
 
     Register a forward pre-hook on the module.
@@ -339,10 +339,10 @@ Contrastive loss. Expects as input two texts and a label of either 0 or 1. If th
 
     **Parameters**
 
-    - **hook**     (*Union[Callable[[~T, Tuple[Any, ...]], Optional[Any]], Callable[[~T, Tuple[Any, ...], Dict[str, Any]], Optional[Tuple[Any, Dict[str, Any]]]]]*)    
-    - **prepend**     (*bool*)     – defaults to `False`    
-    - **with_kwargs**     (*bool*)     – defaults to `False`    
-    
+    - **hook**     (*Union[Callable[[~T, Tuple[Any, ...]], Optional[Any]], Callable[[~T, Tuple[Any, ...], Dict[str, Any]], Optional[Tuple[Any, Dict[str, Any]]]]]*)
+    - **prepend**     (*bool*)     – defaults to `False`
+    - **with_kwargs**     (*bool*)     – defaults to `False`
+
 ???- note "register_full_backward_hook"
 
     Register a backward hook on the module.
@@ -351,9 +351,9 @@ Contrastive loss. Expects as input two texts and a label of either 0 or 1. If th
 
     **Parameters**
 
-    - **hook**     (*Callable[[ForwardRef('Module'), Union[Tuple[torch.Tensor, ...], torch.Tensor], Union[Tuple[torch.Tensor, ...], torch.Tensor]], Union[NoneType, Tuple[torch.Tensor, ...], torch.Tensor]]*)    
-    - **prepend**     (*bool*)     – defaults to `False`    
-    
+    - **hook**     (*Callable[[ForwardRef('Module'), Union[Tuple[torch.Tensor, ...], torch.Tensor], Union[Tuple[torch.Tensor, ...], torch.Tensor]], Union[NoneType, Tuple[torch.Tensor, ...], torch.Tensor]]*)
+    - **prepend**     (*bool*)     – defaults to `False`
+
 ???- note "register_full_backward_pre_hook"
 
     Register a backward pre-hook on the module.
@@ -362,9 +362,9 @@ Contrastive loss. Expects as input two texts and a label of either 0 or 1. If th
 
     **Parameters**
 
-    - **hook**     (*Callable[[ForwardRef('Module'), Union[Tuple[torch.Tensor, ...], torch.Tensor]], Union[NoneType, Tuple[torch.Tensor, ...], torch.Tensor]]*)    
-    - **prepend**     (*bool*)     – defaults to `False`    
-    
+    - **hook**     (*Callable[[ForwardRef('Module'), Union[Tuple[torch.Tensor, ...], torch.Tensor]], Union[NoneType, Tuple[torch.Tensor, ...], torch.Tensor]]*)
+    - **prepend**     (*bool*)     – defaults to `False`
+
 ???- note "register_load_state_dict_post_hook"
 
     Register a post hook to be run after module's ``load_state_dict`` is called.
@@ -373,17 +373,17 @@ Contrastive loss. Expects as input two texts and a label of either 0 or 1. If th
 
     **Parameters**
 
-    - **hook**    
-    
+    - **hook**
+
 ???- note "register_module"
 
     Alias for :func:`add_module`.
 
     **Parameters**
 
-    - **name**     (*str*)    
-    - **module**     (*Optional[ForwardRef('Module')]*)    
-    
+    - **name**     (*str*)
+    - **module**     (*Optional[ForwardRef('Module')]*)
+
 ???- note "register_parameter"
 
     Add a parameter to the module.
@@ -392,9 +392,9 @@ Contrastive loss. Expects as input two texts and a label of either 0 or 1. If th
 
     **Parameters**
 
-    - **name**     (*str*)    
-    - **param**     (*Optional[torch.nn.parameter.Parameter]*)    
-    
+    - **name**     (*str*)
+    - **param**     (*Optional[torch.nn.parameter.Parameter]*)
+
 ???- note "register_state_dict_pre_hook"
 
     Register a pre-hook for the :meth:`~torch.nn.Module.state_dict` method.
@@ -403,8 +403,8 @@ Contrastive loss. Expects as input two texts and a label of either 0 or 1. If th
 
     **Parameters**
 
-    - **hook**    
-    
+    - **hook**
+
 ???- note "requires_grad_"
 
     Change if autograd should record operations on parameters in this module.
@@ -413,8 +413,8 @@ Contrastive loss. Expects as input two texts and a label of either 0 or 1. If th
 
     **Parameters**
 
-    - **requires_grad**     (*bool*)     – defaults to `True`    
-    
+    - **requires_grad**     (*bool*)     – defaults to `True`
+
 ???- note "set_extra_state"
 
     Set extra state contained in the loaded `state_dict`.
@@ -423,13 +423,13 @@ Contrastive loss. Expects as input two texts and a label of either 0 or 1. If th
 
     **Parameters**
 
-    - **state**     (*Any*)    
-    
+    - **state**     (*Any*)
+
 ???- note "share_memory"
 
     See :meth:`torch.Tensor.share_memory_`.
 
-    
+
 ???- note "state_dict"
 
     Return a dictionary containing references to the whole state of the module.
@@ -438,11 +438,11 @@ Contrastive loss. Expects as input two texts and a label of either 0 or 1. If th
 
     **Parameters**
 
-    - **args**    
-    - **destination**     – defaults to `None`    
-    - **prefix**     – defaults to ``    
-    - **keep_vars**     – defaults to `False`    
-    
+    - **args**
+    - **destination**     – defaults to `None`
+    - **prefix**     – defaults to ``
+    - **keep_vars**     – defaults to `False`
+
 ???- note "to"
 
     Move and/or cast the parameters and buffers.
@@ -451,9 +451,9 @@ Contrastive loss. Expects as input two texts and a label of either 0 or 1. If th
 
     **Parameters**
 
-    - **args**    
-    - **kwargs**    
-    
+    - **args**
+    - **kwargs**
+
 ???- note "to_empty"
 
     Move the parameters and buffers to the specified device without copying storage.
@@ -462,9 +462,9 @@ Contrastive loss. Expects as input two texts and a label of either 0 or 1. If th
 
     **Parameters**
 
-    - **device**     (*Union[int, str, torch.device, NoneType]*)    
-    - **recurse**     (*bool*)     – defaults to `True`    
-    
+    - **device**     (*Union[int, str, torch.device, NoneType]*)
+    - **recurse**     (*bool*)     – defaults to `True`
+
 ???- note "train"
 
     Set the module in training mode.
@@ -473,8 +473,8 @@ Contrastive loss. Expects as input two texts and a label of either 0 or 1. If th
 
     **Parameters**
 
-    - **mode**     (*bool*)     – defaults to `True`    
-    
+    - **mode**     (*bool*)     – defaults to `True`
+
 ???- note "type"
 
     Casts all parameters and buffers to :attr:`dst_type`.
@@ -483,8 +483,8 @@ Contrastive loss. Expects as input two texts and a label of either 0 or 1. If th
 
     **Parameters**
 
-    - **dst_type**     (*Union[torch.dtype, str]*)    
-    
+    - **dst_type**     (*Union[torch.dtype, str]*)
+
 ???- note "xpu"
 
     Move all model parameters and buffers to the XPU.
@@ -493,8 +493,8 @@ Contrastive loss. Expects as input two texts and a label of either 0 or 1. If th
 
     **Parameters**
 
-    - **device**     (*Union[int, torch.device, NoneType]*)     – defaults to `None`    
-    
+    - **device**     (*Union[int, torch.device, NoneType]*)     – defaults to `None`
+
 ???- note "zero_grad"
 
     Reset gradients of all model parameters.
@@ -503,5 +503,4 @@ Contrastive loss. Expects as input two texts and a label of either 0 or 1. If th
 
     **Parameters**
 
-    - **set_to_none**     (*bool*)     – defaults to `True`    
-    
+    - **set_to_none**     (*bool*)     – defaults to `True`
