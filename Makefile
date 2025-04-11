@@ -18,9 +18,9 @@ deploydoc:
 
 
 install:
-	pip install -e ".[dev]"
+	pip install -e ".[eval,dev]"
 	pre-commit install
 
 install-test:
 	python -m pip install --upgrade pip
-	pip install ".[dev]"
+	pip install ".[eval,dev]"

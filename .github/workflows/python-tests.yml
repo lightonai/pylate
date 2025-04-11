@@ -6,7 +6,7 @@ on:
       - '**'
 
 jobs:
-  test-:
+  test:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
