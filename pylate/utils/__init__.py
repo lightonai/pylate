@@ -17,4 +17,5 @@ __all__ = [
     "_start_multi_process_pool",
     "all_gather",
     "all_gather_with_gradients",
+    "get_rank",
 ]

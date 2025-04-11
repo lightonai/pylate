@@ -8,7 +8,7 @@ from torch import Tensor, nn
 
 from ..models import ColBERT
 from ..scores import colbert_scores
-from ..utils import all_gather, all_gather_with_gradients
+from ..utils import all_gather, all_gather_with_gradients, get_rank
 
 
 def extract_skiplist_mask(
@@ -175,11 +175,7 @@ class Contrastive(nn.Module):
                 masks[0],
                 *[torch.cat(all_gather(mask)) for mask in masks[1:]],
             ]
-            rank = (
-                torch.distributed.get_rank()
-                if torch.distributed.is_initialized()
-                else 0
-            )
+            rank = get_rank()
             # Adjust the labels to match the gathered embeddings positions
             labels = labels + rank * batch_size
         # Note: the queries mask is not used, if added, take care that the expansion tokens are not masked from scoring (because they might be masked during encoding).

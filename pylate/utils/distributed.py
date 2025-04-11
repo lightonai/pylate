@@ -102,3 +102,12 @@ def all_gather_with_gradients(tensor: torch.Tensor) -> Sequence[torch.Tensor]:
         _has_warned_dist_not_initialized = True
 
     return [tensor]
+
+
+def get_rank() -> int:
+    """Returns the current rank in a distributed training."""
+    # Check if torch.distributed is properly available and initialized.
+    if dist.is_available() and dist.is_initialized():
+        return torch.distributed.get_rank()
+    else:
+        return 0

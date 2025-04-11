@@ -257,11 +257,7 @@ class CachedContrastive(nn.Module):
                 masks[0],
                 *[torch.cat(all_gather(mask)) for mask in masks[1:]],
             ]
-            rank = (
-                torch.distributed.get_rank()
-                if torch.distributed.is_initialized()
-                else 0
-            )
+            rank = get_rank()
             # Adjust the labels to match the gathered embeddings positions
             labels = labels + rank * batch_size
         losses: list[torch.Tensor] = []
