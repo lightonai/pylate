@@ -94,8 +94,8 @@ def all_gather_with_gradients(tensor: torch.Tensor) -> Sequence[torch.Tensor]:
     # Warn once about uninitialized or single-GPU usage.
     if not _has_warned_dist_not_initialized:
         warning = """
-            Trying to gather while torch.distributed is not available or has not been initialized, 
-             returning the original (local) tensor. This is expected if you are 
+            Trying to gather while torch.distributed is not available or has not been initialized,
+             returning the original (local) tensor. This is expected if you are
              only using one GPU; consider not using gathering to remove this warning.
        """
         logger.warning(warning)
