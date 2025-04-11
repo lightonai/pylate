@@ -8,7 +8,7 @@ from torch import Tensor, nn
 
 from ..models import ColBERT
 from ..scores import colbert_scores
-from ..utils import all_gather, all_gather_with_gradients, get_rank
+from ..utils import all_gather, all_gather_with_gradients, get_rank, get_world_size
 
 
 def extract_skiplist_mask(
@@ -190,8 +190,11 @@ class Contrastive(nn.Module):
 
         # compute constrastive loss using cross-entropy over the scores
 
-        return F.cross_entropy(
-            input=scores,
-            target=labels,
-            reduction="mean" if self.size_average else "sum",
+        return (
+            F.cross_entropy(
+                input=scores,
+                target=labels,
+                reduction="mean" if self.size_average else "sum",
+            )
+            * get_world_size()
         )
