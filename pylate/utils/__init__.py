@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from .collator import ColBERTCollator
-from .distributed import all_gather, all_gather_with_gradients
+from .distributed import all_gather, all_gather_with_gradients, get_rank, get_world_size
 from .huggingface_models import HUGGINGFACE_MODELS
 from .iter_batch import iter_batch
 from .multi_process import _start_multi_process_pool
@@ -17,4 +17,6 @@ __all__ = [
     "_start_multi_process_pool",
     "all_gather",
     "all_gather_with_gradients",
+    "get_rank",
+    "get_world_size",
 ]
