@@ -1,6 +1,6 @@
 # Project information
-site_name: pylate
-site_description: Neural Search
+site_name: PyLate
+site_description: PyLate 🐶
 site_author: Raphael Sourty
 site_url: https://lightonai.github.io/pylate
 
@@ -46,9 +46,9 @@ theme:
 
 # Extras
 extra:
-    social:
-      - icon: fontawesome/brands/github-alt
-        link: https://github.com/lightonai/pylate
+  social:
+    - icon: fontawesome/brands/github-alt
+      link: https://github.com/lightonai/pylate
 
 # Extensions
 markdown_extensions:
@@ -71,7 +71,6 @@ markdown_extensions:
         - name: vegalite
           class: vegalite
           format: "!!python/name:mkdocs_charts_plugin.fences.fence_vegalite"
-
 
 plugins:
   - search

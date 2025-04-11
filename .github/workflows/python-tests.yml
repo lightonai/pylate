@@ -3,7 +3,7 @@ name: Python Tests
 on:
   pull_request:
     branches:
-      - '**'
+      - "**"
 
 jobs:
   test-:
@@ -16,25 +16,24 @@ jobs:
         test-target: ["tests", "pylate"]
 
     steps:
-    - name: Cache Hugging Face Hub
-      id: cache-hf
-      uses: actions/cache@v4
-      with:
-        path: ~/.cache/huggingface
-        key: ${{ runner.os }}-hf
+      - name: Cache Hugging Face Hub
+        id: cache-hf
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: ${{ runner.os }}-hf
 
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
           python-version: ${{ matrix.python-version }}
 
-    - name: Install dependencies
-      run: |
-        make install-test
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
 
-    - name: Run tests
-      run: |
-        pytest ${{ matrix.test-target }} -n auto --durations=5
+      - name: Run tests
+        run: |
+          uv run --extra dev pytest ${{ matrix.test-target }} -n auto --durations=5
