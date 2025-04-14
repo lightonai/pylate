@@ -2,11 +2,8 @@ test:
 	pytest pylate --durations=5 -n auto
 	pytest tests --durations=5 -n auto
 
-ruff:
-	ruff format .
-
 lint:
-	ruff check .
+	pre-commit run --all-files
 
 livedoc:
 	python docs/parse
@@ -15,7 +12,6 @@ livedoc:
 
 deploydoc:
 	mkdocs gh-deploy --force
-
 
 install:
 	pip install -e ".[dev]"
