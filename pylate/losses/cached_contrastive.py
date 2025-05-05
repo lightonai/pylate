@@ -13,7 +13,7 @@ from torch.utils.checkpoint import get_device_states, set_device_states
 
 from ..models import ColBERT
 from ..scores import colbert_scores
-from ..utils import all_gather, all_gather_with_gradients
+from ..utils import all_gather, all_gather_with_gradients, get_rank, get_world_size
 from .contrastive import extract_skiplist_mask
 
 
@@ -257,11 +257,7 @@ class CachedContrastive(nn.Module):
                 masks[0],
                 *[torch.cat(all_gather(mask)) for mask in masks[1:]],
             ]
-            rank = (
-                torch.distributed.get_rank()
-                if torch.distributed.is_initialized()
-                else 0
-            )
+            rank = get_rank()
             # Adjust the labels to match the gathered embeddings positions
             labels = labels + rank * batch_size
         losses: list[torch.Tensor] = []
@@ -304,10 +300,13 @@ class CachedContrastive(nn.Module):
                 dim=1,
             )
             # We don't want to average the loss across the mini-batch as mini-batch sizes can vary, which would create an issue similar to this one: https://huggingface.co/blog/gradient_accumulation#where-does-it-stem-from
-            loss_mbatch = F.cross_entropy(
-                input=scores,
-                target=labels[begin:end],
-                reduction="sum",
+            loss_mbatch = (
+                F.cross_entropy(
+                    input=scores,
+                    target=labels[begin:end],
+                    reduction="sum",
+                )
+                * get_world_size()
             )
 
             if with_backward:

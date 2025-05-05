@@ -88,7 +88,7 @@ def all_gather_with_gradients(tensor: torch.Tensor) -> Sequence[torch.Tensor]:
 
     # Check if torch.distributed is properly available and initialized.
     if dist.is_available() and dist.is_initialized():
-        tensor = torch.distributed.nn.all_gather(tensor)
+        tensor = dist.nn.all_gather(tensor)
         return tensor
 
     # Warn once about uninitialized or single-GPU usage.
@@ -102,3 +102,19 @@ def all_gather_with_gradients(tensor: torch.Tensor) -> Sequence[torch.Tensor]:
         _has_warned_dist_not_initialized = True
 
     return [tensor]
+
+
+def get_rank() -> int:
+    """Returns the current rank in a distributed training."""
+    # Check if torch.distributed is properly available and initialized.
+    if dist.is_available() and dist.is_initialized():
+        return dist.get_rank()
+    return 0
+
+
+def get_world_size() -> int:
+    """Returns the world size in a distributed training."""
+    # Check if torch.distributed is properly available and initialized.
+    if dist.is_available() and dist.is_initialized():
+        return dist.get_world_size()
+    return 1
