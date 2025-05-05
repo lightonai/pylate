@@ -109,8 +109,7 @@ def get_rank() -> int:
     # Check if torch.distributed is properly available and initialized.
     if dist.is_available() and dist.is_initialized():
         return dist.get_rank()
-    else:
-        return 0
+    return 0
 
 
 def get_world_size() -> int:
@@ -118,5 +117,4 @@ def get_world_size() -> int:
     # Check if torch.distributed is properly available and initialized.
     if dist.is_available() and dist.is_initialized():
         return dist.get_world_size()
-    else:
-        return 1
+    return 1
