@@ -21,6 +21,6 @@ jobs:
 
       - name: Run pre-commit
         run: |
-          python -m pip install --upgrade pip setuptools wheel
-          pip install pre_commit==4.1.0
+          uv pip install --upgrade pip setuptools wheel
+          uv pip install pre_commit==4.1.0
           pre-commit run --all-files
