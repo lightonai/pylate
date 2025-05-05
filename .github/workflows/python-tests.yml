@@ -1,9 +1,10 @@
 name: Python Tests
 
 on:
-  pull_request:
+  push:
     branches:
       - "**"
+
 
 jobs:
   test-:
