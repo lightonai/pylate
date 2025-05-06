@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import pathlib
 from math import ceil
@@ -108,12 +110,12 @@ class IndexScorer(IndexLoader, CandidateGeneration):
             if filter_fn is not None:
                 filtered_pids = filter_fn(pids)
                 assert isinstance(filtered_pids, torch.Tensor), type(filtered_pids)
-                assert (
-                    filtered_pids.dtype == pids.dtype
-                ), f"filtered_pids.dtype={filtered_pids.dtype}, pids.dtype={pids.dtype}"
-                assert (
-                    filtered_pids.device == pids.device
-                ), f"filtered_pids.device={filtered_pids.device}, pids.device={pids.device}"
+                assert filtered_pids.dtype == pids.dtype, (
+                    f"filtered_pids.dtype={filtered_pids.dtype}, pids.dtype={pids.dtype}"
+                )
+                assert filtered_pids.device == pids.device, (
+                    f"filtered_pids.device={filtered_pids.device}, pids.device={pids.device}"
+                )
                 pids = filtered_pids
                 if len(pids) == 0:
                     return [], []
@@ -138,7 +140,7 @@ class IndexScorer(IndexLoader, CandidateGeneration):
         """
 
         # TODO: Remove batching?
-        batch_size = 2**20
+        batch_size = 2**18
 
         if centroid_scores is not None:
             if self.use_gpu:

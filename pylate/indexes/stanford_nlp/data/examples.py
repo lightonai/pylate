@@ -1,8 +1,9 @@
+from __future__ import annotations
+
 import ujson
 
 from pylate.indexes.stanford_nlp.infra.provenance import Provenance
 from pylate.indexes.stanford_nlp.infra.run import Run
-from pylate.indexes.stanford_nlp.utility.utils.save_metadata import get_metadata_only
 from pylate.indexes.stanford_nlp.utils.utils import print_message
 
 
@@ -47,9 +48,9 @@ class Examples:
         return list(self.data)
 
     def save(self, new_path):
-        assert "json" in new_path.strip("/").split("/")[-1].split(
-            "."
-        ), "TODO: Support .json[l] too."
+        assert "json" in new_path.strip("/").split("/")[-1].split("."), (
+            "TODO: Support .json[l] too."
+        )
 
         print_message(
             f"#> Writing {len(self.data) / 1000_000.0}M examples to {new_path}"
@@ -65,7 +66,6 @@ class Examples:
 
         with Run().open(f"{new_path}.meta", "w") as f:
             d = {}
-            d["metadata"] = get_metadata_only()
             d["provenance"] = self.provenance()
             line = ujson.dumps(d, indent=4)
             f.write(line)
