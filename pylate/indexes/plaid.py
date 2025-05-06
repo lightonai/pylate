@@ -105,6 +105,9 @@ class PLAID(Base):
         nranks: int = 1,
         kmeans_niters: int = 4,
         index_bsize: int = 1,
+        ndocs: int = 8192,
+        centroid_score_threshold: float = 0.35,
+        ncells: int = 8,
     ) -> None:
         self.config = ColBERTConfig(
             nbits=nbits,
@@ -115,6 +118,9 @@ class PLAID(Base):
             kmeans_niters=kmeans_niters,
             index_bsize=index_bsize,
             dim=embedding_size,
+            ndocs=ndocs,
+            centroid_score_threshold=centroid_score_threshold,
+            ncells=ncells,
         )
         self.index_name = index_name
         self.index_folder = index_folder
