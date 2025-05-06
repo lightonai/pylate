@@ -119,12 +119,14 @@ class Contrastive(nn.Module):
         score_metric=colbert_scores,
         size_average: bool = True,
         gather_across_devices: bool = False,
+        temperature: float = 1.0,
     ) -> None:
         super(Contrastive, self).__init__()
         self.score_metric = score_metric
         self.model = model
         self.size_average = size_average
         self.gather_across_devices = gather_across_devices
+        self.temperature = temperature
 
     def forward(
         self,
@@ -192,7 +194,7 @@ class Contrastive(nn.Module):
 
         return (
             F.cross_entropy(
-                input=scores,
+                input=scores / self.temperature,
                 target=labels,
                 reduction="mean" if self.size_average else "sum",
             )

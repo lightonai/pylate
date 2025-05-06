@@ -132,6 +132,7 @@ class CachedContrastive(nn.Module):
         size_average: bool = True,
         gather_across_devices: bool = False,
         show_progress_bar: bool = False,
+        temperature: float = 1.0,
     ) -> None:
         super(CachedContrastive, self).__init__()
         self.model = model
@@ -140,6 +141,7 @@ class CachedContrastive(nn.Module):
         self.size_average = size_average
         self.gather_across_devices = gather_across_devices
         self.show_progress_bar = show_progress_bar
+        self.temperature = temperature
 
         # Will hold partial derivatives for each embedding chunk
         self.cache: list[list[Tensor]] | None = None
@@ -302,7 +304,7 @@ class CachedContrastive(nn.Module):
             # We don't want to average the loss across the mini-batch as mini-batch sizes can vary, which would create an issue similar to this one: https://huggingface.co/blog/gradient_accumulation#where-does-it-stem-from
             loss_mbatch = (
                 F.cross_entropy(
-                    input=scores,
+                    input=scores / self.temperature,
                     target=labels[begin:end],
                     reduction="sum",
                 )
