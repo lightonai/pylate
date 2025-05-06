@@ -57,6 +57,7 @@ def optimize_ivf(orig_ivf, orig_ivf_lengths, index_path, verbose: int = 3):
             max_stride, *inner_dims, dtype=ivf.dtype, device=ivf.device
         )
         ivf = torch.cat((ivf, padding))
+        ivf_lengths = torch.cat((ivf_lengths, torch.tensor([padding.shape[0]])))
 
     original_ivf_path = os.path.join(index_path, "ivf.pt")
     optimized_ivf_path = os.path.join(index_path, "ivf.pid.pt")
