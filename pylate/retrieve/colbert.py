@@ -88,7 +88,7 @@ class ColBERT:
 
     """
 
-    def __init__(self, index: Voyager) -> None:
+    def __init__(self, index: Voyager | PLAID) -> None:
         self.index = index
 
     def retrieve(
@@ -138,27 +138,29 @@ class ColBERT:
                         k=k_token,
                     )
 
-            documents_ids = [
-                list(
-                    set(
-                        [
-                            document_id
-                            for query_token_document_ids in query_documents_ids
-                            for document_id in query_token_document_ids
-                        ]
+                    documents_ids = [
+                        list(
+                            set(
+                                [
+                                    document_id
+                                    for query_token_document_ids in query_documents_ids
+                                    for document_id in query_token_document_ids
+                                ]
+                            )
+                        )
+                        for query_documents_ids in retrieved_elements["documents_ids"]
+                    ]
+
+                    documents_embeddings = self.index.get_documents_embeddings(
+                        documents_ids
                     )
-                )
-                for query_documents_ids in retrieved_elements["documents_ids"]
-            ]
 
-            documents_embeddings = self.index.get_documents_embeddings(documents_ids)
-
-            reranking_results.extend(
-                rerank(
-                    documents_ids=documents_ids,
-                    queries_embeddings=queries_embeddings_batch,
-                    documents_embeddings=documents_embeddings,
-                    device=device,
-                )
-            )
-        return [query_results[:k] for query_results in reranking_results]
+                    reranking_results.extend(
+                        rerank(
+                            documents_ids=documents_ids,
+                            queries_embeddings=queries_embeddings_batch,
+                            documents_embeddings=documents_embeddings,
+                            device=device,
+                        )
+                    )
+                return [query_results[:k] for query_results in reranking_results]
