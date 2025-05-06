@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import dataclasses
 import os
 from dataclasses import dataclass
@@ -5,7 +7,6 @@ from dataclasses import dataclass
 import ujson
 from huggingface_hub import hf_hub_download
 
-from pylate.indexes.stanford_nlp.utility.utils.save_metadata import get_metadata_only
 from pylate.indexes.stanford_nlp.utils.utils import torch_load_dnn
 
 from .core_config import *
@@ -100,16 +101,14 @@ class BaseConfig(CoreConfig):
 
         with open(path, "w") as f:
             args = self.export()  # dict(self.__config)
-            args["meta"] = get_metadata_only()
-            args["meta"]["version"] = "colbert-v0.4"
             # TODO: Add git_status details.. It can't be too large! It should be a path that Runs() saves on exit, maybe!
 
             f.write(ujson.dumps(args, indent=4) + "\n")
 
     def save_for_checkpoint(self, checkpoint_path):
-        assert not checkpoint_path.endswith(
-            ".dnn"
-        ), f"{checkpoint_path}: We reserve *.dnn names for the deprecated checkpoint format."
+        assert not checkpoint_path.endswith(".dnn"), (
+            f"{checkpoint_path}: We reserve *.dnn names for the deprecated checkpoint format."
+        )
 
         output_config_path = os.path.join(checkpoint_path, "artifact.metadata")
         self.save(output_config_path, overwrite=True)

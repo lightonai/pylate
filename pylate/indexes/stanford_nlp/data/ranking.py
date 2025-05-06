@@ -1,9 +1,10 @@
+from __future__ import annotations
+
 import tqdm
 import ujson
 
 from pylate.indexes.stanford_nlp.infra.provenance import Provenance
 from pylate.indexes.stanford_nlp.infra.run import Run
-from pylate.indexes.stanford_nlp.utility.utils.save_metadata import get_metadata_only
 from pylate.indexes.stanford_nlp.utils.utils import groupby_first_item, print_message
 
 
@@ -62,9 +63,9 @@ class Ranking:
         raise NotImplementedError
 
     def save(self, new_path):
-        assert "tsv" in new_path.strip("/").split("/")[-1].split(
-            "."
-        ), "TODO: Support .json[l] too."
+        assert "tsv" in new_path.strip("/").split("/")[-1].split("."), (
+            "TODO: Support .json[l] too."
+        )
 
         with Run().open(new_path, "w") as f:
             for items in self.flat_ranking:
@@ -83,7 +84,6 @@ class Ranking:
 
         with Run().open(f"{new_path}.meta", "w") as f:
             d = {}
-            d["metadata"] = get_metadata_only()
             d["provenance"] = self.provenance()
             line = ujson.dumps(d, indent=4)
             f.write(line)
