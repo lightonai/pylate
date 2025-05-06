@@ -6,9 +6,7 @@ import ujson
 from pylate.indexes.stanford_nlp.indexing.codecs.residual_embeddings import (
     ResidualEmbeddings,
 )
-from pylate.indexes.stanford_nlp.indexing.collection_encoder import CollectionEncoder
 from pylate.indexes.stanford_nlp.indexing.utils import optimize_ivf
-from pylate.indexes.stanford_nlp.modeling.checkpoint import Checkpoint
 from pylate.indexes.stanford_nlp.search.strided_tensor import StridedTensor
 from pylate.indexes.stanford_nlp.utils.utils import print_message
 
@@ -36,7 +34,7 @@ class IndexUpdater:
 
     """
 
-    def __init__(self, config, searcher, checkpoint=None):
+    def __init__(self, config, searcher):
         self.config = config
         self.searcher = searcher
         self.index_path = searcher.index
@@ -154,10 +152,6 @@ class IndexUpdater:
         Adds new passages to the searcher,
         to add passages to the index, call persist_to_disk() after calling add()
         """
-        if not self.has_checkpoint:
-            raise ValueError(
-                "No checkpoint was provided at IndexUpdater initialization."
-            )
 
         # Find pid for the first added passage
         start_pid = len(self.searcher.ranker.doclens)

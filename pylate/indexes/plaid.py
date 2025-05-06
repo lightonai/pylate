@@ -187,9 +187,7 @@ class PLAID(Base):
             )
             plaid_ids = list(range(len(documents_embeddings)))
         else:
-            index_updater = IndexUpdater(
-                self.config, self.searcher, checkpoint="colbert-ir/colbertv2.0"
-            )
+            index_updater = IndexUpdater(self.config, self.searcher)
             plaid_ids = index_updater.add(documents_embeddings)
             index_updater.persist_to_disk()
 
@@ -221,7 +219,7 @@ class PLAID(Base):
             document_ids_to_plaid_ids[document_id] for document_id in documents_ids
         ]
         index_updater = IndexUpdater(
-            self.config, self.searcher, checkpoint="colbert-ir/colbertv2.0"
+            self.config, self.searcher
         )
         index_updater.remove(plaid_ids)
         index_updater.persist_to_disk()
