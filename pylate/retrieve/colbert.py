@@ -5,7 +5,7 @@ import logging
 import numpy as np
 import torch
 
-from ..indexes import Voyager
+from ..indexes import PLAID, Voyager
 from ..rank import rerank
 from ..utils import iter_batch
 
@@ -113,21 +113,30 @@ class ColBERT:
             The device to use for the embeddings. Defaults to queries_embeddings device.
 
         """
-        if k > k_token:
-            logger.warning(
-                f"k ({k}) is greater than k_token ({k_token}), setting k_token to k."
+        # PLAID is the only index that handle candidate generation and reranking internally and so a single call to the index is enough
+        if isinstance(self.index, PLAID):
+            return self.index(
+                queries_embeddings=queries_embeddings,
+                k=k,
             )
-            k_token = k
-        reranking_results = []
-        for queries_embeddings_batch in iter_batch(
-            queries_embeddings,
-            batch_size=batch_size,
-            desc=f"Retrieving documents (bs={batch_size})",
-        ):
-            retrieved_elements = self.index(
-                queries_embeddings=queries_embeddings_batch,
-                k=k_token,
-            )
+        # Other indexes first generate candidates by calling the index and then rerank them
+        else:
+            if k > k_token:
+                logger.warning(
+                    f"k ({k}) is greater than k_token ({k_token}), setting k_token to k."
+                )
+                k_token = k
+            reranking_results = []
+            if isinstance(self.index, Voyager):
+                for queries_embeddings_batch in iter_batch(
+                    queries_embeddings,
+                    batch_size=batch_size,
+                    desc=f"Retrieving documents (bs={batch_size})",
+                ):
+                    retrieved_elements = self.index(
+                        queries_embeddings=queries_embeddings_batch,
+                        k=k_token,
+                    )
 
             documents_ids = [
                 list(
