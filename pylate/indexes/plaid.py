@@ -8,6 +8,8 @@ from .base import Base
 from .stanford_nlp import Indexer, IndexUpdater, Searcher
 from .stanford_nlp.infra import ColBERTConfig
 
+logger = logging.getLogger(__name__)
+
 
 def reshape_embeddings(
     embeddings: np.ndarray | torch.Tensor,
