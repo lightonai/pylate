@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 
 import torch
@@ -38,12 +40,6 @@ class IndexUpdater:
         self.config = config
         self.searcher = searcher
         self.index_path = searcher.index
-
-        self.has_checkpoint = False
-        if checkpoint:
-            self.has_checkpoint = True
-            self.checkpoint = Checkpoint(checkpoint, config)
-            self.encoder = CollectionEncoder(config, self.checkpoint)
 
         self._load_disk_ivf()
 
