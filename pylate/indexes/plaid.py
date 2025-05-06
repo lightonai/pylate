@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+import logging
 import os
 
 import numpy as np
@@ -14,7 +17,7 @@ logger = logging.getLogger(__name__)
 def reshape_embeddings(
     embeddings: np.ndarray | torch.Tensor,
 ) -> np.ndarray | torch.Tensor:
-    """Reshape the embeddings, the Voyager index expects arrays with shape batch_size, n_tokens, embedding_size."""
+    """Reshape the embeddings, the PLAID index expects arrays with shape batch_size, n_tokens, embedding_size."""
     if isinstance(embeddings, np.ndarray):
         if len(embeddings.shape) == 2:
             return np.expand_dims(a=embeddings, axis=0)
@@ -31,30 +34,49 @@ def reshape_embeddings(
 class PLAID(Base):
     """PLAID index. The PLAID index is the most scalable type of index for multi-vector search and leverage PQ-IVF as well as custom kernel for decompression.
 
+    def __init__(
+        self,
+        index_folder: str = "indexes",
+        index_name: str = "colbert",
+        override: bool = False,
+        embedding_size: int = 128,
+        nbits: int = 2,
+        nranks: int = 1,
+        kmeans_niters: int = 4,
+        index_bsize: int = 1,
+        ndocs: int = 8192,
+        centroid_score_threshold: float = 0.35,
+        ncells: int = 8,
+    )
+
     Parameters
     ----------
-    name
-        The name of the collection.
+    index_folder
+        The folder where the index will be stored.
+    index_name
+        The name of the index.
     override
         Whether to override the collection if it already exists.
     embedding_size
         The number of dimensions of the embeddings.
-    M
-        The number of subquantizers.
-    ef_construction
-        The number of candidates to evaluate during the construction of the index.
-    ef_search
-        The number of candidates to evaluate during the search.
-
+    nbits
+        The number of bits to use for the quantization.
+    kmeans_niters
+        The number of iterations to use for the k-means clustering.
+    ndocs
+        The number of candidate documents
+    centroid_score_threshold
+        The threshold scores for centroid pruning.
+    ncells
+        The number of cells to consider for search.
     Examples
     --------
     >>> from pylate import indexes, models
 
-    >>> index = indexes.Voyager(
+    >>> index = indexes.PLAID(
     ...     index_folder="test_indexes",
     ...     index_name="colbert",
     ...     override=True,
-    ...     embedding_size=128,
     ... )
 
     >>> model = models.ColBERT(
@@ -189,6 +211,9 @@ class PLAID(Base):
             )
             plaid_ids = list(range(len(documents_embeddings)))
         else:
+            logger.warning(
+                "You are adding documents to an existing index. This is an experimental feature and may result in suboptimal results. Please consider reindexing the entire collection (use override=True) or make sure to add as many documents during the first addition to provide the most accurate kmeans centroids."
+            )
             index_updater = IndexUpdater(self.config, self.searcher)
             plaid_ids = index_updater.add(documents_embeddings)
             index_updater.persist_to_disk()
@@ -220,9 +245,7 @@ class PLAID(Base):
         plaid_ids = [
             document_ids_to_plaid_ids[document_id] for document_id in documents_ids
         ]
-        index_updater = IndexUpdater(
-            self.config, self.searcher
-        )
+        index_updater = IndexUpdater(self.config, self.searcher)
         index_updater.remove(plaid_ids)
         index_updater.persist_to_disk()
         for document_id in documents_ids:
@@ -256,7 +279,6 @@ class PLAID(Base):
         plaid_ids_to_documents_ids = self._load_plaid_ids_to_documents_ids()
         documents = []
         distances = []
-        # self.searcher = Searcher(index=self.index_name, config=self.config)
         for query_embeddings in queries_embeddings:
             result = self.searcher.search(query_embeddings, k=k)
             documents.append([plaid_ids_to_documents_ids[r] for r in result[0]])
@@ -269,43 +291,6 @@ class PLAID(Base):
             for query_documents, query_distances in zip(documents, distances)
         ]
         return results
-        return {
-            "documents_ids": documents,
-            "distances": distances,
-        }
-
-        # exit()
-        # plaid_ids_to_documents_ids.close()
-        # embeddings_to_documents_ids = self._load_embeddings_to_documents_ids()
-        # k = min(k, len(embeddings_to_documents_ids))
-
-        # queries_embeddings = reshape_embeddings(embeddings=queries_embeddings)
-        # n_queries = len(queries_embeddings)
-
-        # indices, distances = self.index.query(
-        #     list(itertools.chain(*queries_embeddings)), k, query_ef=self.ef_search
-        # )
-
-        # if len(indices) == 0:
-        #     raise ValueError("Index is empty, add documents before querying.")
-
-        # documents = [
-        #     [
-        #         [
-        #             embeddings_to_documents_ids[str(token_indice)]
-        #             for token_indice in tokens_indices
-        #         ]
-        #         for tokens_indices in document_indices
-        #     ]
-        #     for document_indices in indices.reshape(n_queries, -1, k)
-        # ]
-
-        # embeddings_to_documents_ids.close()
-
-        return {
-            "documents_ids": documents,
-            "distances": distances,
-        }
 
     def get_documents_embeddings(
         self, document_ids: list[list[str]]
