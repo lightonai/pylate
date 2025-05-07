@@ -1,19 +1,13 @@
 from __future__ import annotations
 
 import os
-from typing import Union
 
 import torch
-from tqdm import tqdm
 
-from pylate.indexes.stanford_nlp.data import Collection
 from pylate.indexes.stanford_nlp.infra.config import ColBERTConfig
 from pylate.indexes.stanford_nlp.infra.launcher import print_memory_stats
-from pylate.indexes.stanford_nlp.infra.provenance import Provenance
 from pylate.indexes.stanford_nlp.infra.run import Run
 from pylate.indexes.stanford_nlp.search.index_storage import IndexScorer
-
-
 
 
 class Searcher:
@@ -52,70 +46,12 @@ class Searcher:
     def configure(self, **kw_args):
         self.config.configure(**kw_args)
 
-    def encode(self, text: TextQueries, full_length_search=False):
-        queries = text if type(text) is list else [text]
-        bsize = 128 if len(queries) > 128 else None
-
-        self.checkpoint.query_tokenizer.query_maxlen = self.config.query_maxlen
-        Q = self.checkpoint.queryFromText(
-            queries, bsize=bsize, to_cpu=True, full_length_search=full_length_search
-        )
-
-        return Q
-
     def search(self, Q, k=10, filter_fn=None, full_length_search=False, pids=None):
         # Q = self.encode(text, full_length_search=full_length_search)
         Q = torch.tensor(Q).unsqueeze(0)
         # Cast to bf16
         Q = Q.to(torch.float16)
         return self.dense_search(Q, k, filter_fn=filter_fn, pids=pids)
-
-    def search_all(
-        self,
-        queries: TextQueries,
-        k=10,
-        filter_fn=None,
-        full_length_search=False,
-        qid_to_pids=None,
-    ):
-        queries = Queries.cast(queries)
-        queries_ = list(queries.values())
-
-        Q = self.encode(queries_, full_length_search=full_length_search)
-
-        return self._search_all_Q(
-            queries, Q, k, filter_fn=filter_fn, qid_to_pids=qid_to_pids
-        )
-
-    def _search_all_Q(self, queries, Q, k, filter_fn=None, qid_to_pids=None):
-        qids = list(queries.keys())
-
-        if qid_to_pids is None:
-            qid_to_pids = {qid: None for qid in qids}
-
-        all_scored_pids = [
-            list(
-                zip(
-                    *self.dense_search(
-                        Q[query_idx : query_idx + 1],
-                        k,
-                        filter_fn=filter_fn,
-                        pids=qid_to_pids[qid],
-                    )
-                )
-            )
-            for query_idx, qid in tqdm(enumerate(qids))
-        ]
-
-        data = {qid: val for qid, val in zip(queries.keys(), all_scored_pids)}
-
-        provenance = Provenance()
-        provenance.source = "Searcher::search_all"
-        provenance.queries = queries.provenance()
-        provenance.config = self.config.export()
-        provenance.k = k
-
-        return Ranking(data=data, provenance=provenance)
 
     def dense_search(self, Q: torch.Tensor, k=10, filter_fn=None, pids=None):
         if k <= 10:
