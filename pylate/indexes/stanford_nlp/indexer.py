@@ -16,17 +16,10 @@ class Indexer:
 
         self.index_path = None
         self.verbose = verbose
-        self.checkpoint = checkpoint
-        # self.checkpoint_config = ColBERTConfig.load_from_checkpoint(checkpoint)
-        # self.config = ColBERTConfig.from_existing(
-        #     self.checkpoint_config, config, Run().config
-        # )
         self.config = config
 
         # TODO: This is a hack to avoid forking in the current implementation. This should be removed in the future.
         self.config.avoid_fork_if_possible = True
-
-        self.configure(checkpoint=checkpoint)
 
     def configure(self, **kw_args):
         self.config.configure(**kw_args)
