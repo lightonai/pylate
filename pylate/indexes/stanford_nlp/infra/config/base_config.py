@@ -59,7 +59,7 @@ class BaseConfig(CoreConfig):
         try:
             metadata_path = os.path.join(index_path, "metadata.json")
             loaded_config, _ = cls.from_path(metadata_path)
-        except:
+        except Exception:
             metadata_path = os.path.join(index_path, "plan.json")
             loaded_config, _ = cls.from_path(metadata_path)
 

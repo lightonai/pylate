@@ -366,7 +366,8 @@ class IndexUpdater:
         # Helper function for IndexUpdater.add()
         # Return a list of ordered, unique centroid ids from codes of a passage
         codes = codes.sort()
-        ivf, values = codes.indices, codes.values
+        # ivf, values
+        _, values = codes.indices, codes.values
         partitions, ivf_lengths = values.unique_consecutive(return_counts=True)
         return partitions, ivf_lengths
 

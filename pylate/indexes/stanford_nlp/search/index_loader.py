@@ -75,7 +75,7 @@ class IndexLoader:
     def metadata(self):
         try:
             self._metadata
-        except:
+        except Exception:
             with open(os.path.join(self.index_path, "metadata.json")) as f:
                 self._metadata = ujson.load(f)
 

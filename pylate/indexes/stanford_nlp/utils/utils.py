@@ -140,8 +140,8 @@ def load_ranking(path, types=None, lazy=False):
 
     try:
         lists = torch.load(path)
-        lists = zipstar([l.tolist() for l in tqdm.tqdm(lists)], lazy=lazy)
-    except:
+        lists = zipstar([lst.tolist() for lst in tqdm.tqdm(lists)], lazy=lazy)
+    except Exception:
         if types is None:
             types = itertools.cycle([int_or_float])
 
@@ -156,7 +156,7 @@ def load_ranking(path, types=None, lazy=False):
 
 def save_ranking(ranking, path):
     lists = zipstar(ranking)
-    lists = [torch.tensor(l) for l in lists]
+    lists = [torch.tensor(lst) for lst in lists]
 
     torch.save(lists, path)
 
@@ -242,7 +242,7 @@ def load_batch_backgrounds(args, qids):
     for qid in qids:
         back = args.qid2backgrounds[qid]
 
-        if len(back) and type(back[0]) == int:
+        if len(back) and isinstance(back[0], int):
             x = [args.collection[pid] for pid in back]
         else:
             x = [args.collectionX.get(pid, "") for pid in back]

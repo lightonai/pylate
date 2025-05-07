@@ -70,7 +70,7 @@ class RunSettings:
                 try:
                     commonpath = os.path.commonpath([script_path, root_path])
                     script_path = script_path[len(commonpath) :]
-                except:
+                except Exception:
                     pass
 
             assert script_path.endswith(".py")
