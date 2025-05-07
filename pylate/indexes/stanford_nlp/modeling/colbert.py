@@ -8,39 +8,22 @@ from pylate.indexes.stanford_nlp.search.strided_tensor import StridedTensor
 from pylate.indexes.stanford_nlp.utils.utils import print_message
 
 
-class ColBERT:
-    """
-    This class handles the basic encoding and scoring operations in ColBERT. It is used for training.
-    """
+def try_load_torch_extensions(use_gpu):
+    print_message(
+        "Loading segmented_maxsim_cpp extension (set COLBERT_LOAD_TORCH_EXTENSION_VERBOSE=True for more info)..."
+    )
+    segmented_maxsim_cpp = load(
+        name="segmented_maxsim_cpp",
+        sources=[
+            os.path.join(
+                pathlib.Path(__file__).parent.resolve(), "segmented_maxsim.cpp"
+            ),
+        ],
+        extra_cflags=["-O3"],
+        verbose=os.getenv("COLBERT_LOAD_TORCH_EXTENSION_VERBOSE", "False") == "True",
+    )
 
-    def __init__(self, name="bert-base-uncased", colbert_config=None):
-        super().__init__(name, colbert_config)
-        self.use_gpu = colbert_config.total_visible_gpus > 0
-
-        ColBERT.try_load_torch_extensions(self.use_gpu)
-
-    @classmethod
-    def try_load_torch_extensions(cls, use_gpu):
-        if hasattr(cls, "loaded_extensions") or use_gpu:
-            return
-
-        print_message(
-            "Loading segmented_maxsim_cpp extension (set COLBERT_LOAD_TORCH_EXTENSION_VERBOSE=True for more info)..."
-        )
-        segmented_maxsim_cpp = load(
-            name="segmented_maxsim_cpp",
-            sources=[
-                os.path.join(
-                    pathlib.Path(__file__).parent.resolve(), "segmented_maxsim.cpp"
-                ),
-            ],
-            extra_cflags=["-O3"],
-            verbose=os.getenv("COLBERT_LOAD_TORCH_EXTENSION_VERBOSE", "False")
-            == "True",
-        )
-        cls.segmented_maxsim = segmented_maxsim_cpp.segmented_maxsim_cpp
-
-        cls.loaded_extensions = True
+    return segmented_maxsim_cpp.segmented_maxsim_cpp
 
 
 # TODO: The masking below might also be applicable in the kNN part
@@ -92,6 +75,9 @@ def colbert_score(Q, D_padded, D_mask, config=ColBERTConfig()):
     return colbert_score_reduce(scores, D_mask, config)
 
 
+_segmented_maxsim = None
+
+
 def colbert_score_packed(Q, D_packed, D_lengths, config=ColBERTConfig()):
     """
     Works with a single query only.
@@ -116,4 +102,9 @@ def colbert_score_packed(Q, D_packed, D_lengths, config=ColBERTConfig()):
 
         return colbert_score_reduce(scores_padded, scores_mask, config)
     else:
-        return ColBERT.segmented_maxsim(scores, D_lengths)
+        global _segmented_maxsim
+        if _segmented_maxsim is None:
+            _segmented_maxsim = try_load_torch_extensions(use_gpu)
+
+        # _ = ColBERT(config)
+        return _segmented_maxsim(scores, D_lengths)

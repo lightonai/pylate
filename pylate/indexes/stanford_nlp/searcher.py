@@ -34,12 +34,12 @@ class Searcher:
         self.config = ColBERTConfig.from_existing(self.index_config, initial_config)
         self.configure()
 
-        use_gpu = self.config.total_visible_gpus > 0
+        self.use_gpu = self.config.total_visible_gpus > 0
 
         load_index_with_mmap = self.config.load_index_with_mmap
-        if load_index_with_mmap and use_gpu:
+        if load_index_with_mmap and self.use_gpu:
             raise ValueError("Memory-mapped index can only be used with CPU!")
-        self.ranker = IndexScorer(self.index, use_gpu, load_index_with_mmap)
+        self.ranker = IndexScorer(self.index, self.use_gpu, load_index_with_mmap)
 
         print_memory_stats()
 
@@ -47,10 +47,9 @@ class Searcher:
         self.config.configure(**kw_args)
 
     def search(self, Q, k=10, filter_fn=None, full_length_search=False, pids=None):
-        # Q = self.encode(text, full_length_search=full_length_search)
-        Q = torch.tensor(Q).unsqueeze(0)
-        # Cast to bf16
-        Q = Q.to(torch.float16)
+        Q = torch.tensor(
+            Q, dtype=torch.float16 if self.use_gpu else torch.float32
+        ).unsqueeze(0)
         return self.dense_search(Q, k, filter_fn=filter_fn, pids=pids)
 
     def dense_search(self, Q: torch.Tensor, k=10, filter_fn=None, pids=None):
