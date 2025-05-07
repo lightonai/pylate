@@ -330,7 +330,6 @@ class IndexUpdater:
 
         new_ivf = []
         new_ivf_lengths = []
-        runner = 0
         pids = set(pids)
 
         # Construct mask of where pids to be removed appear in ivf
