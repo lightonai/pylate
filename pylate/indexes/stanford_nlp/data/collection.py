@@ -4,7 +4,6 @@
 # I think multiprocessing.Manager can do that!
 
 import itertools
-import os
 
 from pylate.indexes.stanford_nlp.infra.run import Run
 
@@ -25,34 +24,6 @@ class Collection:
     def __len__(self):
         # TODO: Load here too. Basically, let's make data a property function and, on first call, either load or get __data.
         return len(self.data)
-
-    def _load_file(self, path):
-        self.path = path
-        return self._load_tsv(path) if path.endswith(".tsv") else self._load_jsonl(path)
-
-    def _load_tsv(self, path):
-        return load_collection(path)
-
-    def _load_jsonl(self, path):
-        raise NotImplementedError()
-
-    def provenance(self):
-        return self.path
-
-    def toDict(self):
-        return {"provenance": self.provenance()}
-
-    def save(self, new_path):
-        assert new_path.endswith(".tsv"), "TODO: Support .json[l] too."
-        assert not os.path.exists(new_path), new_path
-
-        with Run().open(new_path, "w") as f:
-            # TODO: expects content to always be a string here; no separate title!
-            for pid, content in enumerate(self.data):
-                content = f"{pid}\t{content}\n"
-                f.write(content)
-
-            return f.name
 
     def enumerate(self, rank):
         for _, offset, passages in self.enumerate_batches(rank=rank):
@@ -95,6 +66,3 @@ class Collection:
             return obj
 
         assert False, f"obj has type {type(obj)} which is not compatible with cast()"
-
-
-# TODO: Look up path in some global [per-thread or thread-safe] list.
