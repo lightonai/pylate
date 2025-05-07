@@ -5,9 +5,6 @@ import os
 from dataclasses import dataclass
 
 import ujson
-from huggingface_hub import hf_hub_download
-
-from pylate.indexes.stanford_nlp.utils.utils import torch_load_dnn
 
 from .core_config import *
 
@@ -48,34 +45,6 @@ class BaseConfig(CoreConfig):
         return cls.from_deprecated_args(
             args
         )  # the new, non-deprecated version functions the same at this level.
-
-    @classmethod
-    def load_from_checkpoint(cls, checkpoint_path):
-        if checkpoint_path.endswith(".dnn"):
-            dnn = torch_load_dnn(checkpoint_path)
-            config, _ = cls.from_deprecated_args(dnn.get("arguments", {}))
-
-            # TODO: FIXME: Decide if the line below will have any unintended consequences. We don't want to overwrite those!
-            config.set("checkpoint", checkpoint_path)
-
-            return config
-
-        try:
-            checkpoint_path = hf_hub_download(
-                repo_id=checkpoint_path, filename="artifact.metadata"
-            ).split("artifact")[0]
-        except Exception:
-            pass
-        loaded_config_path = os.path.join(checkpoint_path, "artifact.metadata")
-        if os.path.exists(loaded_config_path):
-            loaded_config, _ = cls.from_path(loaded_config_path)
-            loaded_config.set("checkpoint", checkpoint_path)
-
-            return loaded_config
-
-        return (
-            None  # can happen if checkpoint_path is something like 'bert-base-uncased'
-        )
 
     @classmethod
     def load_from_index(cls, index_path):
