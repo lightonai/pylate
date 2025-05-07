@@ -69,7 +69,6 @@ class CoreConfig:
         print(ujson.dumps(self.export(), indent=4))
 
     def __export_value(self, v):
-        v = v.provenance() if hasattr(v, "provenance") else v
         if isinstance(v, list):
             v = (
                 f"list with {len(v)} elements starting with...",
