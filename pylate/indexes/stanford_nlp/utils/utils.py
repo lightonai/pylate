@@ -1,11 +1,10 @@
-import os
-import tqdm
-import torch
 import datetime
 import itertools
-
-from multiprocessing import Pool
+import os
 from collections import OrderedDict, defaultdict
+
+import torch
+import tqdm
 
 
 def print_message(*s, condition=True, pad=False):
@@ -42,7 +41,7 @@ def torch_load_dnn(path):
         dnn = torch.hub.load_state_dict_from_url(path, map_location='cpu')
     else:
         dnn = torch.load(path, map_location='cpu')
-    
+
     return dnn
 
 def save_checkpoint(path, epoch_idx, mb_idx, model, optimizer, arguments=None):
@@ -195,7 +194,7 @@ def zip_first(L1, L2):
 def int_or_float(val):
     if '.' in val:
         return float(val)
-        
+
     return int(val)
 
 def load_ranking(path, types=None, lazy=False):
@@ -306,5 +305,5 @@ def load_batch_backgrounds(args, qids):
 
         x = ' [SEP] '.join(x)
         qbackgrounds.append(x)
-    
+
     return qbackgrounds

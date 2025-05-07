@@ -1,5 +1,6 @@
-import re
 import os
+import re
+
 import ujson
 
 
@@ -33,7 +34,7 @@ def load_doclens(directory, flatten=True):
 
     if flatten:
         all_doclens = [x for sub_doclens in all_doclens for x in sub_doclens]
-    
+
     if len(all_doclens) == 0:
         raise ValueError("Could not load doclens")
 

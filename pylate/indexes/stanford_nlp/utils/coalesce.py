@@ -1,9 +1,10 @@
-import os
 import argparse
-import torch
-from tqdm import tqdm
-import ujson
+import os
 import shutil
+
+import torch
+import ujson
+from tqdm import tqdm
 
 
 def main(args):

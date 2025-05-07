@@ -1,5 +1,3 @@
-import sys
-import traceback
 import inspect
 
 
@@ -36,8 +34,8 @@ if __name__ == '__main__':
     class X:
         def __init__(self) -> None:
             pass
-        
+
         def toDict(self):
             return {'key': 1}
-    
+
     print(ujson.dumps(X()))
