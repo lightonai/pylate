@@ -279,6 +279,7 @@ class PLAID(Base):
         plaid_ids_to_documents_ids = self._load_plaid_ids_to_documents_ids()
         documents = []
         distances = []
+        queries_embeddings = reshape_embeddings(embeddings=queries_embeddings)
         for query_embeddings in queries_embeddings:
             result = self.searcher.search(query_embeddings, k=k)
             documents.append([plaid_ids_to_documents_ids[r] for r in result[0]])
