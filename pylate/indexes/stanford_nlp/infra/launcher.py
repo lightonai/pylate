@@ -176,10 +176,10 @@ def print_memory_stats(message=""):
     Free: {free / gib:,.1f} / {total / gib:,.1f}
     Usage: {used / gib:,.1f} / {total / gib:,.1f}
 
-    RSS: {rss  / gib:,.1f}
-    VMS: {vms  / gib:,.1f}
-    USS: {uss  / gib:,.1f}
-    SHARED: {shared  / gib:,.1f}
+    RSS: {rss / gib:,.1f}
+    VMS: {vms / gib:,.1f}
+    USS: {uss / gib:,.1f}
+    SHARED: {shared / gib:,.1f}
     """.strip().replace("\n", "\t")
 
     print_message(summary, pad=True)

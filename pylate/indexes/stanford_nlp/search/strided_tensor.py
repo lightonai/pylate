@@ -40,7 +40,9 @@ class StridedTensor(StridedTensorCore):
 
     @classmethod
     def pad_packed(cls, packed_tensor, lengths):
-        assert False, "This seems to be incorrect but I can't see why. Is it the inner_dims in the views?"
+        assert False, (
+            "This seems to be incorrect but I can't see why. Is it the inner_dims in the views?"
+        )
 
         packed_tensor, lengths = packed_tensor.cuda().contiguous(), lengths.cuda()
 
