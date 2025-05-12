@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 import ujson
 
-from .core_config import *
+from .core_config import CoreConfig
 
 
 @dataclass
