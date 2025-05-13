@@ -531,7 +531,7 @@ class CollectionIndexer:
             print_memory_stats(f"RANK:{self.rank}")
 
         codes = codes.sort()
-        """IVF contains the mapping to original embeddings ids, while values contains the corresponding (sorted) centroid ids 
+        """IVF contains the mapping to original embeddings ids, while values contains the corresponding (sorted) centroid ids
         E.g: codes = codes = torch.tensor([3, 1, 3, 2, 1])   -> Original centroid assignment
         sorted_codes = codes.sort()
         values = sorted_codes.values     # tensor([1, 1, 2, 3, 3]) - Sorted centroid IDs
