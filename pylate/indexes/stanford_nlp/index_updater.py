@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from itertools import takewhile
 
 import torch
 import ujson
@@ -401,8 +402,11 @@ class IndexUpdater:
                 new_ivf.append(pid)
                 new_ivf_lengths[-1] += 1
                 partitions_runner += 1
+        # Check if ivf_runner + the numbers of padding zeros (trailing) in old_ivf is equal to the length of old ivf. During optimize_ivf we added padding zeros to the end of the ivf but ivf_length is unchanged to avoid ghost centroid, so we need to account for padding here.
+        assert ivf_runner + sum(
+            1 for _ in takewhile(lambda x: x == 0, reversed(old_ivf))
+        ) == len(old_ivf)
 
-        assert ivf_runner == len(old_ivf)
         assert sum(new_ivf_lengths) == len(new_ivf)
 
         return new_ivf, new_ivf_lengths
