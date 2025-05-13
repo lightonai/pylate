@@ -18,7 +18,10 @@ def load_doclens(directory, flatten=True):
         for i in sorted(doclens_filenames.keys())
     ]
 
-    all_doclens = [ujson.load(open(filename)) for filename in doclens_filenames]
+    all_doclens = []
+    for filename in doclens_filenames:
+        with open(filename) as f:
+            all_doclens.append(ujson.load(f))
 
     if flatten:
         all_doclens = [x for sub_doclens in all_doclens for x in sub_doclens]

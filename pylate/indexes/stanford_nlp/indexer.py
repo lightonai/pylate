@@ -1,5 +1,4 @@
 import os
-import time
 
 import torch.multiprocessing as mp
 
@@ -47,9 +46,8 @@ class Indexer:
         if len(deleted):
             if not force_silent:
                 print_message(
-                    f"#> Will delete {len(deleted)} files already at {directory} in 20 seconds..."
+                    f"#> Will delete {len(deleted)} files already at {directory}."
                 )
-                time.sleep(20)
 
             for filename in deleted:
                 os.remove(filename)
