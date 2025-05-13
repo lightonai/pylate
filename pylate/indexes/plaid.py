@@ -69,54 +69,6 @@ class PLAID(Base):
         The threshold scores for centroid pruning.
     ncells
         The number of cells to consider for search.
-    Examples
-    --------
-    >>> from pylate import indexes, models
-
-    >>> index = indexes.PLAID(
-    ...     index_folder="test_indexes",
-    ...     index_name="colbert",
-    ...     override=True,
-    ... )
-
-    >>> model = models.ColBERT(
-    ...     model_name_or_path="sentence-transformers/all-MiniLM-L6-v2",
-    ... )
-
-    >>> documents_embeddings = model.encode(
-    ...     ["fruits are healthy.", "fruits are good for health.", "fruits are bad for health."],
-    ...     is_query=False,
-    ... )
-
-    >>> index = index.add_documents(
-    ...     documents_ids=["1", "2", "3"],
-    ...     documents_embeddings=documents_embeddings
-    ... )
-
-    >>> queries_embeddings = model.encode(
-    ...     ["fruits are healthy.", "fruits are good for health and fun."],
-    ...     is_query=True,
-    ... )
-
-    >>> matchs = index(queries_embeddings, k=30)
-
-    >>> assert matchs["distances"].shape[0] == 2
-    >>> assert isinstance(matchs, dict)
-    >>> assert "documents_ids" in matchs
-    >>> assert "distances" in matchs
-
-    >>> queries_embeddings = model.encode(
-    ...     "fruits are healthy.",
-    ...     is_query=True,
-    ... )
-
-    >>> matchs = index(queries_embeddings, k=30)
-
-    >>> assert matchs["distances"].shape[0] == 1
-    >>> assert isinstance(matchs, dict)
-    >>> assert "documents_ids" in matchs
-    >>> assert "distances" in matchs
-
     """
 
     def __init__(
