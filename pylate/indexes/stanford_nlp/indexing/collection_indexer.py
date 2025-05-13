@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import random
 
@@ -5,10 +7,17 @@ import torch
 import tqdm
 import ujson
 
+use_faiss = False
 try:
     import faiss
+
+    # We only use faiss if it has GPU support
+    if hasattr(faiss, "StandardGpuResources"):
+        use_faiss = True
+    else:
+        import fastkmeans
 except ImportError:
-    print("WARNING: faiss must be imported for indexing")
+    import fastkmeans
 
 import numpy as np
 import torch.multiprocessing as mp
@@ -396,8 +405,6 @@ class CollectionIndexer:
                             f"#> Found chunk {chunk_idx} in the index already, skipping encoding..."
                         )
                     continue
-                # Encode passages into embeddings with the checkpoint model
-                # embs, doclens = self.encoder.encode_passages(passages)
                 doclens = [len(embds) for embds in embs]
                 # Flatten embeddings
                 embs = torch.cat([torch.tensor(emb) for emb in embs])
@@ -561,9 +568,25 @@ def compute_faiss_kmeans(
     dim, num_partitions, kmeans_niters, shared_lists, return_value_queue=None
 ):
     use_gpu = torch.cuda.is_available()
-    kmeans = faiss.Kmeans(
-        dim, num_partitions, niter=kmeans_niters, gpu=use_gpu, verbose=True, seed=123
-    )
+    if use_faiss:
+        kmeans = faiss.Kmeans(
+            dim,
+            num_partitions,
+            niter=kmeans_niters,
+            gpu=use_gpu,
+            verbose=True,
+            seed=123,
+        )
+    else:
+        kmeans = fastkmeans.FastKMeans(
+            dim,
+            num_partitions,
+            niter=kmeans_niters,
+            gpu=use_gpu,
+            verbose=True,
+            seed=42,
+            max_points_per_centroid=256,
+        )
 
     sample = shared_lists[0][0]
     sample = sample.float().numpy()
