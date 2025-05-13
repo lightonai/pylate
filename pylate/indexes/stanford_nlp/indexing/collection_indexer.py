@@ -3,9 +3,21 @@ from __future__ import annotations
 import os
 import random
 
+import numpy as np
 import torch
+import torch.multiprocessing as mp
 import tqdm
 import ujson
+
+import pylate.indexes.stanford_nlp.utils.distributed as distributed
+from pylate.indexes.stanford_nlp.data.collection import Collection
+from pylate.indexes.stanford_nlp.indexing.codecs.residual import ResidualCodec
+from pylate.indexes.stanford_nlp.indexing.index_saver import IndexSaver
+from pylate.indexes.stanford_nlp.indexing.utils import optimize_ivf
+from pylate.indexes.stanford_nlp.infra.config.config import ColBERTConfig
+from pylate.indexes.stanford_nlp.infra.launcher import print_memory_stats
+from pylate.indexes.stanford_nlp.infra.run import Run
+from pylate.indexes.stanford_nlp.utils.utils import print_message
 
 use_faiss = False
 try:
@@ -18,19 +30,6 @@ try:
         import fastkmeans
 except ImportError:
     import fastkmeans
-
-import numpy as np
-import torch.multiprocessing as mp
-
-import pylate.indexes.stanford_nlp.utils.distributed as distributed
-from pylate.indexes.stanford_nlp.data.collection import Collection
-from pylate.indexes.stanford_nlp.indexing.codecs.residual import ResidualCodec
-from pylate.indexes.stanford_nlp.indexing.index_saver import IndexSaver
-from pylate.indexes.stanford_nlp.indexing.utils import optimize_ivf
-from pylate.indexes.stanford_nlp.infra.config.config import ColBERTConfig
-from pylate.indexes.stanford_nlp.infra.launcher import print_memory_stats
-from pylate.indexes.stanford_nlp.infra.run import Run
-from pylate.indexes.stanford_nlp.utils.utils import print_message
 
 
 def encode(config, collection, shared_lists, shared_queues, verbose: int = 3):
