@@ -3,12 +3,9 @@ from .config import ColBERTConfig, RunConfig
 from .settings import (
     DocSettings,
     IndexingSettings,
-    QuerySettings,
     ResourceSettings,
     RunSettings,
     SearchSettings,
-    TokenizerSettings,
-    TrainingSettings,
 )
 
 __all__ = [
@@ -16,8 +13,6 @@ __all__ = [
     "TokenizerSettings",
     "ResourceSettings",
     "DocSettings",
-    "QuerySettings",
-    "TrainingSettings",
     "IndexingSettings",
     "SearchSettings",
     "ColBERTConfig",

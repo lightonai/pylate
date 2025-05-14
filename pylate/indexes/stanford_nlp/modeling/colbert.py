@@ -32,7 +32,6 @@ def colbert_score_reduce(scores_padded, D_mask, config: ColBERTConfig):
     scores_padded[D_padding] = -9999
     scores = scores_padded.max(1).values
 
-
     return scores.sum(-1)
 
 
