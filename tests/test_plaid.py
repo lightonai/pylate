@@ -3,7 +3,7 @@ import platform
 from pylate import indexes, models
 
 index = indexes.PLAID(
-    index_folder="test_indexes",
+    index_folder=f"test_indexes_{platform.python_version()}",
     index_name=f"colbert_{platform.python_version()}",
     override=True,
 )
