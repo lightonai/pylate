@@ -136,8 +136,7 @@ class IndexScorer(IndexLoader, CandidateGeneration):
         Otherwise, each query matrix will be compared against the *aligned* passage.
         """
 
-        # TODO: Remove batching?
-        batch_size = 2**18
+        batch_size = config.search_batch_size
 
         if centroid_scores is not None:
             if self.use_gpu:

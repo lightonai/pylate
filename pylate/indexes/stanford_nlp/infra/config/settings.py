@@ -125,3 +125,4 @@ class SearchSettings:
     centroid_score_threshold: float = DefaultVal(None)
     ndocs: int = DefaultVal(None)
     load_index_with_mmap: bool = DefaultVal(False)
+    search_batch_size: int = DefaultVal(2**18)

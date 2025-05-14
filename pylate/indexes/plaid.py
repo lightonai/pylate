@@ -84,6 +84,7 @@ class PLAID(Base):
         ndocs: int = 8192,
         centroid_score_threshold: float = 0.35,
         ncells: int = 8,
+        search_batch_size: int = 2**18,
     ) -> None:
         self.config = ColBERTConfig(
             nbits=nbits,
@@ -97,6 +98,7 @@ class PLAID(Base):
             ndocs=ndocs,
             centroid_score_threshold=centroid_score_threshold,
             ncells=ncells,
+            search_batch_size=search_batch_size,
         )
         self.index_name = index_name
         self.index_folder = index_folder
