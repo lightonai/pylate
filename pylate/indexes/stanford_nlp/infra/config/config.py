@@ -4,12 +4,9 @@ from .base_config import BaseConfig
 from .settings import (
     DocSettings,
     IndexingSettings,
-    QuerySettings,
     ResourceSettings,
     RunSettings,
     SearchSettings,
-    TokenizerSettings,
-    TrainingSettings,
 )
 
 
@@ -23,11 +20,8 @@ class ColBERTConfig(
     RunSettings,
     ResourceSettings,
     DocSettings,
-    QuerySettings,
-    TrainingSettings,
     IndexingSettings,
     SearchSettings,
     BaseConfig,
-    TokenizerSettings,
 ):
     pass

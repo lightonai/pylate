@@ -92,70 +92,14 @@ class RunSettings:
 
 
 @dataclass
-class TokenizerSettings:
-    query_token_id: str = DefaultVal("[unused0]")
-    doc_token_id: str = DefaultVal("[unused1]")
-    query_token: str = DefaultVal("[Q]")
-    doc_token: str = DefaultVal("[D]")
-
-
-@dataclass
 class ResourceSettings:
-    checkpoint: str = DefaultVal(None)
-    triples: str = DefaultVal(None)
     collection: str = DefaultVal(None)
-    queries: str = DefaultVal(None)
     index_name: str = DefaultVal(None)
 
 
 @dataclass
 class DocSettings:
     dim: int = DefaultVal(128)
-    doc_maxlen: int = DefaultVal(220)
-    mask_punctuation: bool = DefaultVal(True)
-
-
-@dataclass
-class QuerySettings:
-    query_maxlen: int = DefaultVal(32)
-    attend_to_mask_tokens: bool = DefaultVal(False)
-    interaction: str = DefaultVal("colbert")
-
-
-@dataclass
-class TrainingSettings:
-    similarity: str = DefaultVal("cosine")
-
-    bsize: int = DefaultVal(32)
-
-    accumsteps: int = DefaultVal(1)
-
-    lr: float = DefaultVal(3e-06)
-
-    maxsteps: int = DefaultVal(500_000)
-
-    save_every: int = DefaultVal(None)
-
-    resume: bool = DefaultVal(False)
-
-    ## NEW:
-    warmup: int = DefaultVal(None)
-
-    warmup_bert: int = DefaultVal(None)
-
-    relu: bool = DefaultVal(False)
-
-    nway: int = DefaultVal(2)
-
-    use_ib_negatives: bool = DefaultVal(False)
-
-    reranker: bool = DefaultVal(False)
-
-    distillation_alpha: float = DefaultVal(1.0)
-
-    ignore_scores: bool = DefaultVal(False)
-
-    model_name: str = DefaultVal(None)  # DefaultVal('bert-base-uncased')
 
 
 @dataclass
@@ -169,12 +113,6 @@ class IndexingSettings:
     kmeans_niters: int = DefaultVal(4)
 
     resume: bool = DefaultVal(False)
-
-    pool_factor: int = DefaultVal(1)
-
-    clustering_mode: str = DefaultVal("hierarchical")
-
-    protected_tokens: int = DefaultVal(0)
 
     @property
     def index_path_(self):
