@@ -4,9 +4,12 @@ import pathlib
 import torch
 from torch.utils.cpp_extension import load
 
-from pylate.indexes.stanford_nlp.utils.utils import flatten, print_message
-
-from .strided_tensor_core import StridedTensorCore, _create_mask, _create_view
+from pylate.indexes.stanford_nlp.search.strided_tensor_core import (
+    StridedTensorCore,
+    _create_mask,
+    _create_view,
+)
+from pylate.indexes.stanford_nlp.utils.utils import print_message
 
 
 class StridedTensor(StridedTensorCore):
@@ -183,61 +186,3 @@ class StridedTensor(StridedTensorCore):
         # tensor = tensor[mask]
 
         return tensor, lengths, mask
-
-
-if __name__ == "__main__":
-    # lst = []
-    # for _ in range(10):
-    #     lst.append(list(range(random.randint(0, 10))))
-
-    # print(lst)
-
-    # t = StridedTensor.from_nested_list(lst)
-    # print(t.lookup([9]))
-
-    import os
-    import pickle
-
-    index_path = "/future/u/okhattab/root/unit/indexes/2021/08/residual.NQ-micro"
-    with open(
-        os.path.join(index_path, "centroid_idx_to_embedding_ids.pickle"), "rb"
-    ) as f:
-        ivf_list = pickle.load(f)
-
-    assert len(ivf_list) == max(ivf_list.keys()) + 1
-    ivf_list = [ivf_list[i] for i in range(len(ivf_list))]
-
-    for x in ivf_list:
-        assert type(x) is list
-        assert type(x[0]) is int
-
-    ncentroids = len(ivf_list)
-
-    ivf = StridedTensor.from_nested_list(ivf_list)
-
-    import time
-
-    torch.cuda.synchronize()
-    t = time.time()
-
-    N = 100
-    for _ in range(N):
-        probed_centroids = torch.randint(0, ncentroids, size=(32, 8)).flatten()
-        emb_ids, emb_ids_lengths = ivf.lookup(probed_centroids).as_packed_tensor()
-
-    torch.cuda.synchronize()
-    print((time.time() - t) * 1000 / N, "ms")
-
-    print(emb_ids_lengths)
-
-    slow_result = flatten(
-        [ivf_list[idx] for idx in probed_centroids.flatten().tolist()]
-    )
-    print(emb_ids.size(), len(slow_result))
-
-    for a, b in zip(slow_result, emb_ids.flatten().tolist()):
-        assert a == b, (a, b)
-
-    print("#> Done!")
-
-    print(ivf.lookup(probed_centroids).as_padded_tensor()[0].size())

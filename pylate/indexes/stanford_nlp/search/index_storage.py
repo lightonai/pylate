@@ -16,10 +16,9 @@ from pylate.indexes.stanford_nlp.modeling.colbert import (
     colbert_score_reduce,
 )
 from pylate.indexes.stanford_nlp.search.candidate_generation import CandidateGeneration
+from pylate.indexes.stanford_nlp.search.index_loader import IndexLoader
 from pylate.indexes.stanford_nlp.search.strided_tensor import StridedTensor
 from pylate.indexes.stanford_nlp.utils.utils import print_message
-
-from .index_loader import IndexLoader
 
 
 class IndexScorer(IndexLoader, CandidateGeneration):
