@@ -34,21 +34,6 @@ def reshape_embeddings(
 class PLAID(Base):
     """PLAID index. The PLAID index is the most scalable type of index for multi-vector search and leverage PQ-IVF as well as custom kernel for decompression.
 
-    def __init__(
-        self,
-        index_folder: str = "indexes",
-        index_name: str = "colbert",
-        override: bool = False,
-        embedding_size: int = 128,
-        nbits: int = 2,
-        nranks: int = 1,
-        kmeans_niters: int = 4,
-        index_bsize: int = 1,
-        ndocs: int = 8192,
-        centroid_score_threshold: float = 0.35,
-        ncells: int = 8,
-    )
-
     Parameters
     ----------
     index_folder
@@ -69,6 +54,8 @@ class PLAID(Base):
         The threshold scores for centroid pruning.
     ncells
         The number of cells to consider for search.
+    search_batch_size
+        The batch size to use when searching.
     """
 
     def __init__(
