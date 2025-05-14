@@ -1,10 +1,10 @@
-import platform
+import uuid
 
 from pylate import indexes, models
 
 index = indexes.PLAID(
-    index_folder=f"test_indexes_{platform.python_version()}",
-    index_name=f"colbert_{platform.python_version()}",
+    index_folder=f"test_indexes_{uuid.uuid4().hex}",
+    index_name=f"colbert_{uuid.uuid4().hex}",
     override=True,
 )
 
