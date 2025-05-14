@@ -78,7 +78,7 @@ def colbert_score_packed(Q, D_packed, D_lengths, config=ColBERTConfig()):
 
     scores = D_packed @ Q.to(dtype=D_packed.dtype).T
 
-    if use_gpu or config.interaction == "flipr":
+    if use_gpu:
         scores_padded, scores_mask = StridedTensor(
             scores, D_lengths, use_gpu=use_gpu
         ).as_padded_tensor()
