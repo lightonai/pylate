@@ -307,7 +307,7 @@ queries = Dataset.from_list(mapping=queries)
 
 ## Retrieve
 
-PyLate allows easy retrieval of top documents for a given query set using the trained ColBERT model and Voyager index, simply load the model and init the index:
+PyLate allows easy retrieval of top documents for a given query set using the trained ColBERT model and [PLAID](https://arxiv.org/abs/2205.09707) index, simply load the model and init the index:
 
 ```python
 from pylate import indexes, models, retrieve
@@ -316,7 +316,7 @@ model = models.ColBERT(
     model_name_or_path="lightonai/GTE-ModernColBERT-v1",
 )
 
-index = indexes.Voyager(
+index = indexes.PLAID(
     index_folder="pylate-index",
     index_name="index",
     override=True,
