@@ -28,7 +28,7 @@ class EmbeddingRequest(BaseModel):
 
     input: List[str] | str
     is_query: bool = True
-    model: str = "lightonai/colbertv2.0"
+    model: str = "lightonai/GTE-ModernColBERT-v1"
 
 
 class EmbeddingResponse(BaseModel):
@@ -69,7 +69,7 @@ def parse_args():
     parser.add_argument(
         "--model",
         type=str,
-        default="lightonai/colbertv2.0",
+        default="lightonai/GTE-ModernColBERT-v1",
         help="Model to serve, can be an HF model or a path to a model",
     )
     return parser.parse_args()

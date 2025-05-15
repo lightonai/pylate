@@ -35,6 +35,7 @@ pip install "pylate[eval]"
 The complete documentation is available [here](https://lightonai.github.io/pylate/), which includes in-depth guides, examples, and API references.
 
 ## Training
+
 ### Contrastive training
 
 Here’s a simple example of training a ColBERT model on the MS MARCO dataset triplet dataset using PyLate. This script demonstrates training with contrastive loss and evaluating the model on a held-out eval set:
@@ -107,7 +108,6 @@ trainer = SentenceTransformerTrainer(
 trainer.train()
 ```
 
-
 After training, the model can be loaded using the output directory path:
 
 ```python
@@ -117,8 +117,10 @@ model = models.ColBERT(model_name_or_path="contrastive-bert-base-uncased")
 ```
 
 ### Knowledge distillation
+
 To get the best performance when training a ColBERT model, you should use knowledge distillation to train the model using the scores of a strong teacher model.
 Here's a simple example of how to train a model using knowledge distillation in PyLate on MS MARCO:
+
 ```python
 import torch
 from datasets import load_dataset
@@ -191,8 +193,6 @@ trainer = SentenceTransformerTrainer(
 trainer.train()
 ```
 
-
-
 ## Datasets
 
 PyLate supports Hugging Face [Datasets](https://huggingface.co/docs/datasets/en/index), enabling seamless triplet / knowledge distillation based training. For contrastive training, you can use any of the existing sentence transformers triplet datasets. Below is an example of creating a custom triplet dataset for training:
@@ -224,6 +224,7 @@ train_dataset, test_dataset = dataset.train_test_split(test_size=0.3)
 ```
 
 To create a knowledge distillation dataset, you can use the following snippet:
+
 ```python
 from datasets import Dataset
 
@@ -274,7 +275,7 @@ documents = Dataset.from_list(mapping=documents)
 queries = Dataset.from_list(mapping=queries)
 ```
 
-##  Retrieve
+## Retrieve
 
 PyLate allows easy retrieval of top documents for a given query set using the trained ColBERT model and Voyager index, simply load the model and init the index:
 
@@ -282,7 +283,7 @@ PyLate allows easy retrieval of top documents for a given query set using the tr
 from pylate import indexes, models, retrieve
 
 model = models.ColBERT(
-    model_name_or_path="lightonai/colbertv2.0",
+    model_name_or_path="lightonai/GTE-ModernColBERT-v1",
 )
 
 index = indexes.Voyager(
@@ -408,13 +409,7 @@ make test
 3. Format code with Ruff:
 
 ```bash
-make ruff
-```
-
-4. Build the documentation:
-
-```bash
-make livedoc
+make lint
 ```
 
 ## Citation

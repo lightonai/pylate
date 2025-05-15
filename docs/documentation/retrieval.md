@@ -11,7 +11,7 @@ from pylate import indexes, models, retrieve
 
 # Step 1: Load the ColBERT model
 model = models.ColBERT(
-    model_name_or_path="lightonai/colbertv2.0",
+    model_name_or_path="lightonai/GTE-ModernColBERT-v1",
 )
 
 # Step 2: Initialize the Voyager index
@@ -175,7 +175,7 @@ documents_ids = [
 ]
 
 model = models.ColBERT(
-    model_name_or_path="lightonai/colbertv2.0",
+    model_name_or_path="lightonai/GTE-ModernColBERT-v1",
 )
 
 queries_embeddings = model.encode(

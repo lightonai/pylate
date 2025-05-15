@@ -4,7 +4,7 @@ from pylate import evaluation, indexes, models, retrieve
 
 if __name__ == "__main__":
     model = models.ColBERT(
-        model_name_or_path="lightonai/colbertv2.0", document_length=300
+        model_name_or_path="lightonai/GTE-ModernColBERT-v1", document_length=300
     )
 
     index = indexes.PLAID(override=True)

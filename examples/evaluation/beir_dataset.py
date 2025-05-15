@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from pylate import evaluation, indexes, models, retrieve
 
-model = models.ColBERT(model_name_or_path="lightonai/colbertv2.0", document_length=300)
+model = models.ColBERT(
+    model_name_or_path="lightonai/GTE-ModernColBERT-v1",
+    document_length=300,
+)
 
 index = indexes.Voyager(override=True)
 

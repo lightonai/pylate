@@ -11,7 +11,7 @@ from pylate import evaluation, indexes, models, retrieve
 
 dataset = "scifact" # Choose the dataset you want to evaluate
 model = models.ColBERT(
-    model_name_or_path="lightonai/colbertv2.0",
+    model_name_or_path="lightonai/GTE-ModernColBERT-v1",
     device="cuda" # "cpu" or "cuda" or "mps"
 )
 
