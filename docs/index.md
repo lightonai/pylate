@@ -115,6 +115,10 @@ from pylate import models
 
 model = models.ColBERT(model_name_or_path="contrastive-bert-base-uncased")
 ```
+Please note that temperature parameter has a [very high importance in contrastive learning](https://openaccess.thecvf.com/content/CVPR2021/papers/Wang_Understanding_the_Behaviour_of_Contrastive_Loss_CVPR_2021_paper.pdf), and a temperature around 0.02 is often used in the literature:
+```python
+train_loss = losses.Contrastive(model=model, temperature=0.02)
+```
 
 As contrastive learning is not compatible with gradient accumulation, you can leverage [GradCache](https://arxiv.org/abs/2101.06983) to emulate bigger batch sizes without requiring more memory by using the `CachedContrastiveLoss` to define a mini_batch_size while increasing the `per_device_train_batch_size`:
 ```python
