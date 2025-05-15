@@ -208,6 +208,12 @@ trainer = SentenceTransformerTrainer(
 trainer.train()
 ```
 
+### NanoBEIR evaluator
+If you are training an English retrieval model, you can use [NanoBEIR evaluator](https://huggingface.co/collections/zeta-alpha-ai/nanobeir-66e1a0af21dfd93e620cd9f6), which allows to run small version of BEIR to get quick validation results.
+```python
+evaluator=evaluation.NanoBEIREvaluator(),
+```
+
 ## Datasets
 
 PyLate supports Hugging Face [Datasets](https://huggingface.co/docs/datasets/en/index), enabling seamless triplet / knowledge distillation based training. For contrastive training, you can use any of the existing sentence transformers triplet datasets. Below is an example of creating a custom triplet dataset for training:
