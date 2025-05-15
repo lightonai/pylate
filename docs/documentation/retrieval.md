@@ -1,21 +1,23 @@
 ## ColBERT Retrieval
 
-PyLate provides a streamlined interface to index and retrieve documents using ColBERT models. The index leverages the Voyager HNSW index to efficiently handle document embeddings and enable fast retrieval.
+PyLate provides a streamlined interface to index and retrieve documents using ColBERT models.
+### PLAID
+This index leverages [PLAID](https://arxiv.org/abs/2205.09707) to reduce storage cost and increase speed of retrieval.
 
-### Indexing documents
+#### Indexing documents
 
-First, load the ColBERT model and initialize the Voyager index, then encode and index your documents:
+First, load the ColBERT model and initialize the PLAID index, then encode and index your documents:
 
 ```python
 from pylate import indexes, models, retrieve
 
 # Step 1: Load the ColBERT model
 model = models.ColBERT(
-    model_name_or_path="lightonai/colbertv2.0",
+    model_name_or_path="lightonai/GTE-ModernColBERT-v1",
 )
 
-# Step 2: Initialize the Voyager index
-index = indexes.Voyager(
+# Step 2: Initialize the PLAID index
+index = indexes.PLAID(
     index_folder="pylate-index",
     index_name="index",
     override=True,  # This overwrites the existing index if any
@@ -39,11 +41,15 @@ index.add_documents(
 )
 ```
 
+???+ tip
+    Note that PLAID benefits from indexing all the documents during the creation of the index (allowing to get the most accurate kmeans computation).
+    Subsequent addition of documents are supported as an experimental feature.
+
 Note that you do not have to recreate the index and encode the documents every time. Once you have created an index and added the documents, you can re-use the index later by loading it:
 
 ```python
 # To load an index, simply instantiate it with the correct folder/name and without overriding it
-index = indexes.Voyager(
+index = indexes.PLAID(
     index_folder="pylate-index",
     index_name="index",
 )
@@ -71,7 +77,7 @@ index = indexes.Voyager(
     )
     ```
 
-### Retrieving top-k documents for queries
+#### Retrieving top-k documents for queries
 
 Once the documents are indexed, you can retrieve the top-k most relevant documents for a given set of queries.
 To do so, initialize the ColBERT retriever with the index you want to search in, encode the queries and then retrieve the top-k documents to get the top matches ids and relevance scores:
@@ -114,7 +120,38 @@ Example output
 ]
 ```
 
-### Parameters affecting the retrieval performance
+#### Remove documents from the index
+
+To remove documents from the index, use the `remove_documents` method. Provide the document IDs you want to remove from the index:
+
+```python
+index.remove_documents(["1", "2"])
+```
+
+#### Parameters affecting the retrieval performance
+
+The retrieval is not an exact search, which mean that certain parameters can affect the quality of the approximate search:
+
+- `nbits`: the number of bits to use for the quantization of the residual. Usually set to 2, larger values (4-8) will decrease the quantization errors but create larger indexes.
+- `kmeans_niters`: the number of iterations to use for the k-means clustering. Larger values will create better centroids but takes longer to create (and default value is often more than enough to converge)
+- `ndocs`: the number of candidate documents to score. Larger values will make querying slower and use more memory, but might results in better results.
+- `centroid_score_threshold`: the threshold scores for centroid pruning. Larger values will consider more candidate centroids and so can find better neighbors but will be slower.
+- `ncells`: the maximum numbers of cells to keep during search. Larger values will consider more centroids and more candidate but will be slower.
+
+### Voyager index
+
+We also provide an index leveraging the Voyager HNSW index to efficiently handle document embeddings and enable fast retrieval. This was the default index before we implemented PLAID and suggest using PLAID if possible.
+To use it, simply replace `PLAID` by `Voyager`:
+
+```python
+index = indexes.Voyager(
+    index_folder="pylate-index",
+    index_name="index",
+    override=True,  # This overwrites the existing index if any
+)
+```
+
+#### Parameters affecting the retrieval performance
 
 The retrieval is not an exact search, which mean that certain parameters can affect the quality of the approximate search:
 
@@ -144,13 +181,6 @@ Refer to [HNSW documentation for more details](https://www.pinecone.io/learn/ser
     )
     ```
 
-### Remove documents from the index
-
-To remove documents from the index, use the `remove_documents` method. Provide the document IDs you want to remove from the index:
-
-```python
-index.remove_documents(["1", "2"])
-```
 
 ## ColBERT reranking
 
@@ -175,7 +205,7 @@ documents_ids = [
 ]
 
 model = models.ColBERT(
-    model_name_or_path="lightonai/colbertv2.0",
+    model_name_or_path="lightonai/GTE-ModernColBERT-v1",
 )
 
 queries_embeddings = model.encode(

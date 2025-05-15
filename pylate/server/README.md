@@ -9,7 +9,7 @@ curl -X POST http://localhost:8002/v1/embeddings \
   -H "Content-Type: application/json" \
   -d '{
     "input": ["Query 1", "Query 2"],
-    "model": "lightonai/colbertv2.0",
+    "model": "lightonai/GTE-ModernColBERT-v1",
     "is_query": false
   }'
 ```

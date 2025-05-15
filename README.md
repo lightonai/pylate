@@ -115,6 +115,21 @@ from pylate import models
 
 model = models.ColBERT(model_name_or_path="contrastive-bert-base-uncased")
 ```
+Please note that temperature parameter has a [very high importance in contrastive learning](https://openaccess.thecvf.com/content/CVPR2021/papers/Wang_Understanding_the_Behaviour_of_Contrastive_Loss_CVPR_2021_paper.pdf), and a temperature around 0.02 is often used in the literature:
+```python
+train_loss = losses.Contrastive(model=model, temperature=0.02)
+```
+
+As contrastive learning is not compatible with gradient accumulation, you can leverage [GradCache](https://arxiv.org/abs/2101.06983) to emulate bigger batch sizes without requiring more memory by using the `CachedContrastiveLoss` to define a mini_batch_size while increasing the `per_device_train_batch_size`:
+```python
+train_loss = losses.CachedContrastive(
+        model=model, mini_batch_size=mini_batch_size
+)
+```
+Finally, if you are in a multi-GPU setting, you can gather all the elements from the different GPUs to create even bigger batch sizes by setting `gather_across_devices` to `True` (for both `Contrastive` and `CachedContrastive` losses):
+```python
+train_loss = losses.Contrastive(model=model, gather_across_devices=True)
+```
 
 ### Knowledge distillation
 
@@ -193,6 +208,12 @@ trainer = SentenceTransformerTrainer(
 trainer.train()
 ```
 
+### NanoBEIR evaluator
+If you are training an English retrieval model, you can use [NanoBEIR evaluator](https://huggingface.co/collections/zeta-alpha-ai/nanobeir-66e1a0af21dfd93e620cd9f6), which allows to run small version of BEIR to get quick validation results.
+```python
+evaluator=evaluation.NanoBEIREvaluator(),
+```
+
 ## Datasets
 
 PyLate supports Hugging Face [Datasets](https://huggingface.co/docs/datasets/en/index), enabling seamless triplet / knowledge distillation based training. For contrastive training, you can use any of the existing sentence transformers triplet datasets. Below is an example of creating a custom triplet dataset for training:
@@ -221,6 +242,15 @@ dataset = [
 dataset = Dataset.from_list(mapping=dataset)
 
 train_dataset, test_dataset = dataset.train_test_split(test_size=0.3)
+```
+Note that PyLate supports more than one negative per query, simply add the additional negatives after the first one in the row.
+```python
+{
+        "query": "example query 1",
+        "positive": "example positive document 1",
+        "negative_1": "example negative document 1",
+        "negative_2": "example negative document 2",
+}
 ```
 
 To create a knowledge distillation dataset, you can use the following snippet:
@@ -277,16 +307,16 @@ queries = Dataset.from_list(mapping=queries)
 
 ## Retrieve
 
-PyLate allows easy retrieval of top documents for a given query set using the trained ColBERT model and Voyager index, simply load the model and init the index:
+PyLate allows easy retrieval of top documents for a given query set using the trained ColBERT model and [PLAID](https://arxiv.org/abs/2205.09707) index, simply load the model and init the index:
 
 ```python
 from pylate import indexes, models, retrieve
 
 model = models.ColBERT(
-    model_name_or_path="lightonai/colbertv2.0",
+    model_name_or_path="lightonai/GTE-ModernColBERT-v1",
 )
 
-index = indexes.Voyager(
+index = indexes.PLAID(
     index_folder="pylate-index",
     index_name="index",
     override=True,
@@ -424,3 +454,6 @@ You can refer to the library with this BibTeX:
   year={2024}
 }
 ```
+
+## DeepWiki
+PyLate is indexed on [DeepWiki](https://deepwiki.com/lightonai/pylate) so you can ask questions to LLMs using Deep Research to explore the codebase and get help to add new features.
