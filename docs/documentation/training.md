@@ -201,7 +201,7 @@ If you are training an English retrieval model, you can use [NanoBEIR evaluator]
 ```python
 evaluator=evaluation.NanoBEIREvaluator(),
 ```
-You can select a subset of all the sets to run by adding the dataset names: `evaluation.NanoBEIREvaluator(dataset_names=["SciFact"])
+You can select a subset of all the sets to run by adding the dataset names: `evaluation.NanoBEIREvaluator(dataset_names=["SciFact"])`
 
 ## ColBERT parameters
 All the parameters of the ColBERT modeling can be found [here](https://lightonai.github.io/pylate/api/models/ColBERT/#parameters). Important parameters to consider are:
