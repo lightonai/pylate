@@ -13,7 +13,7 @@ if __name__ == "__main__":
 
     # Download the SciFact dataset
     documents, queries, qrels = evaluation.load_beir(
-        dataset_name="scifact",
+        dataset_name="nfcorpus",
         split="test",
     )
 
@@ -35,9 +35,7 @@ if __name__ == "__main__":
         batch_size=32,
     )
 
-    scores = index(queries_embeddings)
-
-    # scores = retriever.retrieve(queries_embeddings=queries_embeddings, k=100)
+    scores = retriever.retrieve(queries_embeddings=queries_embeddings, k=100)
 
     evaluation_scores = evaluation.evaluate(
         scores=scores,
