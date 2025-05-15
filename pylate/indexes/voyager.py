@@ -162,7 +162,8 @@ class Voyager(Base):
 
         """
         if os.path.exists(path=index_path) and not override:
-            return Index.load(index_path)
+            with open(index_path, "rb") as f:
+                return Index.load(f)
 
         if os.path.exists(path=index_path):
             os.remove(index_path)
