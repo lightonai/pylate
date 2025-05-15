@@ -116,6 +116,13 @@ from pylate import models
 model = models.ColBERT(model_name_or_path="contrastive-bert-base-uncased")
 ```
 
+As contrastive learning is not compatible with gradient accumulation, you can leverage [GradCache](https://arxiv.org/abs/2101.06983) to emulate bigger batch sizes without requiring more memory by using the `CachedContrastiveLoss` to define a mini_batch_size while increasing the `per_device_train_batch_size`:
+```python
+train_loss = losses.CachedContrastive(
+        model=model, mini_batch_size=mini_batch_size
+)
+```
+
 ### Knowledge distillation
 
 To get the best performance when training a ColBERT model, you should use knowledge distillation to train the model using the scores of a strong teacher model.
@@ -283,7 +290,7 @@ PyLate allows easy retrieval of top documents for a given query set using the tr
 from pylate import indexes, models, retrieve
 
 model = models.ColBERT(
-    model_name_or_path="lightonai/colbertv2.0",
+    model_name_or_path="lightonai/GTE-ModernColBERT-v1",
 )
 
 index = indexes.Voyager(
