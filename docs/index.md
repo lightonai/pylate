@@ -237,6 +237,8 @@ dataset = Dataset.from_list(mapping=dataset)
 
 train_dataset, test_dataset = dataset.train_test_split(test_size=0.3)
 ```
+Note that PyLate supports more than one negative per query, simply add the additional negatives after the first one in the row.
+
 
 To create a knowledge distillation dataset, you can use the following snippet:
 
