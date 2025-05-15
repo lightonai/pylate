@@ -115,18 +115,23 @@ from pylate import models
 
 model = models.ColBERT(model_name_or_path="contrastive-bert-base-uncased")
 ```
+
 Please note that temperature parameter has a [very high importance in contrastive learning](https://openaccess.thecvf.com/content/CVPR2021/papers/Wang_Understanding_the_Behaviour_of_Contrastive_Loss_CVPR_2021_paper.pdf), and a temperature around 0.02 is often used in the literature:
+
 ```python
 train_loss = losses.Contrastive(model=model, temperature=0.02)
 ```
 
 As contrastive learning is not compatible with gradient accumulation, you can leverage [GradCache](https://arxiv.org/abs/2101.06983) to emulate bigger batch sizes without requiring more memory by using the `CachedContrastiveLoss` to define a mini_batch_size while increasing the `per_device_train_batch_size`:
+
 ```python
 train_loss = losses.CachedContrastive(
         model=model, mini_batch_size=mini_batch_size
 )
 ```
+
 Finally, if you are in a multi-GPU setting, you can gather all the elements from the different GPUs to create even bigger batch sizes by setting `gather_across_devices` to `True` (for both `Contrastive` and `CachedContrastive` losses):
+
 ```python
 train_loss = losses.Contrastive(model=model, gather_across_devices=True)
 ```
@@ -209,7 +214,9 @@ trainer.train()
 ```
 
 ### NanoBEIR evaluator
+
 If you are training an English retrieval model, you can use [NanoBEIR evaluator](https://huggingface.co/collections/zeta-alpha-ai/nanobeir-66e1a0af21dfd93e620cd9f6), which allows to run small version of BEIR to get quick validation results.
+
 ```python
 evaluator=evaluation.NanoBEIREvaluator(),
 ```
@@ -243,7 +250,9 @@ dataset = Dataset.from_list(mapping=dataset)
 
 train_dataset, test_dataset = dataset.train_test_split(test_size=0.3)
 ```
+
 Note that PyLate supports more than one negative per query, simply add the additional negatives after the first one in the row.
+
 ```python
 {
         "query": "example query 1",
@@ -331,7 +340,11 @@ Once the model and index are set up, we can add documents to the index using the
 documents_ids = ["1", "2", "3"]
 
 documents = [
-    "document 1 text", "document 2 text", "document 3 text"
+    "ColBERT’s late-interaction keeps token-level embeddings to deliver cross-encoder-quality ranking at near-bi-encoder speed, enabling fine-grained relevance, robustness across domains, and hardware-friendly scalable search.",
+
+    "PLAID compresses ColBERT token vectors via product quantization to shrink storage by 10×, uses two-stage centroid scoring for sub-200 ms latency, and plugs directly into existing ColBERT pipelines.",
+
+    "PyLate is a library built on top of Sentence Transformers, designed to simplify and optimize fine-tuning, inference, and retrieval with state-of-the-art ColBERT models. It enables easy fine-tuning on both single and multiple GPUs, providing flexibility for various hardware setups. PyLate also streamlines document retrieval and allows you to load a wide range of models, enabling you to construct ColBERT models from most pre-trained language models.",
 ]
 
 # Encode the documents
@@ -342,7 +355,7 @@ documents_embeddings = model.encode(
     show_progress_bar=True,
 )
 
-# Add the documents ids and embeddings to the Voyager index
+# Add the documents ids and embeddings to the PLAID index
 index.add_documents(
     documents_ids=documents_ids,
     documents_embeddings=documents_embeddings,
@@ -456,4 +469,5 @@ You can refer to the library with this BibTeX:
 ```
 
 ## DeepWiki
+
 PyLate is indexed on [DeepWiki](https://deepwiki.com/lightonai/pylate) so you can ask questions to LLMs using Deep Research to explore the codebase and get help to add new features.
