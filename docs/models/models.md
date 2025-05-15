@@ -35,4 +35,3 @@ Here is a list of some of the pre-trained ColBERT models available in PyLate alo
 
 ???+ note
     `lightonai/colbertv2.0` is the original [ColBERTv2 model](https://huggingface.co/colbert-ir/colbertv2.0/tree/main) made compatible with PyLate before we supported loading directly model from Stanford-NLP. We thank Omar Khattab for allowing us to share the model on PyLate.
-
