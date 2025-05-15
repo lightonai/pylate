@@ -86,31 +86,30 @@ trainer = SentenceTransformerTrainer(
 trainer.train()
 
 ```
-Please note that temperature parameter has a [very high importance in contrastive learning](https://openaccess.thecvf.com/content/CVPR2021/papers/Wang_Understanding_the_Behaviour_of_Contrastive_Loss_CVPR_2021_paper.pdf). A low temperature allows to focus more on the hardest elements in the batch, creating more discriminative representations but is more sensible to false negative. A temperature around 0.02 is often used in the literature:
-```python
-train_loss = losses.Contrastive(model=model, temperature=0.02)
-```
+???+ tip
+    Please note that temperature parameter has a [very high importance in contrastive learning](https://openaccess.thecvf.com/content/CVPR2021/papers/Wang_Understanding_the_Behaviour_of_Contrastive_Loss_CVPR_2021_paper.pdf). A low temperature allows to focus more on the hardest elements in the batch, creating more discriminative representations but is more sensible to false negative. A temperature around 0.02 is often used in the literature:
+    ```python
+    train_loss = losses.Contrastive(model=model, temperature=0.02)
+    ```
 
-As contrastive learning is not compatible with gradient accumulation, you can leverage [GradCache](https://arxiv.org/abs/2101.06983) to emulate bigger batch sizes without requiring more memory by using the `CachedContrastiveLoss` to define a mini_batch_size while increasing the `per_device_train_batch_size`:
-```python
-train_loss = losses.CachedContrastive(
-        model=model, mini_batch_size=mini_batch_size
-)
-```
-Finally, if you are in a multi-GPU setting, you can gather all the elements from the different GPUs to create even bigger batch sizes by setting `gather_across_devices` to `True` (for both `Contrastive` and `CachedContrastive` losses):
-```python
-train_loss = losses.Contrastive(model=model, gather_across_devices=True)
-```
+???+ tip
+    As contrastive learning is not compatible with gradient accumulation, you can leverage [GradCache](https://arxiv.org/abs/2101.06983) to emulate bigger batch sizes without requiring more memory by using the `CachedContrastiveLoss` to define a mini_batch_size while increasing the `per_device_train_batch_size`:
+    ```python
+    train_loss = losses.CachedContrastive(
+            model=model, mini_batch_size=mini_batch_size
+    )
+    ```
+???+ tip 
+    Finally, if you are in a multi-GPU setting, you can gather all the elements from the different GPUs to create even bigger batch sizes by setting `gather_across_devices` to `True` (for both `Contrastive` and `CachedContrastive` losses):
+    ```python
+    train_loss = losses.Contrastive(model=model, gather_across_devices=True)
+    ```
 
 ???+ tip
     Please note that for multi-GPU training, running ``python training.py`` **will use Data Parallel (DP) by default**. We strongly suggest using using Distributed Data Parallelism (DDP) using accelerate or torchrun: ``accelerate launch --num_processes num_gpu training.py``.
 
     Refer to this [documentation](https://sbert.net/docs/sentence_transformer/training/distributed.html) for more information.
 
-???+ tip
-    PyLate now features [NanoBEIREvaluator](https://x.com/tomaarsen/status/1857434642569138243), an evaluator that allows to run small versions of the BEIR datasets to get an idea of the performance on BEIR without taking too long to run.
-
-    To use NanoBEIREvaluator, you can simply use ``evaluator=evaluation.NanoBEIREvaluator()`` as an argument of the ``SentenceTransformerTrainer``. You can select to run only a subset of the evaluations by specifying ``dataset_names``, e.g, ``evaluation.NanoBEIREvaluator(dataset_names=["SciFact", NFCorpus])``
 
 ## Knowledge Distillation Training
 
@@ -197,7 +196,8 @@ trainer.train()
     Refer to this [documentation](https://sbert.net/docs/sentence_transformer/training/distributed.html) for more information.
 
 ### NanoBEIR evaluator
-If you are training an English retrieval model, you can use [NanoBEIR evaluator](https://huggingface.co/collections/zeta-alpha-ai/nanobeir-66e1a0af21dfd93e620cd9f6), which allows to run small version of BEIR to get quick validation results.
+
+If you are training an English retrieval model, PyLate now features [NanoBEIREvaluator](https://x.com/tomaarsen/status/1857434642569138243), an evaluator that allows to run small versions of the BEIR datasets to get an idea of the performance on BEIR without taking too long to run.
 ```python
 evaluator=evaluation.NanoBEIREvaluator(),
 ```
