@@ -59,6 +59,14 @@ train_dataset, test_dataset = dataset.train_test_split(test_size=0.3)
 ```
 
 Note that PyLate supports more than one negative per query, simply add the additional negatives after the first one in the row.
+```python
+{
+        "query": "example query 1",
+        "positive": "example positive document 1",
+        "negative_1": "example negative document 1",
+        "negative_2": "example negative document 2",
+}
+```
 
 ### Loading a contrastive dataset from a local parquet file
 
