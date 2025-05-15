@@ -99,7 +99,7 @@ trainer.train()
             model=model, mini_batch_size=mini_batch_size
     )
     ```
-???+ tip 
+???+ tip
     Finally, if you are in a multi-GPU setting, you can gather all the elements from the different GPUs to create even bigger batch sizes by setting `gather_across_devices` to `True` (for both `Contrastive` and `CachedContrastive` losses):
     ```python
     train_loss = losses.Contrastive(model=model, gather_across_devices=True)

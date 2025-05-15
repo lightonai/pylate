@@ -1,6 +1,6 @@
 ## ColBERT Retrieval
 
-PyLate provides a streamlined interface to index and retrieve documents using ColBERT models. 
+PyLate provides a streamlined interface to index and retrieve documents using ColBERT models.
 ### PLAID
 This index leverages [PLAID](https://arxiv.org/abs/2205.09707) to reduce storage cost and increase speed of retrieval.
 
