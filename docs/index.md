@@ -441,3 +441,6 @@ You can refer to the library with this BibTeX:
   year={2024}
 }
 ```
+
+## DeepWiki
+PyLate is indexed on [DeepWiki](https://deepwiki.com/lightonai/pylate) so you can ask questions to LLMs using Deep Research to explore the codebase and get help to add new features.
