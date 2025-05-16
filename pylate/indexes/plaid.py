@@ -126,13 +126,15 @@ class PLAID(Base):
         self.index_folder = index_folder
         self.indexer = Indexer(config=self.config)
         self.documents_ids_to_plaid_ids_path = os.path.join(
-            index_folder, f"{index_name}_documents_ids_to_plaid_ids.sqlite"
+            index_folder, index_name, "documents_ids_to_plaid_ids.sqlite"
         )
         self.plaid_ids_to_documents_ids_path = os.path.join(
-            index_folder, f"{index_name}_plaid_ids_to_documents_ids.sqlite"
+            index_folder, index_name, "plaid_ids_to_documents_ids.sqlite"
         )
         if not os.path.exists(index_folder):
             os.makedirs(index_folder)
+        if not os.path.exists(f"{index_folder}/{index_name}"):
+            os.makedirs(f"{index_folder}/{index_name}")
         if override:
             if os.path.exists(self.documents_ids_to_plaid_ids_path):
                 os.remove(self.documents_ids_to_plaid_ids_path)
