@@ -56,6 +56,41 @@ class PLAID(Base):
         The number of cells to consider for search.
     search_batch_size
         The batch size to use when searching.
+
+    Examples:
+    --------
+    from pylate import indexes, models
+
+    index = indexes.PLAID(
+        index_folder="indexes",
+        index_name="plaid_colbert",
+        override=True,
+    )
+
+    model = models.ColBERT(
+        model_name_or_path="lightonai/GTE-ModernColBERT-v1",
+    )
+
+    documents_embeddings = model.encode(
+    [
+        "The nutritional profile of fruits is exceptional, containing essential vitamins, minerals, and antioxidants that support immune function. Regular consumption of diverse fruits has been linked to reduced risk of chronic diseases including heart disease, type 2 diabetes, and certain cancers. The fiber content in fruits also promotes digestive health and helps maintain healthy cholesterol levels. Nutritionists recommend consuming at least 2-3 servings of fresh fruits daily as part of a balanced diet.",
+        "Recent nutritional studies have challenged traditional views on fruit consumption. While fruits contain natural sugars, their impact on blood glucose levels varies significantly based on ripeness, variety, and processing methods. The glycemic index of fruits ranges widely, with berries typically scoring lower than tropical varieties. Individuals with metabolic conditions should consider these factors when incorporating fruits into their dietary plans.",
+        "Paris is the capital of France and one of the most populous cities in Europe. It is known for its art, fashion, and culture. The city is home to many famous landmarks, including the Eiffel Tower, the Louvre Museum, and Notre-Dame Cathedral. Paris is also known for its cuisine, with many world-renowned restaurants and cafes. The city has a rich history and has been a center of art and culture for centuries.",
+    ],
+        is_query=False,
+    )
+
+    index = index.add_documents(
+        documents_ids=["1", "2", "3"], documents_embeddings=documents_embeddings
+    )
+
+    queries_embeddings = model.encode(
+        ["not dangerous", "dangerous"],
+        is_query=True,
+    )
+
+    index(queries_embeddings, k=30)
+
     """
 
     def __init__(

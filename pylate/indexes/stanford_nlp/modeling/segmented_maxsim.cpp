@@ -1,10 +1,16 @@
-#include <pthread.h>
+// segmented_maxsim.cpp          ← rename if you like
 #include <torch/extension.h>
 
 #include <algorithm>
+#include <cmath>
 #include <numeric>
+#include <thread>
+#include <vector>
 
-typedef struct {
+// ---------------------------------------------------------------------
+// Data passed to each worker thread
+// ---------------------------------------------------------------------
+struct max_args_t {
     int tid;
     int nthreads;
 
@@ -12,86 +18,97 @@ typedef struct {
     int ndoc_vectors;
     int nquery_vectors;
 
-    int64_t* lengths;
-    float* scores;
-    int64_t* offsets;
+    const int64_t* lengths;      //   input
+    const float*   scores;       //   input
+    const int64_t* offsets;      //   input
 
-    float* max_scores;
-} max_args_t;
+    float* max_scores;           //   output (size = ndocs × nquery_vectors)
+};
 
-void* max(void* args) {
-    max_args_t* max_args = (max_args_t*)args;
+// ---------------------------------------------------------------------
+// Worker ----------------------------------------------------------------
+static void max_worker(max_args_t* a)
+{
+    const int ndocs_per_thread =
+        static_cast<int>(std::ceil(static_cast<float>(a->ndocs) / a->nthreads));
+    const int start = a->tid * ndocs_per_thread;
+    const int end   = std::min((a->tid + 1) * ndocs_per_thread, a->ndocs);
 
-    int ndocs_per_thread =
-        std::ceil(((float)max_args->ndocs) / max_args->nthreads);
-    int start = max_args->tid * ndocs_per_thread;
-    int end = std::min((max_args->tid + 1) * ndocs_per_thread, max_args->ndocs);
+    float*       max_scores_row = a->max_scores + start * a->nquery_vectors;
+    const float* scores_ptr     = a->scores +
+                                  a->offsets[start] * a->nquery_vectors;
 
-    auto max_scores_offset =
-        max_args->max_scores + (start * max_args->nquery_vectors);
-    auto scores_offset =
-        max_args->scores + (max_args->offsets[start] * max_args->nquery_vectors);
-
-    for (int i = start; i < end; i++) {
-        for (int j = 0; j < max_args->lengths[i]; j++) {
-            std::transform(max_scores_offset,
-                           max_scores_offset + max_args->nquery_vectors,
-                           scores_offset, max_scores_offset,
+    for (int i = start; i < end; ++i) {
+        for (int j = 0; j < a->lengths[i]; ++j) {
+            std::transform(max_scores_row,
+                           max_scores_row + a->nquery_vectors,
+                           scores_ptr,
+                           max_scores_row,
                            [](float a, float b) { return std::max(a, b); });
-            scores_offset += max_args->nquery_vectors;
-        }
-        max_scores_offset += max_args->nquery_vectors;
-    }
 
-    return NULL;
+            scores_ptr += a->nquery_vectors;
+        }
+        max_scores_row += a->nquery_vectors;
+    }
 }
 
+// ---------------------------------------------------------------------
+// Python-visible entry-point ------------------------------------------
+// ---------------------------------------------------------------------
 torch::Tensor segmented_maxsim(const torch::Tensor scores,
-                               const torch::Tensor lengths) {
-    auto lengths_a = lengths.data_ptr<int64_t>();
-    auto scores_a = scores.data_ptr<float>();
-    auto ndocs = lengths.size(0);
-    auto ndoc_vectors = scores.size(0);
-    auto nquery_vectors = scores.size(1);
-    auto nthreads = at::get_num_threads();
+                               const torch::Tensor lengths)
+{
+    TORCH_CHECK(scores.dim() == 2, "scores must be 2-D (dv × qv)");
+    TORCH_CHECK(lengths.dim() == 1, "lengths must be 1-D");
 
+    const auto* lengths_a       = lengths.data_ptr<int64_t>();
+    const auto* scores_a        = scores.data_ptr<float>();
+    const int   ndocs           = lengths.size(0);
+    const int   ndoc_vectors    = scores.size(0);
+    const int   nquery_vectors  = scores.size(1);
+    const int   nthreads        = at::get_num_threads();
+
+    // output tensor: (ndocs × nquery_vectors) filled with zeros
     torch::Tensor max_scores =
         torch::zeros({ndocs, nquery_vectors}, scores.options());
 
-    int64_t offsets[ndocs + 1];
+    // prefix-sum offsets so that offsets[i] = Σ_{k<i} lengths[k]
+    std::vector<int64_t> offsets(ndocs + 1);
     offsets[0] = 0;
-    std::partial_sum(lengths_a, lengths_a + ndocs, offsets + 1);
+    std::partial_sum(lengths_a, lengths_a + ndocs, offsets.begin() + 1);
 
-    pthread_t threads[nthreads];
-    max_args_t args[nthreads];
+    //------------------------------------------------------------------
+    // Launch threads
+    //------------------------------------------------------------------
+    std::vector<max_args_t> args(nthreads);
+    std::vector<std::thread> workers;
+    workers.reserve(nthreads);
 
-    for (int i = 0; i < nthreads; i++) {
-        args[i].tid = i;
-        args[i].nthreads = nthreads;
+    for (int t = 0; t < nthreads; ++t) {
+        auto& a      = args[t];
+        a.tid        = t;
+        a.nthreads   = nthreads;
+        a.ndocs      = ndocs;
+        a.ndoc_vectors   = ndoc_vectors;
+        a.nquery_vectors = nquery_vectors;
+        a.lengths    = lengths_a;
+        a.scores     = scores_a;
+        a.offsets    = offsets.data();
+        a.max_scores = max_scores.data_ptr<float>();
 
-        args[i].ndocs = ndocs;
-        args[i].ndoc_vectors = ndoc_vectors;
-        args[i].nquery_vectors = nquery_vectors;
-
-        args[i].lengths = lengths_a;
-        args[i].scores = scores_a;
-        args[i].offsets = offsets;
-
-        args[i].max_scores = max_scores.data_ptr<float>();
-
-        int rc = pthread_create(&threads[i], NULL, max, (void*)&args[i]);
-        if (rc) {
-            fprintf(stderr, "Unable to create thread %d: %d\n", i, rc);
-        }
+        workers.emplace_back(max_worker, &a);
     }
+    for (auto& w : workers) w.join();
 
-    for (int i = 0; i < nthreads; i++) {
-        pthread_join(threads[i], NULL);
-    }
-
-    return max_scores.sum(1);
+    // return 1-D tensor   (ndocs,)
+    return max_scores.sum(/*dim=*/1);
 }
 
-PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
-    m.def("segmented_maxsim_cpp", &segmented_maxsim, "Segmented MaxSim");
+// ---------------------------------------------------------------------
+PYBIND11_MODULE(TORCH_EXTENSION_NAME, m)
+{
+    m.def("segmented_maxsim_cpp",
+          &segmented_maxsim,
+          "Segmented MaxSim",
+          py::call_guard<py::gil_scoped_release>());
 }

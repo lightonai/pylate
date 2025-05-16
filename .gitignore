@@ -160,3 +160,6 @@ evaluation_datasets/
 /test-model/
 colbert-training/
 uv.lock
+
+indexes/*
+pylate-index/*

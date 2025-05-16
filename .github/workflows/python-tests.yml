@@ -1,13 +1,5 @@
 name: Python Tests
-
-on:
-  pull_request:
-    branches:
-      - "**"
-  push:
-    branches:
-      - "**"
-
+on: [push]
 
 jobs:
   test-:
@@ -29,7 +21,6 @@ jobs:
 
       - name: Checkout code
         uses: actions/checkout@v3
-
 
       - name: Install the latest version of uv and set the python version
         uses: astral-sh/setup-uv@v5
