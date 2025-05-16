@@ -95,6 +95,32 @@ class Voyager(Base):
     >>> assert isinstance(matchs, dict)
     >>> assert "documents_ids" in matchs
     >>> assert "distances" in matchs
+    >>> index = indexes.Voyager(
+    ...     index_folder="test_indexes",
+    ...     index_name="colbert",
+    ...     override=False,
+    ... )
+    >>> matchs = index(queries_embeddings, k=30)
+    >>> assert isinstance(matchs, dict)
+    >>> assert "documents_ids" in matchs
+    >>> assert "distances" in matchs
+    >>> index = index.remove_documents(
+    ...     documents_ids=["1"],
+    ... )
+    >>> matchs = index(queries_embeddings, k=30)
+    >>> assert isinstance(matchs, dict)
+    >>> assert "documents_ids" in matchs
+    >>> assert "distances" in matchs
+    >>> index = index.add_documents(
+    ...     documents_ids=["1"],
+    ...     documents_embeddings=documents_embeddings[0],
+    ... )
+    >>> matchs = index(queries_embeddings, k=30)
+    >>> assert isinstance(matchs, dict)
+    >>> assert "documents_ids" in matchs
+    >>> assert "distances" in matchs
+
+
 
     """
 
