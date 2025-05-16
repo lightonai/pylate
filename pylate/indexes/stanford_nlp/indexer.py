@@ -8,7 +8,7 @@ from pylate.indexes.stanford_nlp.utils.utils import create_directory, print_mess
 
 
 class Indexer:
-    def __init__(self, checkpoint, config=None, verbose: int = 3):
+    def __init__(self, config=None, verbose: int = 3):
         """
         Use Run().context() to choose the run's configuration. They are NOT extracted from `config`.
         """

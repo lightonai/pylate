@@ -124,7 +124,7 @@ class PLAID(Base):
         )
         self.index_name = index_name
         self.index_folder = index_folder
-        self.indexer = Indexer(checkpoint="colbert-ir/colbertv2.0", config=self.config)
+        self.indexer = Indexer(config=self.config)
         self.documents_ids_to_plaid_ids_path = os.path.join(
             index_folder, f"{index_name}_documents_ids_to_plaid_ids.sqlite"
         )
