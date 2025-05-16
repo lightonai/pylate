@@ -8,8 +8,8 @@ def test_plaid():
     random_hash = uuid.uuid4().hex
 
     index = indexes.PLAID(
-        index_folder=f"test_indexes_{uuid.uuid4().hex}",
-        index_name=f"colbert_{uuid.uuid4().hex}",
+        index_folder=f"test_indexes_{random_hash}",
+        index_name=f"colbert_{random_hash}",
         override=True,
     )
 
