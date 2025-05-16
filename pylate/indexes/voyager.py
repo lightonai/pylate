@@ -95,6 +95,32 @@ class Voyager(Base):
     >>> assert isinstance(matchs, dict)
     >>> assert "documents_ids" in matchs
     >>> assert "distances" in matchs
+    >>> index = indexes.Voyager(
+    ...     index_folder="test_indexes",
+    ...     index_name="colbert",
+    ...     override=False,
+    ... )
+    >>> matchs = index(queries_embeddings, k=30)
+    >>> assert isinstance(matchs, dict)
+    >>> assert "documents_ids" in matchs
+    >>> assert "distances" in matchs
+    >>> index = index.remove_documents(
+    ...     documents_ids=["1"],
+    ... )
+    >>> matchs = index(queries_embeddings, k=30)
+    >>> assert isinstance(matchs, dict)
+    >>> assert "documents_ids" in matchs
+    >>> assert "distances" in matchs
+    >>> index = index.add_documents(
+    ...     documents_ids=["1"],
+    ...     documents_embeddings=documents_embeddings[0],
+    ... )
+    >>> matchs = index(queries_embeddings, k=30)
+    >>> assert isinstance(matchs, dict)
+    >>> assert "documents_ids" in matchs
+    >>> assert "distances" in matchs
+
+
 
     """
 
@@ -112,13 +138,15 @@ class Voyager(Base):
 
         if not os.path.exists(path=index_folder):
             os.makedirs(name=index_folder)
+        if not os.path.exists(path=os.path.join(index_folder, index_name)):
+            os.makedirs(name=os.path.join(index_folder, index_name))
 
-        self.index_path = os.path.join(index_folder, f"{index_name}.voyager")
+        self.index_path = os.path.join(index_folder, index_name, "index.voyager")
         self.documents_ids_to_embeddings_path = os.path.join(
-            index_folder, f"{index_name}_document_ids_to_embeddings.sqlite"
+            index_folder, index_name, "document_ids_to_embeddings.sqlite"
         )
         self.embeddings_to_documents_ids_path = os.path.join(
-            index_folder, f"{index_name}_embeddings_to_documents_ids.sqlite"
+            index_folder, index_name, "embeddings_to_documents_ids.sqlite"
         )
 
         self.index = self._create_collection(
@@ -162,7 +190,8 @@ class Voyager(Base):
 
         """
         if os.path.exists(path=index_path) and not override:
-            return Index.load(index_path)
+            with open(index_path, "rb") as f:
+                return Index.load(f)
 
         if os.path.exists(path=index_path):
             os.remove(index_path)

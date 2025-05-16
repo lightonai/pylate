@@ -8,8 +8,8 @@ def test_plaid():
     random_hash = uuid.uuid4().hex
 
     index = indexes.PLAID(
-        index_folder=random_hash,
-        index_name=random_hash,
+        index_folder=f"test_indexes_{random_hash}",
+        index_name=f"colbert_{random_hash}",
         override=True,
     )
 
@@ -39,6 +39,7 @@ def test_plaid():
 
     assert isinstance(matchs, list)
     assert len(matchs) == 2
+    assert len(matchs[0]) == 2
     assert matchs[0][0].keys() == {"id", "score"}
 
     queries_embeddings = model.encode(
@@ -50,6 +51,43 @@ def test_plaid():
 
     assert isinstance(matchs, list)
     assert len(matchs) == 1
+    assert len(matchs[0]) == 2
     assert matchs[0][0].keys() == {"id", "score"}
 
-    shutil.rmtree(random_hash)
+    # Test loading
+    index = indexes.PLAID(
+        index_folder=f"test_indexes_{random_hash}",
+        index_name=f"colbert_{random_hash}",
+        override=False,
+    )
+
+    matchs = index(queries_embeddings, k=30)
+    assert isinstance(matchs, list)
+    assert len(matchs) == 1
+    assert len(matchs[0]) == 2
+    assert matchs[0][0].keys() == {"id", "score"}
+
+    # Test removing documents
+    index.remove_documents(
+        documents_ids=["1"],
+    )
+
+    matchs = index(queries_embeddings, k=30)
+    assert isinstance(matchs, list)
+    assert len(matchs) == 1
+    assert len(matchs[0]) == 1
+    assert matchs[0][0].keys() == {"id", "score"}
+
+    # Test second insertion after init of the index
+    index.add_documents(
+        documents_ids=["1"],
+        documents_embeddings=documents_embeddings[0],
+    )
+
+    matchs = index(queries_embeddings, k=30)
+    assert isinstance(matchs, list)
+    assert len(matchs) == 1
+    assert len(matchs[0]) == 2
+    assert matchs[0][0].keys() == {"id", "score"}
+
+    shutil.rmtree(f"test_indexes_{random_hash}")
