@@ -3,7 +3,7 @@
   <p>Flexible Training and Retrieval for Late Interaction Models</p>
 </div>
 
-<p align="center"><img width=500 src="docs/img/logo.png"/></p>
+<p align="center"><img width=500 src="https://raw.githubusercontent.com/lightonai/pylate/refs/heads/main/docs/img/logo.png"/></p>
 
 <div align="center">
   <!-- Documentation -->
