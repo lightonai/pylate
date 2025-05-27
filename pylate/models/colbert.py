@@ -20,6 +20,7 @@ from torch import nn
 from tqdm.autonotebook import trange
 from transformers.utils import cached_file
 
+from ..hf_hub.model_card import PylateModelCardData
 from ..pooling import hierarchical_pooling
 from ..scores import SimilarityFunction
 from .Dense import Dense
