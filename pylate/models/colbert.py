@@ -698,6 +698,9 @@ class ColBERT(SentenceTransformer):
                 # We only pool documents
                 if not is_query:
                     # Use the custom pooling function if provided
+                    pooling_kwargs["protected_tokens"] = protected_tokens
+                    pooling_kwargs["pool_factor"] = pool_factor
+
                     if pooling_fn is not None:
                         embeddings = pooling_fn(
                             documents_embeddings=embeddings, **(pooling_kwargs or {})
