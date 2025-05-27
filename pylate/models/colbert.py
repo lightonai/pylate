@@ -700,7 +700,7 @@ class ColBERT(SentenceTransformer):
                     # Use the custom pooling function if provided
                     if pooling_fn is not None:
                         embeddings = pooling_fn(
-                            document_embeddings=embeddings, **(pooling_kwargs or {})
+                            documents_embeddings=embeddings, **(pooling_kwargs or {})
                         )
                     # Else, use hierarchical pooling. pool factor must be greater than 1: keeping 1 over pool_factor tokens embeddings.
                     elif pool_factor > 1:
