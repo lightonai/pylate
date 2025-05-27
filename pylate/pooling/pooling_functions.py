@@ -57,7 +57,7 @@ def kmeans_pooling(
             pooled_embeddings.append(torch.stack(tensors=document_pooled_embeddings))
         return pooled_embeddings
     else:
-        return document_embeddings
+        return documents_embeddings
 
 
 def sequential_pooling(
@@ -65,6 +65,7 @@ def sequential_pooling(
     pool_factor: int = 1,
     protected_tokens: int = 1,
 ) -> list[torch.Tensor]:
+    print("POOLING FACTOR:", pool_factor)
     if pool_factor > 1:
         pooled_embeddings = []
         for document_embeddings in documents_embeddings:
