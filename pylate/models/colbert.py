@@ -20,14 +20,8 @@ from torch import nn
 from tqdm.autonotebook import trange
 from transformers.utils import cached_file
 
-<<<<<<< HEAD
-from ..hf_hub.model_card import PylateModelCardData
-=======
-from ..hf_hub.model_card import PylateModelCardData, generate_model_card
 from ..pooling import hierarchical_pooling
->>>>>>> 75f6654 (Creating pooling module and adding late chunking)
 from ..scores import SimilarityFunction
-from ..utils import _start_multi_process_pool
 from .Dense import Dense
 
 logger = logging.getLogger(__name__)
