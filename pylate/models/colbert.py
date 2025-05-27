@@ -23,6 +23,7 @@ from transformers.utils import cached_file
 from ..hf_hub.model_card import PylateModelCardData
 from ..pooling import hierarchical_pooling
 from ..scores import SimilarityFunction
+from ..utils import _start_multi_process_pool
 from .Dense import Dense
 
 logger = logging.getLogger(__name__)
