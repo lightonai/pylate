@@ -2,6 +2,90 @@ import torch
 from scipy.cluster import hierarchy
 
 
+def kmeans_pooling(
+    documents_embeddings: list[torch.Tensor],
+    pool_factor: int = 1,
+    protected_tokens: int = 1,
+):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    pooled_embeddings = []
+
+    if pool_factor > 1:
+        for document_embeddings in documents_embeddings:
+            document_length = len(document_embeddings)
+            document_embeddings = document_embeddings.to(device=device)
+            # Shuffle the embeddings within the passage
+            document_embeddings = document_embeddings[torch.randperm(document_length)]
+            document_pooled_embeddings = []
+            norms = document_embeddings.norm(dim=1, keepdim=True)
+            similarities = (
+                document_embeddings @ document_embeddings.t() / (norms @ norms.t())
+            )
+            similarities.fill_diagonal_(-1)  # Exclude self-similarity
+            unassigned_tokens = torch.ones(
+                document_length, dtype=torch.bool, device=device
+            )
+            if protected_tokens > 0:
+                # Mark the first `protected_tokens` as already assigned
+                unassigned_tokens[:protected_tokens] = False
+                document_pooled_embeddings.extend(
+                    document_embeddings[:protected_tokens]
+                )
+            # Identify the 8 most unique tokens by their minimum similarity to others
+            # if UNIQUE_KEEP > 0:
+            #     min_similarities, _ = similarities.min(dim=1)
+            #     unique_indices = torch.topk(
+            #         min_similarities, UNIQUE_KEEP, largest=False
+            #     ).indices
+            #     unassigned_tokens[unique_indices] = (
+            #         False  # Mark unique tokens as already assigned
+            #     )
+            #     for idx in unique_indices:
+            #         document_pooled_embeddings.append(document_embeddings[idx])
+
+            while unassigned_tokens.any():
+                current_token = unassigned_tokens.nonzero(as_tuple=True)[0][0]
+                top_similar_indices = similarities[current_token].argsort(
+                    descending=True
+                )[:pool_factor]
+                pooled_group = torch.cat(
+                    (current_token.unsqueeze(0), top_similar_indices)
+                )
+                unassigned_tokens[pooled_group] = False
+                pooled_embedding = document_embeddings[pooled_group].mean(dim=0)
+                document_pooled_embeddings.append(pooled_embedding)
+            pooled_embeddings.append(torch.stack(tensors=document_pooled_embeddings))
+        return pooled_embeddings
+    else:
+        return document_embeddings
+
+
+def sequential_pooling(
+    documents_embeddings: list[torch.Tensor],
+    pool_factor: int = 1,
+    protected_tokens: int = 1,
+) -> list[torch.Tensor]:
+    if pool_factor > 1:
+        pooled_embeddings = []
+        for document_embeddings in documents_embeddings:
+            document_pooled_embeddings = []
+            if protected_tokens > 0:
+                # Protect the first `protected_tokens` embeddings
+                document_pooled_embeddings.extend(
+                    document_embeddings[:protected_tokens]
+                )
+                document_embeddings = document_embeddings[protected_tokens:]
+            # Pool the rest of the embeddings
+            document_pooled_embeddings.extend(
+                document_embeddings[i : i + pool_factor].mean(dim=0)
+                for i in range(0, len(document_embeddings), pool_factor)
+            )
+            pooled_embeddings.append(torch.stack(tensors=document_pooled_embeddings))
+        return pooled_embeddings
+    else:
+        return documents_embeddings
+
+
 def hierarchical_pooling(
     documents_embeddings: list[torch.Tensor],
     pool_factor: int = 1,
