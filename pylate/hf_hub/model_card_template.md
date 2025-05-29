@@ -85,7 +85,7 @@ from pylate import indexes, models, retrieve
 
 # Step 1: Load the ColBERT model
 model = models.ColBERT(
-    model_name_or_path={{ model_id | default('pylate_model_id', true) }},
+    model_name_or_path="{{ model_id | default('pylate_model_id', true) }}",
 )
 
 # Step 2: Initialize the Voyager index
@@ -169,7 +169,7 @@ documents_ids = [
 ]
 
 model = models.ColBERT(
-    model_name_or_path={{ model_id | default('pylate_model_id', true) }},
+    model_name_or_path="{{ model_id | default('pylate_model_id', true) }}",
 )
 
 queries_embeddings = model.encode(
