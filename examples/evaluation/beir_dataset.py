@@ -109,7 +109,7 @@ if __name__ == "__main__":
     evaluation_scores = evaluation.evaluate(
         scores=scores,
         qrels=qrels,
-        queries=list(queries.values()),
+        queries=list(queries.keys()),
         # queries=queries,
         metrics=["map", "ndcg@10", "ndcg@100", "recall@10", "recall@100"],
     )

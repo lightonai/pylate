@@ -8,7 +8,7 @@ model = models.ColBERT(
     model_name_or_path="lightonai/GTE-ModernColBERT-v1",
     document_length=300,
 )
-index = indexes.Voyager(override=True)
+index = indexes.PLAID(override=True)
 retriever = retrieve.ColBERT(index=index)
 
 documents, queries, qrels = evaluation.load_custom_dataset(
@@ -28,7 +28,7 @@ index.add_documents(
 )
 
 queries_embeddings = model.encode(
-    sentences=queries,
+    sentences=list(queries.values()),
     batch_size=32,
     is_query=True,
     show_progress_bar=True,
@@ -36,11 +36,10 @@ queries_embeddings = model.encode(
 
 scores = retriever.retrieve(queries_embeddings=queries_embeddings, k=100)
 
-
 evaluation_scores = evaluation.evaluate(
     scores=scores,
     qrels=qrels,
-    queries=queries,
+    queries=list(queries.keys()),
     metrics=["map", "ndcg@10", "ndcg@100", "recall@10", "recall@100"],
 )
 
