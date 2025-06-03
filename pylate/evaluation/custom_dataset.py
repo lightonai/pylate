@@ -28,6 +28,4 @@ def load_custom_dataset(path: str, split: str = "test") -> tuple[list, list, dic
         for document_id, document in documents.items()
     ]
 
-    qrels = {query_id: query_documents for query_id, query_documents in qrels.items()}
-
     return documents, queries, qrels
