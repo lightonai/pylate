@@ -85,12 +85,7 @@ def load_beir(dataset_name: str, split: str = "test") -> tuple[list, list, dict]
         for document_id, document in documents.items()
     ]
 
-    qrels = {
-        queries[query_id]: query_documents
-        for query_id, query_documents in qrels.items()
-    }
-
-    return documents, list(qrels.keys()), qrels
+    return documents, queries, qrels
 
 
 def get_beir_triples(
