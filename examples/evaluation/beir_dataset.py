@@ -71,9 +71,7 @@ if __name__ == "__main__":
             dataset_name=dataset_name,
             split="dev" if "msmarco" in dataset_name else "test",
         )
-    total = 0
-    for key, values in qrels.items():
-        total += len(values)
+
     index = indexes.PLAID(
         override=True,
         index_name=f"{dataset_name}_{model_name.split('/')[-1]}",
@@ -101,6 +99,7 @@ if __name__ == "__main__":
 
     scores = retriever.retrieve(queries_embeddings=queries_embeddings, k=20)
 
+    # Remove query_id from scores, needed for FiQA dataset
     for (query_id, query), query_scores in zip(queries.items(), scores):
         for score in query_scores:
             if score["id"] == query_id:
