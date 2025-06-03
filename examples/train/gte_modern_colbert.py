@@ -1,3 +1,5 @@
+"""Script to reproduce the training of GTE-ModernColBERT using Knowledge Distillation on MS MARCO with Gemma reranker."""
+
 from datasets import load_dataset
 from sentence_transformers import (
     SentenceTransformerTrainer,

@@ -1,3 +1,5 @@
+"""Script to reproduce the training of Reason-ModernColBERT using contrastive loss on ReasonIR HQ dataset."""
+
 from datasets import load_dataset
 from sentence_transformers import (
     SentenceTransformerTrainer,
