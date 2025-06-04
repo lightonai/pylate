@@ -58,6 +58,7 @@ dev = [
 ]
 eval = ["ranx >= 0.3.16", "beir >= 2.0.0"]
 api = ["fastapi >= 0.114.1", "uvicorn >= 0.30.6", "batched >= 0.1.2"]
+mcp = ["fastmcp", "setuptools"]
 
 [tool.setuptools]
 packages = ["pylate"]
