@@ -6,6 +6,8 @@ from collections import defaultdict
 import torch
 import tqdm
 
+logger = logging.getLogger(__name__)
+
 
 def print_message(*s, condition=True, pad=False):
     s = " ".join([str(x) for x in s])
