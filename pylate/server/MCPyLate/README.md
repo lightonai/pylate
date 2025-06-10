@@ -53,9 +53,7 @@ Effectively, this demo allows to build a tool that can solve any leetcode proble
 
 You can see it working in this example, where the agent find relevant leetcode solution, propose solutions with different complexity level as well as associated tests to validate them and even vizualisation tool.
 
-<iframe width="560" height="315" 
-    src="https://www.youtube.com/embed/Vvp2bPSfN68" 
-    frameborder="0" allowfullscreen></iframe>
+https://youtu.be/Vvp2bPSfN68
 
 If you want to use the space as a remote server, you can use this config:
 ```
@@ -73,9 +71,7 @@ If you want to use the space as a remote server, you can use this config:
 ```
 The tool can easily be tweaked to index and search any dataset. For example, by indexing MS MARCO with [GTE-ModernColBERT](https://huggingface.co/lightonai/GTE-ModernColBERT-v1), this results in a Deep Research tool that can search among the web corpus and create reports based on successive queries.
 
-<iframe width="560" height="315" 
-    src="https://www.youtube.com/embed/WJx0XgYIlvA" 
-    frameborder="0" allowfullscreen></iframe>
+https://youtu.be/WJx0XgYIlvA
 
 
 
