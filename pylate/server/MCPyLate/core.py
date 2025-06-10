@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
+from sqlitedict import SqliteDict
+
 from pylate import evaluation, indexes, models, retrieve
 
 # Configure logging
@@ -35,16 +37,9 @@ class MCPyLate:
     def __init__(self, override: bool = False):
         self.logger = logging.getLogger(__name__)
         dataset_name = "nfcorpus"
-        # Log current cwd
-        self.logger.info(f"Current working directory: {os.getcwd()}")
-        documents, _, _ = evaluation.load_beir(
-            dataset_name=dataset_name,
-            split="dev" if "msmarco" in dataset_name else "test",
-        )
-
-        self.id_to_doc = {doc["id"]: doc["text"] for doc in documents}
 
         model_name = "lightonai/GTE-ModernColBERT-v1"
+
         override = override or not os.path.exists(
             f"indexes/{dataset_name}_{model_name.split('/')[-1]}"
         )
@@ -54,11 +49,22 @@ class MCPyLate:
         self.index = indexes.PLAID(
             override=override,
             index_name=f"{dataset_name}_{model_name.split('/')[-1]}",
-            embedding_size=96,
         )
 
         self.retriever = retrieve.ColBERT(index=self.index)
+        self.id_to_doc = SqliteDict(
+            f"./indexes/{dataset_name}_{model_name.split('/')[-1]}/id_to_doc.sqlite",
+            outer_stack=False,
+        )
         if override:
+            documents, _, _ = evaluation.load_beir(
+                dataset_name=dataset_name,
+                split="dev" if "msmarco" in dataset_name else "test",
+            )
+
+            for doc in documents:
+                self.id_to_doc[doc["id"]] = doc["text"]
+            self.id_to_doc.commit()  # Don't forget to commit to save changes!
             documents_embeddings = self.model.encode(
                 sentences=[document["text"] for document in documents],
                 batch_size=20,
@@ -70,6 +76,7 @@ class MCPyLate:
                 documents_ids=[document["id"] for document in documents],
                 documents_embeddings=documents_embeddings,
             )
+
         self.logger.info("Created PyLate MCP Server")
 
     def get_document(
@@ -81,7 +88,7 @@ class MCPyLate:
         return {"docid": docid, "text": self.id_to_doc[docid]}
 
     def search(self, query: str, k: int = 10) -> List[Dict[str, Any]]:
-        """Perform BM25 search on specified index."""
+        """Perform multi-vector search on specified index."""
         try:
             query_embeddings = self.model.encode(
                 sentences=[query],
@@ -97,9 +104,6 @@ class MCPyLate:
                         "docid": score["id"],
                         "score": round(score["score"], 5),
                         "text": self.id_to_doc[score["id"]],
-                        # "text": self.id_to_doc[score["id"]][:200] + "…"
-                        # if len(self.id_to_doc[score["id"]]) > 200
-                        # else self.id_to_doc[score["id"]],
                     }
                 )
             return results
