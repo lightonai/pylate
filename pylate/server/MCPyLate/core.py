@@ -1,7 +1,5 @@
 import logging
 import os
-from dataclasses import dataclass
-from enum import Enum
 from typing import Any, Dict, List, Optional
 
 from sqlitedict import SqliteDict
@@ -14,25 +12,8 @@ logging.basicConfig(
 )
 
 
-class IndexType(Enum):
-    """Supported index types."""
-
-    PREBUILT = "prebuilt"
-    LOCAL = "local"
-
-
-@dataclass
-class IndexConfig:
-    """Configuration for a search index."""
-
-    name: str
-    type: IndexType
-    path: str
-    description: Optional[str] = None
-
-
 class MCPyLate:
-    """Main server class that manages Pyserini indexes and search operations."""
+    """Main server class that manages PyLate indexes and search operations."""
 
     def __init__(self, override: bool = False):
         self.logger = logging.getLogger(__name__)
