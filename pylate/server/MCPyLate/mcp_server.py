@@ -16,9 +16,7 @@ def register_tools(mcp: FastMCP, pylate: MCPyLate):
         name="pylate_search_nfcorpus",
         description="Perform a multi-vector search on the nfcorpus index. Returns top‑k hits with docid, score, and snippet.",
     )
-    def pylate_search_nfcorpus(
-        query: str, k: int = 10, index_name: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+    def pylate_search_nfcorpus(query: str, k: int = 10) -> List[Dict[str, Any]]:
         """
         Search the PyLate with multi-vector models and return top-k hits
         Args:
