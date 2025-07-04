@@ -1111,6 +1111,7 @@ class ColBERT(SentenceTransformer):
         model_kwargs: dict | None = None,
         tokenizer_kwargs: dict | None = None,
         config_kwargs: dict | None = None,
+        has_modules: bool = False,
     ) -> list[nn.Module]:
         """Create a Transformer model from a model name or path. This module is distinct
         from SentenceTransformer as it do not set the pooling layer.
@@ -1135,6 +1136,8 @@ class ColBERT(SentenceTransformer):
             Additional keyword arguments for the tokenizer. Defaults to None.
         config_kwargs
             Additional keyword arguments for the config. Defaults to None.
+        has_modules (bool, optional)
+            Whether the model has modules.json. Defaults to False.
 
         """
         logger.warning(
