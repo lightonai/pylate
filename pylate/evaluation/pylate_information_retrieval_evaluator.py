@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import heapq
+import json
 import logging
+import os
 from contextlib import nullcontext
 from typing import TYPE_CHECKING
 
@@ -26,6 +28,7 @@ class PyLateInformationRetrievalEvaluator(InformationRetrievalEvaluator):
         model: ColBERT,
         corpus_model=None,
         corpus_embeddings: Tensor | None = None,
+        output_path: str | None = None,
     ) -> dict[str, float]:
         if corpus_model is None:
             corpus_model = model
@@ -143,6 +146,33 @@ class PyLateInformationRetrievalEvaluator(InformationRetrievalEvaluator):
                         "corpus_id": corpus_id,
                         "score": score,
                     }
+
+        if self.write_predictions and output_path is not None:
+            for name in queries_result_list:
+                base_filename = self.predictions_file.replace(
+                    ".jsonl", f"_{name}.jsonl"
+                )
+                json_path = os.path.join(output_path, base_filename)
+                mode = "w"  # Always create a new file for each score function
+
+                with open(json_path, mode=mode, encoding="utf-8") as fOut:
+                    for query_itr in range(len(queries_result_list[name])):
+                        query_id = self.queries_ids[query_itr]
+                        query_text = self.queries[query_itr]
+                        results = queries_result_list[name][query_itr]
+
+                        # Sort results by score in descending order
+                        results = sorted(
+                            results, key=lambda x: x["score"], reverse=True
+                        )
+
+                        prediction = {
+                            "query_id": query_id,
+                            "query": query_text,
+                            "results": results,
+                        }
+
+                        fOut.write(json.dumps(prediction) + "\n")
 
         logger.info(f"Queries: {len(self.queries)}")
         logger.info(f"Corpus: {len(self.corpus)}\n")
