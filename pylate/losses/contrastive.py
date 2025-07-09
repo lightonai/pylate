@@ -184,8 +184,10 @@ class Contrastive(nn.Module):
         # We might not need to compute the mask for queries but I let the logic there for now
         scores = torch.cat(
             [
-                self.score_metric(embeddings[0], group_embeddings, mask)
-                for group_embeddings, mask in zip(embeddings[1:], masks[1:])
+                self.score_metric(
+                    embeddings[0], group_embeddings, masks[0], documents_masks
+                )
+                for group_embeddings, documents_masks in zip(embeddings[1:], masks[1:])
             ],
             dim=1,
         )

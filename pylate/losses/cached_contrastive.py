@@ -284,7 +284,8 @@ class CachedContrastive(nn.Module):
                                         len(group_embeddings),
                                     )
                                 ],
-                                mask[
+                                None,
+                                documents_mask[
                                     g_start : min(
                                         g_start + self.mini_batch_size,
                                         len(group_embeddings),
@@ -297,7 +298,9 @@ class CachedContrastive(nn.Module):
                         ],
                         dim=1,
                     )
-                    for group_embeddings, mask in zip(embeddings_other, masks[1:])
+                    for group_embeddings, documents_mask in zip(
+                        embeddings_other, masks[1:]
+                    )
                 ],
                 dim=1,
             )
