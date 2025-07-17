@@ -150,7 +150,7 @@ class CollectionIndexer:
         doclens = [len(embds) for embds in local_sample_embs]
         local_sample_embs = torch.cat(local_sample_embs)
         if torch.cuda.is_available():
-            if torch.distributed.is_available() and torch.distributed.is_initialized():
+            if False:
                 self.num_sample_embs = torch.tensor([local_sample_embs.size(0)]).cuda()
                 torch.distributed.all_reduce(self.num_sample_embs)
 

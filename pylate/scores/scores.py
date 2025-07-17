@@ -5,7 +5,6 @@ import torch
 
 from ..utils.tensor import convert_to_tensor
 
-
 def colbert_scores(
     queries_embeddings: list | np.ndarray | torch.Tensor,
     documents_embeddings: list | np.ndarray | torch.Tensor,
@@ -65,8 +64,105 @@ def colbert_scores(
     if documents_mask is not None:
         documents_mask = convert_to_tensor(documents_mask)
         scores = scores * documents_mask.unsqueeze(0).unsqueeze(2)
+    scores = scores.max(axis=-1).values.sum(axis=-1)
+    # Normalze by the number of tokens in the queries
+    if queries_mask is not None:
+        scores = scores / queries_mask.sum(axis=-1).unsqueeze(-1)
+    return scores
 
-    return scores.max(axis=-1).values.sum(axis=-1)
+
+# def colbert_scores(
+#     queries_embeddings: list | np.ndarray | torch.Tensor,
+#     documents_embeddings: list | np.ndarray | torch.Tensor,
+#     queries_mask: torch.Tensor = None,
+#     documents_mask: torch.Tensor = None,
+# ) -> torch.Tensor:
+#     """Computes the ColBERT scores between queries and documents embeddings. The score is computed as the sum of maximum similarities
+#     between the query and the document.
+
+#     Parameters
+#     ----------
+#     queries_embeddings
+#         The first tensor. The queries embeddings. Shape: (batch_size, num tokens queries, embedding_size)
+#     documents_embeddings
+#         The second tensor. The documents embeddings. Shape: (batch_size, num tokens documents, embedding_size)
+
+#     Examples
+#     --------
+#     >>> import torch
+
+#     >>> queries_embeddings = torch.tensor([
+#     ...     [[1.], [0.], [0.], [0.]],
+#     ...     [[0.], [2.], [0.], [0.]],
+#     ...     [[0.], [0.], [3.], [0.]],
+#     ... ])
+
+#     >>> documents_embeddings = torch.tensor([
+#     ...     [[10.], [0.], [1.]],
+#     ...     [[0.], [100.], [1.]],
+#     ...     [[1.], [0.], [1000.]],
+#     ... ])
+
+#     >>> scores = colbert_scores(
+#     ...     queries_embeddings=queries_embeddings,
+#     ...     documents_embeddings=documents_embeddings
+#     ... )
+
+#     >>> scores
+#     tensor([[  10.,  100., 1000.],
+#             [  20.,  200., 2000.],
+#             [  30.,  300., 3000.]])
+
+#     """
+#     queries_embeddings = convert_to_tensor(queries_embeddings)
+#     documents_embeddings = convert_to_tensor(documents_embeddings)
+
+#     scores = torch.einsum(
+#         "ash,bth->abst",
+#         queries_embeddings,
+#         documents_embeddings,
+#     )
+
+#     if queries_mask is not None:
+#         queries_mask = convert_to_tensor(queries_mask)
+#         scores = scores * queries_mask.unsqueeze(1).unsqueeze(3)
+
+#     if documents_mask is not None:
+#         documents_mask = convert_to_tensor(documents_mask)
+#         scores = scores * documents_mask.unsqueeze(0).unsqueeze(2)
+#     scores = scores.max(axis=-1).values  # .sum(axis=-1)
+#     # Normalze by the number of tokens in the queries
+#     if True:
+#         scores = scores.sum(axis=-1)
+#         if queries_mask is not None:
+#             scores = scores / queries_mask.sum(axis=-1).unsqueeze(-1)
+
+#     else:
+#         # query_maxlen = queries_embeddings.size(
+#         query_maxlen = 32
+
+#         K1 = 32  # query_maxlen // 2  # 32
+#         K2 = 32
+
+#         # Part A: Top-K1 from first query_maxlen tokens
+#         A = scores[:, :, :query_maxlen].topk(K1, dim=-1).values.sum(-1)
+
+#         # Part B: Top-K2 from remaining tokens (if any)
+#         B = 0
+#         if scores.size(2) > query_maxlen:
+#             remaining_tokens = scores.size(2) - query_maxlen
+#             if K2 <= remaining_tokens:
+#                 B = scores[:, :, query_maxlen:].topk(K2, dim=-1).values.sum(-1)
+
+#         scores = A + B
+#         # scores = scores / queries_mask.sum(axis=-1).unsqueeze(-1)
+#         num_query_tokens = queries_mask.sum(axis=-1).unsqueeze(-1)
+#         normalization_factor = torch.minimum(
+#             torch.tensor(K1 + K2, device=scores.device, dtype=scores.dtype),
+#             num_query_tokens,
+#         )
+#         scores = scores / normalization_factor
+#     return scores
 
 
 def colbert_scores_pairwise(
@@ -180,8 +276,9 @@ def colbert_kd_scores(
     if documents_mask is not None:
         mask = convert_to_tensor(documents_mask)
         scores = scores * mask.unsqueeze(2)
-    scores = scores.max(axis=-1).values  # .sum(axis=-1)
+    scores = scores.max(axis=-1).values.sum(axis=-1)
+    # print("Queries mask shape:", queries_mask.shape)
     if queries_mask is not None:
         scores = scores / queries_mask.sum(axis=-1).unsqueeze(-1)
 
-    return scores.sum(axis=-1)
+    return scores

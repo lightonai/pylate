@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import logging
-from typing import Literal
+from typing import Callable, Literal
 
+import numpy as np
+from sentence_transformers import SimilarityFunction
 from sentence_transformers.evaluation.NanoBEIREvaluator import (
     NanoBEIREvaluator as NanoBEIREvaluatorST,
 )
 from sentence_transformers.util import is_datasets_available
+from torch import Tensor
 
 from .pylate_information_retrieval_evaluator import PyLateInformationRetrievalEvaluator
 
@@ -61,8 +64,24 @@ MAPPING_DATASET_NAME_TO_HUMAN_READABLE = {
     "touche2020": "Touche2020",
 }
 
+MAPPING_DATASET_NAME_TO_PROMPT = {
+    "climatefever": "A relevant document should also provide a clear and concise explanation, avoiding unnecessary complexity or ambiguity. When in doubt, prioritize documents that provide a clear, direct, and specific answer to the query.",
+    "dbpedia": "A document that meets these criteria is considered relevant, while a document that does not meet these criteria is considered non-relevant.",
+    "fever": "Think carefully about relevance",
+    "fiqa2018": "A document that meets these criteria is considered relevant, while a document that does not meet these criteria is considered non-relevant",
+    "hotpotqa": "Think carefully about relevance.",
+    "msmarco": "A document that meets these criteria is considered relevant, while a document that does not meet these criteria is considered non-relevant.",
+    "nfcorpus": "A document that meets these criteria is considered relevant, while a document that does not meet these criteria is considered non-relevant.",
+    "nq": "A document that meets these criteria is considered relevant, while a document that does not meet these criteria is considered non-relevant.",
+    "quoraretrieval": "A relevant document should focus solely on providing a clear and accurate answer to the query, without distracting or unnecessary information",
+    "scidocs": "A relevant document should also provide a clear and concise explanation, avoiding unnecessary complexity or ambiguity. When in doubt, prioritize documents that provide a clear, direct, and specific answer to the query.",
+    "arguana": "A relevant document should also provide a clear and concise explanation, avoiding unnecessary complexity or ambiguity. When in doubt, prioritize documents that provide a clear, direct, and specific answer to the query.",
+    "scifact": "Think carefully about these conditions when determining relevance.",
+    "touche2020": "Think carefully about relevance",
+}
 
-class NanoBEIREvaluator(NanoBEIREvaluatorST):
+
+class NanoBEIREvaluatorWithPrompt(NanoBEIREvaluatorST):
     """Evaluate the performance of a PyLate Model on the NanoBEIR collection.
 
 
@@ -101,6 +120,49 @@ class NanoBEIREvaluator(NanoBEIREvaluatorST):
 
     """
 
+    # override init just to reset the name to include "prompt"
+    def __init__(
+        self,
+        dataset_names: list[DatasetNameType] | None = None,
+        mrr_at_k: list[int] = [10],
+        ndcg_at_k: list[int] = [10],
+        accuracy_at_k: list[int] = [1, 3, 5, 10],
+        precision_recall_at_k: list[int] = [1, 3, 5, 10],
+        map_at_k: list[int] = [100],
+        show_progress_bar: bool = False,
+        batch_size: int = 32,
+        write_csv: bool = True,
+        truncate_dim: int | None = None,
+        score_functions: dict[str, Callable[[Tensor, Tensor], Tensor]] | None = None,
+        main_score_function: str | SimilarityFunction | None = None,
+        aggregate_fn: Callable[[list[float]], float] = np.mean,
+        aggregate_key: str = "mean",
+        query_prompts: str | dict[str, str] | None = None,
+        corpus_prompts: str | dict[str, str] | None = None,
+        write_predictions: bool = False,
+    ):
+        super().__init__(
+            dataset_names=dataset_names,
+            mrr_at_k=mrr_at_k,
+            ndcg_at_k=ndcg_at_k,
+            accuracy_at_k=accuracy_at_k,
+            precision_recall_at_k=precision_recall_at_k,
+            map_at_k=map_at_k,
+            show_progress_bar=show_progress_bar,
+            batch_size=batch_size,
+            write_csv=write_csv,
+            truncate_dim=truncate_dim,
+            score_functions=score_functions,
+            main_score_function=main_score_function,
+            aggregate_fn=aggregate_fn,
+            aggregate_key=aggregate_key,
+            query_prompts=query_prompts,
+            corpus_prompts=corpus_prompts,
+            write_predictions=write_predictions,
+        )
+        self.name = f"NanoBEIRprompt_{aggregate_key}"
+        self.information_retrieval_class = PyLateInformationRetrievalEvaluator
+
     def _load_dataset(
         self, dataset_name: DatasetNameType, **ir_evaluator_kwargs
     ) -> PyLateInformationRetrievalEvaluator:
@@ -121,6 +183,7 @@ class NanoBEIREvaluator(NanoBEIREvaluatorST):
         }
         queries_dict = {
             sample["_id"]: sample["text"]
+            + f". {MAPPING_DATASET_NAME_TO_PROMPT.get(dataset_name, '')}"
             for sample in queries
             if len(sample["text"]) > 0
         }
@@ -143,7 +206,7 @@ class NanoBEIREvaluator(NanoBEIREvaluatorST):
             queries=queries_dict,
             corpus=corpus_dict,
             relevant_docs=qrels_dict,
-            name=human_readable_name,
+            name=human_readable_name + "prompt",
             corpus_chunk_size=1000,
             **ir_evaluator_kwargs,
         )

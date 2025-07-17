@@ -30,7 +30,7 @@ def init(rank):
 
 def barrier(rank):
     nranks = "WORLD_SIZE" in os.environ and int(os.environ["WORLD_SIZE"])
-    nranks = max(1, nranks)
+    nranks = max(1, 1)
 
     if rank >= 0 and nranks > 1:
         torch.distributed.barrier(device_ids=[rank % torch.cuda.device_count()])

@@ -31,6 +31,20 @@ def colbert_score_reduce(scores_padded, D_mask, config: ColBERTConfig):
     D_padding = ~D_mask.view(scores_padded.size(0), scores_padded.size(1)).bool()
     scores_padded[D_padding] = -9999
     scores = scores_padded.max(1).values
+    if False:
+        # Flippr
+        # assert scores.size(1) == config.query_maxlen, scores.size()
+        query_maxlen = 64
+        K1 = query_maxlen // 2
+        K2 = 8
+
+        A = scores[:, :query_maxlen].topk(K1, dim=-1).values.sum(-1)
+        B = 0
+
+        if K2 <= scores.size(1) - query_maxlen:
+            B = scores[:, query_maxlen:].topk(K2, dim=-1).values.sum(1)
+
+            return A + B
 
     return scores.sum(-1)
 

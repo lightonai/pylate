@@ -155,6 +155,12 @@ class Contrastive(nn.Module):
             if hasattr(self.model, "skiplist")
             else self.model.module.skiplist
         )
+        do_query_expansion = (
+            self.model.do_query_expansion
+            if hasattr(self.model, "do_query_expansion")
+            else self.model.module.do_query_expansion
+        )
+
         masks = extract_skiplist_mask(
             sentence_features=sentence_features, skiplist=skiplist
         )
@@ -185,7 +191,10 @@ class Contrastive(nn.Module):
         scores = torch.cat(
             [
                 self.score_metric(
-                    embeddings[0], group_embeddings, masks[0], documents_masks
+                    embeddings[0],
+                    group_embeddings,
+                    masks[0] if not do_query_expansion else None,
+                    documents_masks,
                 )
                 for group_embeddings, documents_masks in zip(embeddings[1:], masks[1:])
             ],
