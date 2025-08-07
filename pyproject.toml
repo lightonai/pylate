@@ -21,7 +21,7 @@ dependencies = [
     "voyager >= 2.0.9",
     "sqlitedict >= 2.1.0",
     "pandas >= 2.2.1",
-    "transformers == 4.48.2",
+    "transformers >= 4.41.0, < 4.52.4",
     "ujson == 5.10.0",
     "ninja == 1.11.1.4",
     "fastkmeans == 0.5.0",
