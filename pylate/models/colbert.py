@@ -595,7 +595,7 @@ class ColBERT(SentenceTransformer):
 
         all_embeddings = []
         length_sorted_idx = np.argsort([-self._text_length(sen) for sen in sentences])
-        sentences_sorted = [sentences[idx] for idx in length_sorted_idx]
+        sentences_sorted = [sentences[int(idx)] for idx in length_sorted_idx]
 
         for start_index in trange(
             0,
