@@ -134,7 +134,8 @@ def colbert_scores_pairwise(
 def colbert_kd_scores(
     queries_embeddings: list | np.ndarray | torch.Tensor,
     documents_embeddings: list | np.ndarray | torch.Tensor,
-    mask: torch.Tensor = None,
+    queries_mask: torch.Tensor = None,
+    documents_mask: torch.Tensor = None,
 ) -> torch.Tensor:
     """Computes the ColBERT scores between queries and documents embeddings. This scoring function is dedicated to the knowledge distillation pipeline.
 
@@ -176,8 +177,18 @@ def colbert_kd_scores(
         queries_embeddings,
         documents_embeddings,
     )
-    if mask is not None:
-        mask = convert_to_tensor(mask)
+
+    if queries_mask is not None:
+        queries_mask = convert_to_tensor(queries_mask)
+        scores = scores * queries_mask.unsqueeze(1).unsqueeze(3)
+
+    if documents_mask is not None:
+        mask = convert_to_tensor(documents_mask)
         scores = scores * mask.unsqueeze(2)
 
-    return scores.max(axis=-1).values.sum(axis=-1)
+    scores = scores.max(axis=-1).values.sum(axis=-1)
+    if queries_mask is not None:
+        scores = scores / queries_mask.sum(axis=-1).unsqueeze(-1)
+
+    return scores
+
