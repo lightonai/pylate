@@ -9,7 +9,8 @@ from ..utils.tensor import convert_to_tensor
 def colbert_scores(
     queries_embeddings: list | np.ndarray | torch.Tensor,
     documents_embeddings: list | np.ndarray | torch.Tensor,
-    mask: torch.Tensor = None,
+    queries_mask: torch.Tensor = None,
+    documents_mask: torch.Tensor = None,
 ) -> torch.Tensor:
     """Computes the ColBERT scores between queries and documents embeddings. The score is computed as the sum of maximum similarities
     between the query and the document.
@@ -57,11 +58,19 @@ def colbert_scores(
         documents_embeddings,
     )
 
-    if mask is not None:
-        mask = convert_to_tensor(mask)
-        scores = scores * mask.unsqueeze(0).unsqueeze(2)
+    if queries_mask is not None:
+        queries_mask = convert_to_tensor(queries_mask)
+        scores = scores * queries_mask.unsqueeze(1).unsqueeze(3)
 
-    return scores.max(axis=-1).values.sum(axis=-1)
+    if documents_mask is not None:
+        documents_mask = convert_to_tensor(documents_mask)
+        scores = scores * documents_mask.unsqueeze(0).unsqueeze(2)
+    scores = scores.max(axis=-1).values.sum(axis=-1)
+    # Normalze by the number of tokens in the queries
+    if queries_mask is not None:
+        scores = scores / queries_mask.sum(axis=-1).unsqueeze(-1)
+    return scores
+
 
 
 def colbert_scores_pairwise(
