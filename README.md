@@ -12,9 +12,13 @@
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square" alt="license"></a>
 </div>
 
+&nbsp;
+
 <p align="justify">
 PyLate is a library built on top of Sentence Transformers, designed to simplify and optimize fine-tuning, inference, and retrieval with state-of-the-art ColBERT models. It enables easy fine-tuning on both single and multiple GPUs, providing flexibility for various hardware setups. PyLate also streamlines document retrieval and allows you to load a wide range of models, enabling you to construct ColBERT models from most pre-trained language models.
 </p>
+
+&nbsp;
 
 ## Installation
 
@@ -34,9 +38,11 @@ pip install "pylate[eval]"
 
 The complete documentation is available [here](https://lightonai.github.io/pylate/), which includes in-depth guides, examples, and API references.
 
+&nbsp;
+
 ## Training
 
-### Contrastive training
+### Contrastive Training
 
 Here’s a simple example of training a ColBERT model on the MS MARCO dataset triplet dataset using PyLate. This script demonstrates training with contrastive loss and evaluating the model on a held-out eval set:
 
@@ -136,7 +142,9 @@ Finally, if you are in a multi-GPU setting, you can gather all the elements from
 train_loss = losses.Contrastive(model=model, gather_across_devices=True)
 ```
 
-### Knowledge distillation
+&nbsp;
+
+### Knowledge Distillation
 
 To get the best performance when training a ColBERT model, you should use knowledge distillation to train the model using the scores of a strong teacher model.
 Here's a simple example of how to train a model using knowledge distillation in PyLate on MS MARCO:
@@ -213,13 +221,15 @@ trainer = SentenceTransformerTrainer(
 trainer.train()
 ```
 
-### NanoBEIR evaluator
+#### NanoBEIR evaluator
 
 If you are training an English retrieval model, you can use [NanoBEIR evaluator](https://huggingface.co/collections/zeta-alpha-ai/nanobeir-66e1a0af21dfd93e620cd9f6), which allows to run small version of BEIR to get quick validation results.
 
 ```python
 evaluator=evaluation.NanoBEIREvaluator(),
 ```
+
+&nbsp;
 
 ## Datasets
 
@@ -314,9 +324,11 @@ documents = Dataset.from_list(mapping=documents)
 queries = Dataset.from_list(mapping=queries)
 ```
 
-## Retrieve
+&nbsp;
 
-PyLate allows easy retrieval of top documents for a given query set using the trained ColBERT model and [PLAID](https://arxiv.org/abs/2205.09707) index, simply load the model and init the index:
+## Retrieval
+
+PyLate provides an efficient index with [FastPLAID](https://github.com/lightonai/fast-plaid). Simply load a ColBERT model and initialize the index to perform retrieval.
 
 ```python
 from pylate import indexes, models, retrieve
@@ -397,9 +409,11 @@ Sample Output:
 ]
 ```
 
-## Rerank
+&nbsp;
 
-If you only want to use the ColBERT model to perform reranking on top of your first-stage retrieval pipeline without building an index, you can simply use rank function and pass the queries and documents to rerank:
+## Reranking
+
+If you want to use the ColBERT model to perform reranking on top of your first-stage retrieval pipeline without building an index, you can simply use `rank.rerank` function which takes the queries and documents embeddings along with the documents ids to rerank them:
 
 ```python
 from pylate import rank
@@ -408,10 +422,12 @@ queries = [
     "query A",
     "query B",
 ]
+
 documents = [
     ["document A", "document B"],
     ["document 1", "document C", "document B"],
 ]
+
 documents_ids = [
     [1, 2],
     [1, 3, 2],
@@ -421,6 +437,7 @@ queries_embeddings = model.encode(
     queries,
     is_query=True,
 )
+
 documents_embeddings = model.encode(
     documents,
     is_query=False,
@@ -432,6 +449,8 @@ reranked_documents = rank.rerank(
     documents_embeddings=documents_embeddings,
 )
 ```
+
+&nbsp;
 
 ## Contributing
 

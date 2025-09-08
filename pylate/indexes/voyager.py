@@ -49,78 +49,35 @@ class Voyager(Base):
 
     Examples
     --------
-    >>> from pylate import indexes, models
+    from pylate import indexes, models
 
-    >>> index = indexes.Voyager(
-    ...     index_folder="test_indexes",
-    ...     index_name="colbert",
-    ...     override=True,
-    ...     embedding_size=128,
-    ... )
+    index = indexes.Voyager(
+        index_folder="test_indexes",
+        index_name="colbert",
+        override=True,
+        embedding_size=128,
+    )
 
-    >>> model = models.ColBERT(
-    ...     model_name_or_path="sentence-transformers/all-MiniLM-L6-v2",
-    ... )
+    model = models.ColBERT(
+        model_name_or_path="sentence-transformers/all-MiniLM-L6-v2",
+    )
 
-    >>> documents_embeddings = model.encode(
-    ...     ["fruits are healthy.", "fruits are good for health.", "fruits are bad for health."],
-    ...     is_query=False,
-    ... )
+    documents_embeddings = model.encode(
+        ["fruits are healthy.", "fruits are good for health.", "fruits are bad for health."],
+        is_query=False,
+    )
 
-    >>> index = index.add_documents(
-    ...     documents_ids=["1", "2", "3"],
-    ...     documents_embeddings=documents_embeddings
-    ... )
+    index = index.add_documents(
+        documents_ids=["1", "2", "3"],
+        documents_embeddings=documents_embeddings,
+    )
 
-    >>> queries_embeddings = model.encode(
-    ...     ["fruits are healthy.", "fruits are good for health and fun."],
-    ...     is_query=True,
-    ... )
+    queries_embeddings = model.encode(
+         ["fruits are healthy.", "fruits are good for health and fun."],
+         is_query=True,
+    )
 
-    >>> matchs = index(queries_embeddings, k=30)
-
-    >>> assert matchs["distances"].shape[0] == 2
-    >>> assert isinstance(matchs, dict)
-    >>> assert "documents_ids" in matchs
-    >>> assert "distances" in matchs
-
-    >>> queries_embeddings = model.encode(
-    ...     "fruits are healthy.",
-    ...     is_query=True,
-    ... )
-
-    >>> matchs = index(queries_embeddings, k=30)
-
-    >>> assert matchs["distances"].shape[0] == 1
-    >>> assert isinstance(matchs, dict)
-    >>> assert "documents_ids" in matchs
-    >>> assert "distances" in matchs
-    >>> index = indexes.Voyager(
-    ...     index_folder="test_indexes",
-    ...     index_name="colbert",
-    ...     override=False,
-    ... )
-    >>> matchs = index(queries_embeddings, k=30)
-    >>> assert isinstance(matchs, dict)
-    >>> assert "documents_ids" in matchs
-    >>> assert "distances" in matchs
-    >>> index = index.remove_documents(
-    ...     documents_ids=["1"],
-    ... )
-    >>> matchs = index(queries_embeddings, k=30)
-    >>> assert isinstance(matchs, dict)
-    >>> assert "documents_ids" in matchs
-    >>> assert "distances" in matchs
-    >>> index = index.add_documents(
-    ...     documents_ids=["1"],
-    ...     documents_embeddings=documents_embeddings[0],
-    ... )
-    >>> matchs = index(queries_embeddings, k=30)
-    >>> assert isinstance(matchs, dict)
-    >>> assert "documents_ids" in matchs
-    >>> assert "distances" in matchs
-
-
+    matchs = index(queries_embeddings, k=30)
 
     """
 

@@ -74,11 +74,11 @@ pip install -U pylate
 
 ### Retrieval
 
-PyLate provides a streamlined interface to index and retrieve documents using ColBERT models. The index leverages the Voyager HNSW index to efficiently handle document embeddings and enable fast retrieval.
+Use this model with PyLate to index and retrieve documents. The index uses [FastPLAID](https://github.com/lightonai/fast-plaid) for efficient similarity search.
 
 #### Indexing documents
 
-First, load the ColBERT model and initialize the Voyager index, then encode and index your documents:
+Load the ColBERT model and initialize the PLAID index, then encode and index your documents:
 
 ```python
 from pylate import indexes, models, retrieve
@@ -88,8 +88,8 @@ model = models.ColBERT(
     model_name_or_path="{{ model_id | default('pylate_model_id', true) }}",
 )
 
-# Step 2: Initialize the Voyager index
-index = indexes.Voyager(
+# Step 2: Initialize the PLAID index
+index = indexes.PLAID(
     index_folder="pylate-index",
     index_name="index",
     override=True,  # This overwrites the existing index if any
@@ -117,7 +117,7 @@ Note that you do not have to recreate the index and encode the documents every t
 
 ```python
 # To load an index, simply instantiate it with the correct folder/name and without overriding it
-index = indexes.Voyager(
+index = indexes.PLAID(
     index_folder="pylate-index",
     index_name="index",
 )

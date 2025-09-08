@@ -78,7 +78,7 @@ class Searcher:
             if self.config.centroid_score_threshold is None:
                 self.configure(centroid_score_threshold=0.4)
             if self.config.ndocs is None:
-                self.configure(ndocs=max(k * 4, 4096))
+                self.configure(ndocs=max(k * 4, 8192))
 
         pids, scores = self.ranker.rank(self.config, Q, filter_fn=filter_fn, pids=pids)
 
