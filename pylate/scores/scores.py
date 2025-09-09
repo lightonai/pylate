@@ -34,19 +34,30 @@ def colbert_scores(
 
     >>> documents_embeddings = torch.tensor([
     ...     [[10.], [0.], [1.]],
-    ...     [[0.], [100.], [1.]],
+    ...     [[0.], [100.], [10.]],
     ...     [[1.], [0.], [1000.]],
+    ... ])
+
+    >>> documents_mask = torch.tensor([
+    ...     [1., 1., 1.],
+    ...     [1., 0., 1.],
+    ...     [1., 1., 1.],
+    ... ])
+    >>> query_mask = torch.tensor([
+    ...     [1., 1., 1., 1.], [1., 1., 1., 1.], [1., 1., 0., 1.]
     ... ])
 
     >>> scores = colbert_scores(
     ...     queries_embeddings=queries_embeddings,
-    ...     documents_embeddings=documents_embeddings
+    ...     documents_embeddings=documents_embeddings,
+    ...     queries_mask=query_mask,
+    ...     documents_mask=documents_mask,
     ... )
 
     >>> scores
-    tensor([[  10.,  100., 1000.],
-            [  20.,  200., 2000.],
-            [  30.,  300., 3000.]])
+    tensor([[  10.,  10., 1000.],
+            [  20.,  20., 2000.],
+            [  0.,  0., 0.]])
 
     """
     queries_embeddings = convert_to_tensor(queries_embeddings)
@@ -150,19 +161,23 @@ def colbert_kd_scores(
     ...     [[[0.], [100.], [1.]], [[0.], [200.], [1.]], [[0.], [300.], [1.]]],
     ...     [[[1.], [0.], [1000.]], [[1.], [0.], [2000.]], [[10.], [0.], [3000.]]],
     ... ])
-    >>> mask = torch.tensor([
+    >>> documents_mask = torch.tensor([
+    ...     [[0., 1., 1.], [1., 1., 1.], [1., 1., 1.]],
     ...     [[1., 1., 1.], [1., 1., 1.], [1., 1., 1.]],
     ...     [[1., 1., 1.], [1., 1., 1.], [1., 1., 1.]],
-    ...     [[1., 1., 1.], [1., 1., 1.], [1., 1., 0.]],
+    ... ])
+    >>> query_mask = torch.tensor([
+    ...     [1., 1., 1., 1.], [1., 1., 1., 1.], [1., 1., 0., 1.]
     ... ])
     >>> colbert_kd_scores(
     ...     queries_embeddings=queries_embeddings,
     ...     documents_embeddings=documents_embeddings,
-    ...     mask=mask
+    ...     queries_mask=query_mask,
+    ...     documents_mask=documents_mask,
     ... )
-    tensor([[  10.,   20.,   30.],
-            [ 200.,  400.,  600.],
-            [3000., 6000., 30.]])
+    tensor([[ 1.,  20.,  30.],
+            [200., 400., 600.],
+            [  0.,   0.,   0.]])
 
     """
     queries_embeddings = convert_to_tensor(queries_embeddings)
