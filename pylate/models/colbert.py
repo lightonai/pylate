@@ -424,7 +424,7 @@ class ColBERT(SentenceTransformer):
             if attend_to_expansion_tokens is not None
             else self.attend_to_expansion_tokens
             if self.attend_to_expansion_tokens is not None
-            else True
+            else False
         )
         # If we do not do query expansion, we do not attend to the expansion tokens
         if not self.do_query_expansion:
