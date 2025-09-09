@@ -66,11 +66,7 @@ def colbert_scores(
         documents_mask = convert_to_tensor(documents_mask)
         scores = scores * documents_mask.unsqueeze(0).unsqueeze(2)
     scores = scores.max(axis=-1).values.sum(axis=-1)
-    # Normalze by the number of tokens in the queries
-    if queries_mask is not None:
-        scores = scores / queries_mask.sum(axis=-1).unsqueeze(-1)
     return scores
-
 
 
 def colbert_scores_pairwise(
@@ -187,8 +183,4 @@ def colbert_kd_scores(
         scores = scores * mask.unsqueeze(2)
 
     scores = scores.max(axis=-1).values.sum(axis=-1)
-    if queries_mask is not None:
-        scores = scores / queries_mask.sum(axis=-1).unsqueeze(-1)
-
     return scores
-
