@@ -414,12 +414,17 @@ class ColBERT(SentenceTransformer):
         self.do_query_expansion = (
             do_query_expansion
             if do_query_expansion is not None
-            else self.do_query_expansion or True
+            else self.do_query_expansion
+            if self.do_query_expansion is not None
+            else True
         )
+
         self.attend_to_expansion_tokens = (
             attend_to_expansion_tokens
             if attend_to_expansion_tokens is not None
-            else self.attend_to_expansion_tokens or False
+            else self.attend_to_expansion_tokens
+            if self.attend_to_expansion_tokens is not None
+            else True
         )
         # If we do not do query expansion, we do not attend to the expansion tokens
         if not self.do_query_expansion:
@@ -1119,6 +1124,7 @@ class ColBERT(SentenceTransformer):
             config["document_length"] = self.document_length
             config["attend_to_expansion_tokens"] = self.attend_to_expansion_tokens
             config["skiplist_words"] = self.skiplist_words
+            config["do_query_expansion"] = self.do_query_expansion
             json.dump(config, fOut, indent=2)
 
     def _load_auto_model(
@@ -1252,6 +1258,8 @@ class ColBERT(SentenceTransformer):
                 ]
             if "skiplist_words" in self._model_config:
                 self.skiplist_words = self._model_config["skiplist_words"]
+            if "do_query_expansion" in self._model_config:
+                self.do_query_expansion = self._model_config["do_query_expansion"]
 
         return [
             module
