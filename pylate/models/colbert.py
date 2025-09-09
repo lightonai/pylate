@@ -228,7 +228,7 @@ class ColBERT(SentenceTransformer):
         self.attend_to_expansion_tokens = attend_to_expansion_tokens
         self.skiplist_words = skiplist_words
         model_card_data = model_card_data or PylateModelCardData()
-        if similarity_fn_name is None:  
+        if similarity_fn_name is None:
             similarity_fn_name = "MaxSim"
 
         super(ColBERT, self).__init__(
@@ -720,7 +720,7 @@ class ColBERT(SentenceTransformer):
 
                 all_embeddings.extend(embeddings)
 
-        # Pad the embeddings to the same length. Documents can have different lengths while queries are already padded.
+        # Pad the embeddings to the same length. Documents can have different lengths while queries are already padded (when using query expansion, else requires padding as well).
         if padding:
             all_embeddings = torch.nn.utils.rnn.pad_sequence(
                 sequences=all_embeddings, batch_first=True, padding_value=0
@@ -1027,7 +1027,7 @@ class ColBERT(SentenceTransformer):
         self,
         texts: list[str] | list[dict] | list[tuple[str, str]],
         is_query: bool = True,
-        pad_document: bool = False,
+        pad: bool = False,
     ) -> dict[str, torch.Tensor]:
         """
         Tokenizes the input texts.
@@ -1035,7 +1035,7 @@ class ColBERT(SentenceTransformer):
         Args:
             texts (Union[list[str], list[dict], list[tuple[str, str]]]): A list of texts to be tokenized.
             is_query (bool): Flag to indicate if the texts are queries. Defaults to True.
-            pad_document (bool): Flag to indicate if documents should be padded to max length. Defaults to False.
+            pad (bool): Flag to indicate if elements should be padded to max length. Defaults to False.
 
         Returns:
             dict[str, torch.Tensor]: A dictionary of tensors with the tokenized texts, including "input_ids",
@@ -1050,7 +1050,7 @@ class ColBERT(SentenceTransformer):
         # Pad queries (if query expansion) and handle padding for documents if specified
         tokenize_args = (
             {"padding": "max_length"}
-            if pad_document or (is_query and self.do_query_expansion)
+            if pad or (is_query and self.do_query_expansion)
             else {}
         )
 

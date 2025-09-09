@@ -98,7 +98,7 @@ class ColBERTCollator:
                 tokenized = self.tokenize_fn(
                     texts,
                     is_query=is_query,
-                    pad_document=True,
+                    pad=True,
                 )
                 for key, value in tokenized.items():
                     batch[f"{column}_{key}"] = value
