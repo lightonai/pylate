@@ -102,10 +102,13 @@ def rerank(
     ):
         query_embeddings = func_convert_to_tensor(query_embeddings)
 
-        query_documents_embeddings = torch.nn.utils.rnn.pad_sequence([
-            func_convert_to_tensor(query_document_embeddings)
-            for query_document_embeddings in query_documents_embeddings
-        ], batch_first=True, padding_value=0
+        query_documents_embeddings = torch.nn.utils.rnn.pad_sequence(
+            [
+                func_convert_to_tensor(query_document_embeddings)
+                for query_document_embeddings in query_documents_embeddings
+            ],
+            batch_first=True,
+            padding_value=0,
         )
 
         # Pad the documents embeddings
