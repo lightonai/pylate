@@ -6,11 +6,11 @@ Load BEIR dataset.
 
 ## Parameters
 
-- **dataset_name** (*str*)
+- **dataset_name** (*'str'*)
 
     Name of the beir dataset.
 
-- **split** (*str*) – defaults to `test`
+- **split** (*'str'*) – defaults to `test`
 
     Split to load.
 

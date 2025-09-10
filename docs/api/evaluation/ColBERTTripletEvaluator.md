@@ -6,35 +6,35 @@ Evaluate a model based on a set of triples. The evaluation will compare the scor
 
 ## Parameters
 
-- **anchors** (*list[str]*)
+- **anchors** (*'list[str]'*)
 
     Sentences to check similarity to. (e.g. a query)
 
-- **positives** (*list[str]*)
+- **positives** (*'list[str]'*)
 
     List of positive sentences
 
-- **negatives** (*list[str]*)
+- **negatives** (*'list[str]'*)
 
     List of negative sentences
 
-- **name** (*str*) – defaults to ``
+- **name** (*'str'*) – defaults to ``
 
     Name for the output.
 
-- **batch_size** (*int*) – defaults to `32`
+- **batch_size** (*'int'*) – defaults to `32`
 
     Batch size used to compute embeddings.
 
-- **show_progress_bar** (*bool*) – defaults to `False`
+- **show_progress_bar** (*'bool'*) – defaults to `False`
 
     If true, prints a progress bar.
 
-- **write_csv** (*bool*) – defaults to `True`
+- **write_csv** (*'bool'*) – defaults to `True`
 
     Wether or not to write results to a CSV file.
 
-- **truncate_dim** (*int | None*) – defaults to `None`
+- **truncate_dim** (*'int | None'*) – defaults to `None`
 
     The dimension to truncate sentence embeddings to. If None, do not truncate.
 
@@ -43,7 +43,7 @@ Evaluate a model based on a set of triples. The evaluation will compare the scor
 
 - **description**
 
-    Returns a human-readable description of the evaluator: BinaryClassificationEvaluator -> Binary Classification  1. Remove "Evaluator" from the class name 2. Add a space before every capital letter
+    Returns a human-readable description of the evaluator: BinaryClassificationEvaluator -> Binary Classification  1. Replace "CE" prefix with "CrossEncoder" 2. Remove "Evaluator" from the class name 3. Add a space before every capital letter
 
 
 ## Examples
@@ -99,12 +99,17 @@ Evaluate a model based on a set of triples. The evaluation will compare the scor
 
     **Parameters**
 
-    - **model**     (*pylate.models.colbert.ColBERT*)
-    - **output_path**     (*str*)     – defaults to `None`
-    - **epoch**     (*int*)     – defaults to `-1`
-    - **steps**     (*int*)     – defaults to `-1`
+    - **model**     (*'ColBERT'*)
+    - **output_path**     (*'str'*)     – defaults to `None`
+    - **epoch**     (*'int'*)     – defaults to `-1`
+    - **steps**     (*'int'*)     – defaults to `-1`
 
 ???- note "from_input_examples"
+
+???- note "get_config_dict"
+
+    Return a dictionary with all meaningful configuration values of the evaluator to store in the model card.
+
 
 ???- note "prefix_name_to_metrics"
 

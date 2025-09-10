@@ -6,11 +6,11 @@ Collator for ColBERT model.
 
 ## Parameters
 
-- **tokenize_fn** (*Callable*)
+- **tokenize_fn** (*'Callable'*)
 
     The function to tokenize the input text.
 
-- **valid_label_columns** (*list[str] | None*) – defaults to `None`
+- **valid_label_columns** (*'list[str] | None'*) – defaults to `None`
 
     The name of the columns that contain the labels: scores or labels.
 
@@ -66,4 +66,4 @@ Collator for ColBERT model.
 
     **Parameters**
 
-    - **features**     (*list[dict]*)
+    - **features**     (*'list[dict]'*)

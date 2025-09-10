@@ -6,19 +6,19 @@ Distillation loss for ColBERT model. The loss is computed with respect to the fo
 
 ## Parameters
 
-- **model** (*[models.ColBERT](../../models/ColBERT)*)
+- **model** (*'ColBERT'*)
 
     SentenceTransformer model.
 
-- **score_metric** (*Callable*) – defaults to `<function colbert_kd_scores at 0x7fe82073a3e0>`
+- **score_metric** (*'Callable'*) – defaults to `<function colbert_kd_scores at 0x10aef9080>`
 
     Function that returns a score between two sequences of embeddings.
 
-- **size_average** (*bool*) – defaults to `True`
+- **size_average** (*'bool'*) – defaults to `True`
 
     Average by the size of the mini-batch or perform sum.
 
-- **normalize_scores** (*bool*) – defaults to `True`
+- **normalize_scores** (*'bool'*) – defaults to `True`
 
 
 
@@ -131,11 +131,11 @@ Distillation loss for ColBERT model. The loss is computed with respect to the fo
 
     Move all model parameters and buffers to the GPU.
 
-    This also makes associated parameters and buffers different objects. So it should be called before constructing optimizer if the module will live on GPU while being optimized.  .. note::     This method modifies the module in-place.  Args:     device (int, optional): if specified, all parameters will be         copied to that device  Returns:     Module: self
+    This also makes associated parameters and buffers different objects. So it should be called before constructing the optimizer if the module will live on GPU while being optimized.  .. note::     This method modifies the module in-place.  Args:     device (int, optional): if specified, all parameters will be         copied to that device  Returns:     Module: self
 
     **Parameters**
 
-    - **device**     (*Union[int, torch.device, NoneType]*)     – defaults to `None`
+    - **device**     (*Union[torch.device, int, NoneType]*)     – defaults to `None`
 
 ???- note "double"
 
@@ -148,12 +148,12 @@ Distillation loss for ColBERT model. The loss is computed with respect to the fo
 
     Set the module in evaluation mode.
 
-    This has any effect only on certain modules. See documentations of particular modules for details of their behaviors in training/evaluation mode, if they are affected, e.g. :class:`Dropout`, :class:`BatchNorm`, etc.  This is equivalent with :meth:`self.train(False) <torch.nn.Module.train>`.  See :ref:`locally-disable-grad-doc` for a comparison between `.eval()` and several similar mechanisms that may be confused with it.  Returns:     Module: self
+    This has an effect only on certain modules. See the documentation of particular modules for details of their behaviors in training/evaluation mode, i.e. whether they are affected, e.g. :class:`Dropout`, :class:`BatchNorm`, etc.  This is equivalent with :meth:`self.train(False) <torch.nn.Module.train>`.  See :ref:`locally-disable-grad-doc` for a comparison between `.eval()` and several similar mechanisms that may be confused with it.  Returns:     Module: self
 
 
 ???- note "extra_repr"
 
-    Set the extra representation of the module.
+    Return the extra representation of the module.
 
     To print customized extra information, you should re-implement this method in your own modules. Both single-line and multi-line strings are acceptable.
 
@@ -171,8 +171,8 @@ Distillation loss for ColBERT model. The loss is computed with respect to the fo
 
     **Parameters**
 
-    - **sentence_features**     (*Iterable[dict[str, torch.Tensor]]*)
-    - **labels**     (*torch.Tensor*)
+    - **sentence_features**     (*'Iterable[dict[str, torch.Tensor]]'*)
+    - **labels**     (*'torch.Tensor'*)
 
 ???- note "get_buffer"
 
@@ -188,7 +188,7 @@ Distillation loss for ColBERT model. The loss is computed with respect to the fo
 
     Return any extra state to include in the module's state_dict.
 
-    Implement this and a corresponding :func:`set_extra_state` for your module if you need to store extra state. This function is called when building the module's `state_dict()`.  Note that extra state should be picklable to ensure working serialization of the state_dict. We only provide provide backwards compatibility guarantees for serializing Tensors; other objects may break backwards compatibility if their serialized pickled form changes.  Returns:     object: Any extra state to store in the module's state_dict
+    Implement this and a corresponding :func:`set_extra_state` for your module if you need to store extra state. This function is called when building the module's `state_dict()`.  Note that extra state should be picklable to ensure working serialization of the state_dict. We only provide backwards compatibility guarantees for serializing Tensors; other objects may break backwards compatibility if their serialized pickled form changes.  Returns:     object: Any extra state to store in the module's state_dict
 
 
 ???- note "get_parameter"
@@ -205,7 +205,7 @@ Distillation loss for ColBERT model. The loss is computed with respect to the fo
 
     Return the submodule given by ``target`` if it exists, otherwise throw an error.
 
-    For example, let's say you have an ``nn.Module`` ``A`` that looks like this:  .. code-block:: text      A(         (net_b): Module(             (net_c): Module(                 (conv): Conv2d(16, 33, kernel_size=(3, 3), stride=(2, 2))             )             (linear): Linear(in_features=100, out_features=200, bias=True)         )     )  (The diagram shows an ``nn.Module`` ``A``. ``A`` has a nested submodule ``net_b``, which itself has two submodules ``net_c`` and ``linear``. ``net_c`` then has a submodule ``conv``.)  To check whether or not we have the ``linear`` submodule, we would call ``get_submodule("net_b.linear")``. To check whether we have the ``conv`` submodule, we would call ``get_submodule("net_b.net_c.conv")``.  The runtime of ``get_submodule`` is bounded by the degree of module nesting in ``target``. A query against ``named_modules`` achieves the same result, but it is O(N) in the number of transitive modules. So, for a simple check to see if some submodule exists, ``get_submodule`` should always be used.  Args:     target: The fully-qualified string name of the submodule         to look for. (See above example for how to specify a         fully-qualified string.)  Returns:     torch.nn.Module: The submodule referenced by ``target``  Raises:     AttributeError: If the target string references an invalid         path or resolves to something that is not an         ``nn.Module``
+    For example, let's say you have an ``nn.Module`` ``A`` that looks like this:  .. code-block:: text      A(         (net_b): Module(             (net_c): Module(                 (conv): Conv2d(16, 33, kernel_size=(3, 3), stride=(2, 2))             )             (linear): Linear(in_features=100, out_features=200, bias=True)         )     )  (The diagram shows an ``nn.Module`` ``A``. ``A`` which has a nested submodule ``net_b``, which itself has two submodules ``net_c`` and ``linear``. ``net_c`` then has a submodule ``conv``.)  To check whether or not we have the ``linear`` submodule, we would call ``get_submodule("net_b.linear")``. To check whether we have the ``conv`` submodule, we would call ``get_submodule("net_b.net_c.conv")``.  The runtime of ``get_submodule`` is bounded by the degree of module nesting in ``target``. A query against ``named_modules`` achieves the same result, but it is O(N) in the number of transitive modules. So, for a simple check to see if some submodule exists, ``get_submodule`` should always be used.  Args:     target: The fully-qualified string name of the submodule         to look for. (See above example for how to specify a         fully-qualified string.)  Returns:     torch.nn.Module: The submodule referenced by ``target``  Raises:     AttributeError: If at any point along the path resulting from         the target string the (sub)path resolves to a non-existent         attribute name or an object that is not an instance of ``nn.Module``.
 
     **Parameters**
 
@@ -222,21 +222,21 @@ Distillation loss for ColBERT model. The loss is computed with respect to the fo
 
     Move all model parameters and buffers to the IPU.
 
-    This also makes associated parameters and buffers different objects. So it should be called before constructing optimizer if the module will live on IPU while being optimized.  .. note::     This method modifies the module in-place.  Arguments:     device (int, optional): if specified, all parameters will be         copied to that device  Returns:     Module: self
+    This also makes associated parameters and buffers different objects. So it should be called before constructing the optimizer if the module will live on IPU while being optimized.  .. note::     This method modifies the module in-place.  Arguments:     device (int, optional): if specified, all parameters will be         copied to that device  Returns:     Module: self
 
     **Parameters**
 
-    - **device**     (*Union[int, torch.device, NoneType]*)     – defaults to `None`
+    - **device**     (*Union[torch.device, int, NoneType]*)     – defaults to `None`
 
 ???- note "load_state_dict"
 
     Copy parameters and buffers from :attr:`state_dict` into this module and its descendants.
 
-    If :attr:`strict` is ``True``, then the keys of :attr:`state_dict` must exactly match the keys returned by this module's :meth:`~torch.nn.Module.state_dict` function.  .. warning::     If :attr:`assign` is ``True`` the optimizer must be created after     the call to :attr:`load_state_dict` unless     :func:`~torch.__future__.get_swap_module_params_on_conversion` is ``True``.  Args:     state_dict (dict): a dict containing parameters and         persistent buffers.     strict (bool, optional): whether to strictly enforce that the keys         in :attr:`state_dict` match the keys returned by this module's         :meth:`~torch.nn.Module.state_dict` function. Default: ``True``     assign (bool, optional): When ``False``, the properties of the tensors         in the current module are preserved while when ``True``, the         properties of the Tensors in the state dict are preserved. The only         exception is the ``requires_grad`` field of :class:`~torch.nn.Parameter`s         for which the value from the module is preserved.         Default: ``False``  Returns:     ``NamedTuple`` with ``missing_keys`` and ``unexpected_keys`` fields:         * **missing_keys** is a list of str containing the missing keys         * **unexpected_keys** is a list of str containing the unexpected keys  Note:     If a parameter or buffer is registered as ``None`` and its corresponding key     exists in :attr:`state_dict`, :meth:`load_state_dict` will raise a     ``RuntimeError``.
+    If :attr:`strict` is ``True``, then the keys of :attr:`state_dict` must exactly match the keys returned by this module's :meth:`~torch.nn.Module.state_dict` function.  .. warning::     If :attr:`assign` is ``True`` the optimizer must be created after     the call to :attr:`load_state_dict` unless     :func:`~torch.__future__.get_swap_module_params_on_conversion` is ``True``.  Args:     state_dict (dict): a dict containing parameters and         persistent buffers.     strict (bool, optional): whether to strictly enforce that the keys         in :attr:`state_dict` match the keys returned by this module's         :meth:`~torch.nn.Module.state_dict` function. Default: ``True``     assign (bool, optional): When set to ``False``, the properties of the tensors         in the current module are preserved whereas setting it to ``True`` preserves         properties of the Tensors in the state dict. The only         exception is the ``requires_grad`` field of :class:`~torch.nn.Parameter`         for which the value from the module is preserved. Default: ``False``  Returns:     ``NamedTuple`` with ``missing_keys`` and ``unexpected_keys`` fields:         * ``missing_keys`` is a list of str containing any keys that are expected             by this module but missing from the provided ``state_dict``.         * ``unexpected_keys`` is a list of str containing the keys that are not             expected by this module but present in the provided ``state_dict``.  Note:     If a parameter or buffer is registered as ``None`` and its corresponding key     exists in :attr:`state_dict`, :meth:`load_state_dict` will raise a     ``RuntimeError``.
 
     **Parameters**
 
-    - **state_dict**     (*Mapping[str, Any]*)
+    - **state_dict**     (*collections.abc.Mapping[str, typing.Any]*)
     - **strict**     (*bool*)     – defaults to `True`
     - **assign**     (*bool*)     – defaults to `False`
 
@@ -246,6 +246,16 @@ Distillation loss for ColBERT model. The loss is computed with respect to the fo
 
     Yields:     Module: a module in the network  Note:     Duplicate modules are returned only once. In the following     example, ``l`` will be returned only once.  Example::      >>> l = nn.Linear(2, 2)     >>> net = nn.Sequential(l, l)     >>> for idx, m in enumerate(net.modules()):     ...     print(idx, '->', m)      0 -> Sequential(       (0): Linear(in_features=2, out_features=2, bias=True)       (1): Linear(in_features=2, out_features=2, bias=True)     )     1 -> Linear(in_features=2, out_features=2, bias=True)
 
+
+???- note "mtia"
+
+    Move all model parameters and buffers to the MTIA.
+
+    This also makes associated parameters and buffers different objects. So it should be called before constructing the optimizer if the module will live on MTIA while being optimized.  .. note::     This method modifies the module in-place.  Arguments:     device (int, optional): if specified, all parameters will be         copied to that device  Returns:     Module: self
+
+    **Parameters**
+
+    - **device**     (*Union[torch.device, int, NoneType]*)     – defaults to `None`
 
 ???- note "named_buffers"
 
@@ -274,7 +284,7 @@ Distillation loss for ColBERT model. The loss is computed with respect to the fo
 
     **Parameters**
 
-    - **memo**     (*Optional[Set[ForwardRef('Module')]]*)     – defaults to `None`
+    - **memo**     (*Optional[set['Module']]*)     – defaults to `None`
     - **prefix**     (*str*)     – defaults to ``
     - **remove_duplicate**     (*bool*)     – defaults to `True`
 
@@ -308,13 +318,13 @@ Distillation loss for ColBERT model. The loss is computed with respect to the fo
 
     **Parameters**
 
-    - **hook**     (*Callable[[ForwardRef('Module'), Union[Tuple[torch.Tensor, ...], torch.Tensor], Union[Tuple[torch.Tensor, ...], torch.Tensor]], Union[NoneType, Tuple[torch.Tensor, ...], torch.Tensor]]*)
+    - **hook**     (*Callable[[ForwardRef('Module'), Union[tuple[torch.Tensor, ...], torch.Tensor], Union[tuple[torch.Tensor, ...], torch.Tensor]], Union[NoneType, tuple[torch.Tensor, ...], torch.Tensor]]*)
 
 ???- note "register_buffer"
 
     Add a buffer to the module.
 
-    This is typically used to register a buffer that should not to be considered a model parameter. For example, BatchNorm's ``running_mean`` is not a parameter, but is part of the module's state. Buffers, by default, are persistent and will be saved alongside parameters. This behavior can be changed by setting :attr:`persistent` to ``False``. The only difference between a persistent buffer and a non-persistent buffer is that the latter will not be a part of this module's :attr:`state_dict`.  Buffers can be accessed as attributes using given names.  Args:     name (str): name of the buffer. The buffer can be accessed         from this module using the given name     tensor (Tensor or None): buffer to be registered. If ``None``, then operations         that run on buffers, such as :attr:`cuda`, are ignored. If ``None``,         the buffer is **not** included in the module's :attr:`state_dict`.     persistent (bool): whether the buffer is part of this module's         :attr:`state_dict`.  Example::      >>> # xdoctest: +SKIP("undefined vars")     >>> self.register_buffer('running_mean', torch.zeros(num_features))
+    This is typically used to register a buffer that should not be considered a model parameter. For example, BatchNorm's ``running_mean`` is not a parameter, but is part of the module's state. Buffers, by default, are persistent and will be saved alongside parameters. This behavior can be changed by setting :attr:`persistent` to ``False``. The only difference between a persistent buffer and a non-persistent buffer is that the latter will not be a part of this module's :attr:`state_dict`.  Buffers can be accessed as attributes using given names.  Args:     name (str): name of the buffer. The buffer can be accessed         from this module using the given name     tensor (Tensor or None): buffer to be registered. If ``None``, then operations         that run on buffers, such as :attr:`cuda`, are ignored. If ``None``,         the buffer is **not** included in the module's :attr:`state_dict`.     persistent (bool): whether the buffer is part of this module's         :attr:`state_dict`.  Example::      >>> # xdoctest: +SKIP("undefined vars")     >>> self.register_buffer('running_mean', torch.zeros(num_features))
 
     **Parameters**
 
@@ -326,11 +336,11 @@ Distillation loss for ColBERT model. The loss is computed with respect to the fo
 
     Register a forward hook on the module.
 
-    The hook will be called every time after :func:`forward` has computed an output.  If ``with_kwargs`` is ``False`` or not specified, the input contains only the positional arguments given to the module. Keyword arguments won't be passed to the hooks and only to the ``forward``. The hook can modify the output. It can modify the input inplace but it will not have effect on forward since this is called after :func:`forward` is called. The hook should have the following signature::      hook(module, args, output) -> None or modified output  If ``with_kwargs`` is ``True``, the forward hook will be passed the ``kwargs`` given to the forward function and be expected to return the output possibly modified. The hook should have the following signature::      hook(module, args, kwargs, output) -> None or modified output  Args:     hook (Callable): The user defined hook to be registered.     prepend (bool): If ``True``, the provided ``hook`` will be fired         before all existing ``forward`` hooks on this         :class:`torch.nn.modules.Module`. Otherwise, the provided         ``hook`` will be fired after all existing ``forward`` hooks on         this :class:`torch.nn.modules.Module`. Note that global         ``forward`` hooks registered with         :func:`register_module_forward_hook` will fire before all hooks         registered by this method.         Default: ``False``     with_kwargs (bool): If ``True``, the ``hook`` will be passed the         kwargs given to the forward function.         Default: ``False``     always_call (bool): If ``True`` the ``hook`` will be run regardless of         whether an exception is raised while calling the Module.         Default: ``False``  Returns:     :class:`torch.utils.hooks.RemovableHandle`:         a handle that can be used to remove the added hook by calling         ``handle.remove()``
+    The hook will be called every time after :func:`forward` has computed an output.  If ``with_kwargs`` is ``False`` or not specified, the input contains only the positional arguments given to the module. Keyword arguments won't be passed to the hooks and only to the ``forward``. The hook can modify the output. It can modify the input inplace but it will not have effect on forward since this is called after :func:`forward` is called. The hook should have the following signature::      hook(module, args, output) -> None or modified output  If ``with_kwargs`` is ``True``, the forward hook will be passed the ``kwargs`` given to the forward function and be expected to return the output possibly modified. The hook should have the following signature::      hook(module, args, kwargs, output) -> None or modified output  Args:     hook (Callable): The user defined hook to be registered.     prepend (bool): If ``True``, the provided ``hook`` will be fired         before all existing ``forward`` hooks on this         :class:`torch.nn.Module`. Otherwise, the provided         ``hook`` will be fired after all existing ``forward`` hooks on         this :class:`torch.nn.Module`. Note that global         ``forward`` hooks registered with         :func:`register_module_forward_hook` will fire before all hooks         registered by this method.         Default: ``False``     with_kwargs (bool): If ``True``, the ``hook`` will be passed the         kwargs given to the forward function.         Default: ``False``     always_call (bool): If ``True`` the ``hook`` will be run regardless of         whether an exception is raised while calling the Module.         Default: ``False``  Returns:     :class:`torch.utils.hooks.RemovableHandle`:         a handle that can be used to remove the added hook by calling         ``handle.remove()``
 
     **Parameters**
 
-    - **hook**     (*Union[Callable[[~T, Tuple[Any, ...], Any], Optional[Any]], Callable[[~T, Tuple[Any, ...], Dict[str, Any], Any], Optional[Any]]]*)
+    - **hook**     (*Union[Callable[[~T, tuple[Any, ...], Any], Optional[Any]], Callable[[~T, tuple[Any, ...], dict[str, Any], Any], Optional[Any]]]*)
     - **prepend**     (*bool*)     – defaults to `False`
     - **with_kwargs**     (*bool*)     – defaults to `False`
     - **always_call**     (*bool*)     – defaults to `False`
@@ -339,11 +349,11 @@ Distillation loss for ColBERT model. The loss is computed with respect to the fo
 
     Register a forward pre-hook on the module.
 
-    The hook will be called every time before :func:`forward` is invoked.  If ``with_kwargs`` is false or not specified, the input contains only the positional arguments given to the module. Keyword arguments won't be passed to the hooks and only to the ``forward``. The hook can modify the input. User can either return a tuple or a single modified value in the hook. We will wrap the value into a tuple if a single value is returned (unless that value is already a tuple). The hook should have the following signature::      hook(module, args) -> None or modified input  If ``with_kwargs`` is true, the forward pre-hook will be passed the kwargs given to the forward function. And if the hook modifies the input, both the args and kwargs should be returned. The hook should have the following signature::      hook(module, args, kwargs) -> None or a tuple of modified input and kwargs  Args:     hook (Callable): The user defined hook to be registered.     prepend (bool): If true, the provided ``hook`` will be fired before         all existing ``forward_pre`` hooks on this         :class:`torch.nn.modules.Module`. Otherwise, the provided         ``hook`` will be fired after all existing ``forward_pre`` hooks         on this :class:`torch.nn.modules.Module`. Note that global         ``forward_pre`` hooks registered with         :func:`register_module_forward_pre_hook` will fire before all         hooks registered by this method.         Default: ``False``     with_kwargs (bool): If true, the ``hook`` will be passed the kwargs         given to the forward function.         Default: ``False``  Returns:     :class:`torch.utils.hooks.RemovableHandle`:         a handle that can be used to remove the added hook by calling         ``handle.remove()``
+    The hook will be called every time before :func:`forward` is invoked.  If ``with_kwargs`` is false or not specified, the input contains only the positional arguments given to the module. Keyword arguments won't be passed to the hooks and only to the ``forward``. The hook can modify the input. User can either return a tuple or a single modified value in the hook. We will wrap the value into a tuple if a single value is returned (unless that value is already a tuple). The hook should have the following signature::      hook(module, args) -> None or modified input  If ``with_kwargs`` is true, the forward pre-hook will be passed the kwargs given to the forward function. And if the hook modifies the input, both the args and kwargs should be returned. The hook should have the following signature::      hook(module, args, kwargs) -> None or a tuple of modified input and kwargs  Args:     hook (Callable): The user defined hook to be registered.     prepend (bool): If true, the provided ``hook`` will be fired before         all existing ``forward_pre`` hooks on this         :class:`torch.nn.Module`. Otherwise, the provided         ``hook`` will be fired after all existing ``forward_pre`` hooks         on this :class:`torch.nn.Module`. Note that global         ``forward_pre`` hooks registered with         :func:`register_module_forward_pre_hook` will fire before all         hooks registered by this method.         Default: ``False``     with_kwargs (bool): If true, the ``hook`` will be passed the kwargs         given to the forward function.         Default: ``False``  Returns:     :class:`torch.utils.hooks.RemovableHandle`:         a handle that can be used to remove the added hook by calling         ``handle.remove()``
 
     **Parameters**
 
-    - **hook**     (*Union[Callable[[~T, Tuple[Any, ...]], Optional[Any]], Callable[[~T, Tuple[Any, ...], Dict[str, Any]], Optional[Tuple[Any, Dict[str, Any]]]]]*)
+    - **hook**     (*Union[Callable[[~T, tuple[Any, ...]], Optional[Any]], Callable[[~T, tuple[Any, ...], dict[str, Any]], Optional[tuple[Any, dict[str, Any]]]]]*)
     - **prepend**     (*bool*)     – defaults to `False`
     - **with_kwargs**     (*bool*)     – defaults to `False`
 
@@ -351,29 +361,39 @@ Distillation loss for ColBERT model. The loss is computed with respect to the fo
 
     Register a backward hook on the module.
 
-    The hook will be called every time the gradients with respect to a module are computed, i.e. the hook will execute if and only if the gradients with respect to module outputs are computed. The hook should have the following signature::      hook(module, grad_input, grad_output) -> tuple(Tensor) or None  The :attr:`grad_input` and :attr:`grad_output` are tuples that contain the gradients with respect to the inputs and outputs respectively. The hook should not modify its arguments, but it can optionally return a new gradient with respect to the input that will be used in place of :attr:`grad_input` in subsequent computations. :attr:`grad_input` will only correspond to the inputs given as positional arguments and all kwarg arguments are ignored. Entries in :attr:`grad_input` and :attr:`grad_output` will be ``None`` for all non-Tensor arguments.  For technical reasons, when this hook is applied to a Module, its forward function will receive a view of each Tensor passed to the Module. Similarly the caller will receive a view of each Tensor returned by the Module's forward function.  .. warning ::     Modifying inputs or outputs inplace is not allowed when using backward hooks and     will raise an error.  Args:     hook (Callable): The user-defined hook to be registered.     prepend (bool): If true, the provided ``hook`` will be fired before         all existing ``backward`` hooks on this         :class:`torch.nn.modules.Module`. Otherwise, the provided         ``hook`` will be fired after all existing ``backward`` hooks on         this :class:`torch.nn.modules.Module`. Note that global         ``backward`` hooks registered with         :func:`register_module_full_backward_hook` will fire before         all hooks registered by this method.  Returns:     :class:`torch.utils.hooks.RemovableHandle`:         a handle that can be used to remove the added hook by calling         ``handle.remove()``
+    The hook will be called every time the gradients with respect to a module are computed, and its firing rules are as follows:      1. Ordinarily, the hook fires when the gradients are computed with respect to the module inputs.     2. If none of the module inputs require gradients, the hook will fire when the gradients are computed        with respect to module outputs.     3. If none of the module outputs require gradients, then the hooks will not fire.  The hook should have the following signature::      hook(module, grad_input, grad_output) -> tuple(Tensor) or None  The :attr:`grad_input` and :attr:`grad_output` are tuples that contain the gradients with respect to the inputs and outputs respectively. The hook should not modify its arguments, but it can optionally return a new gradient with respect to the input that will be used in place of :attr:`grad_input` in subsequent computations. :attr:`grad_input` will only correspond to the inputs given as positional arguments and all kwarg arguments are ignored. Entries in :attr:`grad_input` and :attr:`grad_output` will be ``None`` for all non-Tensor arguments.  For technical reasons, when this hook is applied to a Module, its forward function will receive a view of each Tensor passed to the Module. Similarly the caller will receive a view of each Tensor returned by the Module's forward function.  .. warning ::     Modifying inputs or outputs inplace is not allowed when using backward hooks and     will raise an error.  Args:     hook (Callable): The user-defined hook to be registered.     prepend (bool): If true, the provided ``hook`` will be fired before         all existing ``backward`` hooks on this         :class:`torch.nn.Module`. Otherwise, the provided         ``hook`` will be fired after all existing ``backward`` hooks on         this :class:`torch.nn.Module`. Note that global         ``backward`` hooks registered with         :func:`register_module_full_backward_hook` will fire before         all hooks registered by this method.  Returns:     :class:`torch.utils.hooks.RemovableHandle`:         a handle that can be used to remove the added hook by calling         ``handle.remove()``
 
     **Parameters**
 
-    - **hook**     (*Callable[[ForwardRef('Module'), Union[Tuple[torch.Tensor, ...], torch.Tensor], Union[Tuple[torch.Tensor, ...], torch.Tensor]], Union[NoneType, Tuple[torch.Tensor, ...], torch.Tensor]]*)
+    - **hook**     (*Callable[[ForwardRef('Module'), Union[tuple[torch.Tensor, ...], torch.Tensor], Union[tuple[torch.Tensor, ...], torch.Tensor]], Union[NoneType, tuple[torch.Tensor, ...], torch.Tensor]]*)
     - **prepend**     (*bool*)     – defaults to `False`
 
 ???- note "register_full_backward_pre_hook"
 
     Register a backward pre-hook on the module.
 
-    The hook will be called every time the gradients for the module are computed. The hook should have the following signature::      hook(module, grad_output) -> tuple[Tensor] or None  The :attr:`grad_output` is a tuple. The hook should not modify its arguments, but it can optionally return a new gradient with respect to the output that will be used in place of :attr:`grad_output` in subsequent computations. Entries in :attr:`grad_output` will be ``None`` for all non-Tensor arguments.  For technical reasons, when this hook is applied to a Module, its forward function will receive a view of each Tensor passed to the Module. Similarly the caller will receive a view of each Tensor returned by the Module's forward function.  .. warning ::     Modifying inputs inplace is not allowed when using backward hooks and     will raise an error.  Args:     hook (Callable): The user-defined hook to be registered.     prepend (bool): If true, the provided ``hook`` will be fired before         all existing ``backward_pre`` hooks on this         :class:`torch.nn.modules.Module`. Otherwise, the provided         ``hook`` will be fired after all existing ``backward_pre`` hooks         on this :class:`torch.nn.modules.Module`. Note that global         ``backward_pre`` hooks registered with         :func:`register_module_full_backward_pre_hook` will fire before         all hooks registered by this method.  Returns:     :class:`torch.utils.hooks.RemovableHandle`:         a handle that can be used to remove the added hook by calling         ``handle.remove()``
+    The hook will be called every time the gradients for the module are computed. The hook should have the following signature::      hook(module, grad_output) -> tuple[Tensor] or None  The :attr:`grad_output` is a tuple. The hook should not modify its arguments, but it can optionally return a new gradient with respect to the output that will be used in place of :attr:`grad_output` in subsequent computations. Entries in :attr:`grad_output` will be ``None`` for all non-Tensor arguments.  For technical reasons, when this hook is applied to a Module, its forward function will receive a view of each Tensor passed to the Module. Similarly the caller will receive a view of each Tensor returned by the Module's forward function.  .. warning ::     Modifying inputs inplace is not allowed when using backward hooks and     will raise an error.  Args:     hook (Callable): The user-defined hook to be registered.     prepend (bool): If true, the provided ``hook`` will be fired before         all existing ``backward_pre`` hooks on this         :class:`torch.nn.Module`. Otherwise, the provided         ``hook`` will be fired after all existing ``backward_pre`` hooks         on this :class:`torch.nn.Module`. Note that global         ``backward_pre`` hooks registered with         :func:`register_module_full_backward_pre_hook` will fire before         all hooks registered by this method.  Returns:     :class:`torch.utils.hooks.RemovableHandle`:         a handle that can be used to remove the added hook by calling         ``handle.remove()``
 
     **Parameters**
 
-    - **hook**     (*Callable[[ForwardRef('Module'), Union[Tuple[torch.Tensor, ...], torch.Tensor]], Union[NoneType, Tuple[torch.Tensor, ...], torch.Tensor]]*)
+    - **hook**     (*Callable[[ForwardRef('Module'), Union[tuple[torch.Tensor, ...], torch.Tensor]], Union[NoneType, tuple[torch.Tensor, ...], torch.Tensor]]*)
     - **prepend**     (*bool*)     – defaults to `False`
 
 ???- note "register_load_state_dict_post_hook"
 
-    Register a post hook to be run after module's ``load_state_dict`` is called.
+    Register a post-hook to be run after module's :meth:`~nn.Module.load_state_dict` is called.
 
     It should have the following signature::     hook(module, incompatible_keys) -> None  The ``module`` argument is the current module that this hook is registered on, and the ``incompatible_keys`` argument is a ``NamedTuple`` consisting of attributes ``missing_keys`` and ``unexpected_keys``. ``missing_keys`` is a ``list`` of ``str`` containing the missing keys and ``unexpected_keys`` is a ``list`` of ``str`` containing the unexpected keys.  The given incompatible_keys can be modified inplace if needed.  Note that the checks performed when calling :func:`load_state_dict` with ``strict=True`` are affected by modifications the hook makes to ``missing_keys`` or ``unexpected_keys``, as expected. Additions to either set of keys will result in an error being thrown when ``strict=True``, and clearing out both missing and unexpected keys will avoid an error.  Returns:     :class:`torch.utils.hooks.RemovableHandle`:         a handle that can be used to remove the added hook by calling         ``handle.remove()``
+
+    **Parameters**
+
+    - **hook**
+
+???- note "register_load_state_dict_pre_hook"
+
+    Register a pre-hook to be run before module's :meth:`~nn.Module.load_state_dict` is called.
+
+    It should have the following signature::     hook(module, state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs) -> None  # noqa: B950  Arguments:     hook (Callable): Callable hook that will be invoked before         loading the state dict.
 
     **Parameters**
 
@@ -399,11 +419,21 @@ Distillation loss for ColBERT model. The loss is computed with respect to the fo
     - **name**     (*str*)
     - **param**     (*Optional[torch.nn.parameter.Parameter]*)
 
+???- note "register_state_dict_post_hook"
+
+    Register a post-hook for the :meth:`~torch.nn.Module.state_dict` method.
+
+    It should have the following signature::     hook(module, state_dict, prefix, local_metadata) -> None  The registered hooks can modify the ``state_dict`` inplace.
+
+    **Parameters**
+
+    - **hook**
+
 ???- note "register_state_dict_pre_hook"
 
     Register a pre-hook for the :meth:`~torch.nn.Module.state_dict` method.
 
-    These hooks will be called with arguments: ``self``, ``prefix``, and ``keep_vars`` before calling ``state_dict`` on ``self``. The registered hooks can be used to perform pre-processing before the ``state_dict`` call is made.
+    It should have the following signature::     hook(module, prefix, keep_vars) -> None  The registered hooks can be used to perform pre-processing before the ``state_dict`` call is made.
 
     **Parameters**
 
@@ -428,6 +458,18 @@ Distillation loss for ColBERT model. The loss is computed with respect to the fo
     **Parameters**
 
     - **state**     (*Any*)
+
+???- note "set_submodule"
+
+    Set the submodule given by ``target`` if it exists, otherwise throw an error.
+
+    .. note::     If ``strict`` is set to ``False`` (default), the method will replace an existing submodule     or create a new submodule if the parent module exists. If ``strict`` is set to ``True``,     the method will only attempt to replace an existing submodule and throw an error if     the submodule does not exist.  For example, let's say you have an ``nn.Module`` ``A`` that looks like this:  .. code-block:: text      A(         (net_b): Module(             (net_c): Module(                 (conv): Conv2d(3, 3, 3)             )             (linear): Linear(3, 3)         )     )  (The diagram shows an ``nn.Module`` ``A``. ``A`` has a nested submodule ``net_b``, which itself has two submodules ``net_c`` and ``linear``. ``net_c`` then has a submodule ``conv``.)  To override the ``Conv2d`` with a new submodule ``Linear``, you could call ``set_submodule("net_b.net_c.conv", nn.Linear(1, 1))`` where ``strict`` could be ``True`` or ``False``  To add a new submodule ``Conv2d`` to the existing ``net_b`` module, you would call ``set_submodule("net_b.conv", nn.Conv2d(1, 1, 1))``.  In the above if you set ``strict=True`` and call ``set_submodule("net_b.conv", nn.Conv2d(1, 1, 1), strict=True)``, an AttributeError will be raised because ``net_b`` does not have a submodule named ``conv``.  Args:     target: The fully-qualified string name of the submodule         to look for. (See above example for how to specify a         fully-qualified string.)     module: The module to set the submodule to.     strict: If ``False``, the method will replace an existing submodule         or create a new submodule if the parent module exists. If ``True``,         the method will only attempt to replace an existing submodule and throw an error         if the submodule doesn't already exist.  Raises:     ValueError: If the ``target`` string is empty or if ``module`` is not an instance of ``nn.Module``.     AttributeError: If at any point along the path resulting from         the ``target`` string the (sub)path resolves to a non-existent         attribute name or an object that is not an instance of ``nn.Module``.
+
+    **Parameters**
+
+    - **target**     (*str*)
+    - **module**     (*'Module'*)
+    - **strict**     (*bool*)     – defaults to `False`
 
 ???- note "share_memory"
 
@@ -473,7 +515,7 @@ Distillation loss for ColBERT model. The loss is computed with respect to the fo
 
     Set the module in training mode.
 
-    This has any effect only on certain modules. See documentations of particular modules for details of their behaviors in training/evaluation mode, if they are affected, e.g. :class:`Dropout`, :class:`BatchNorm`, etc.  Args:     mode (bool): whether to set training mode (``True``) or evaluation                  mode (``False``). Default: ``True``.  Returns:     Module: self
+    This has an effect only on certain modules. See the documentation of particular modules for details of their behaviors in training/evaluation mode, i.e., whether they are affected, e.g. :class:`Dropout`, :class:`BatchNorm`, etc.  Args:     mode (bool): whether to set training mode (``True``) or evaluation                  mode (``False``). Default: ``True``.  Returns:     Module: self
 
     **Parameters**
 
@@ -497,7 +539,7 @@ Distillation loss for ColBERT model. The loss is computed with respect to the fo
 
     **Parameters**
 
-    - **device**     (*Union[int, torch.device, NoneType]*)     – defaults to `None`
+    - **device**     (*Union[torch.device, int, NoneType]*)     – defaults to `None`
 
 ???- note "zero_grad"
 

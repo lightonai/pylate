@@ -6,13 +6,13 @@ Iterate over a list of elements by batch.
 
 ## Parameters
 
-- **X** (*list[str]*)
+- **X** (*'list[str]'*)
 
-- **batch_size** (*int*)
+- **batch_size** (*'int'*)
 
-- **tqdm_bar** (*bool*) – defaults to `True`
+- **tqdm_bar** (*'bool'*) – defaults to `True`
 
-- **desc** (*str*) – defaults to ``
+- **desc** (*'str'*) – defaults to ``
 
 
 

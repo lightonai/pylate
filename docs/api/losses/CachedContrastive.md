@@ -1,6 +1,6 @@
-# Contrastive
+# CachedContrastive
 
-Contrastive loss. Expects as input two texts and a label of either 0 or 1. If the label == 1, then the distance between the two embeddings is reduced. If the label == 0, then the distance between the embeddings is increased.
+A cached, in-batch negatives contrastive loss for PyLate, analogous to SentenceTransformers' CachedMultipleNegativesRankingLoss. This allows large effective batch sizes by chunking the embeddings pass and caching gradients w.r.t. those embeddings.
 
 
 
@@ -8,22 +8,34 @@ Contrastive loss. Expects as input two texts and a label of either 0 or 1. If th
 
 - **model** (*'ColBERT'*)
 
-    ColBERT model.
+    A PyLate ColBERT model
 
-- **score_metric** – defaults to `<function colbert_scores at 0x12bc0d620>`
+- **score_metric** (*'Callable'*) – defaults to `<function colbert_scores at 0x12bc0d620>`
 
     ColBERT scoring function. Defaults to colbert_scores.
 
+- **mini_batch_size** (*'int'*) – defaults to `32`
+
+    Chunk size for the forward pass. You can keep this small to avoid OOM on large batch sizes.
+
 - **size_average** (*'bool'*) – defaults to `True`
 
-    Average by the size of the mini-batch.
+    Whether to average or sum the cross-entropy loss across the mini-batch.
 
 - **gather_across_devices** (*'bool'*) – defaults to `False`
 
     Whether to gather the embeddings across devices to have more in batch negatives. We recommand making sure the sampling across GPUs use the same dataset in case of multi-dataset training to make sure the negatives are plausible.
 
+- **show_progress_bar** (*'bool'*) – defaults to `False`
+
+    Whether to show a TQDM progress bar for the embedding steps.
+
 - **temperature** (*'float'*) – defaults to `1.0`
 
+
+## Attributes
+
+- **citation**
 
 
 ## Examples
@@ -35,21 +47,21 @@ Contrastive loss. Expects as input two texts and a label of either 0 or 1. If th
 ...     model_name_or_path="sentence-transformers/all-MiniLM-L6-v2", device="cpu"
 ... )
 
->>> loss = losses.Contrastive(model=model)
+>>> loss = losses.CachedContrastive(model=model, mini_batch_size=1)
 
->>> anchor = model.tokenize([
-...     "fruits are healthy.",
+>>> anchors = model.tokenize([
+...     "fruits are healthy.", "chips are not healthy."
 ... ], is_query=True)
 
->>> positive = model.tokenize([
-...     "fruits are good for health.",
+>>> positives = model.tokenize([
+...     "fruits are good for health.", "chips are not good for health."
 ... ], is_query=False)
 
->>> negative = model.tokenize([
-...     "fruits are bad for health.",
+>>> negatives = model.tokenize([
+...     "fruits are bad for health.", "chips are good for health."
 ... ], is_query=False)
 
->>> sentence_features = [anchor, positive, negative]
+>>> sentence_features = [anchors, positives, negatives]
 
 >>> loss = loss(sentence_features=sentence_features)
 >>> assert isinstance(loss.item(), float)
@@ -104,6 +116,25 @@ Contrastive loss. Expects as input two texts and a label of either 0 or 1. If th
 
     - **recurse**     (*bool*)     – defaults to `True`
 
+???- note "calculate_loss"
+
+    Calculate the cross-entropy loss. No need to cache the gradients. Each sub-list in reps is a list of mini-batch chunk embeddings
+
+    **Parameters**
+
+    - **reps**
+    - **masks**
+    - **with_backward**     (*'bool'*)     – defaults to `False`
+
+???- note "calculate_loss_and_cache_gradients"
+
+    Calculate the cross-entropy loss and cache the gradients wrt. the embeddings.
+
+    **Parameters**
+
+    - **reps**
+    - **masks**
+
 ???- note "children"
 
     Return an iterator over immediate children modules.
@@ -146,6 +177,30 @@ Contrastive loss. Expects as input two texts and a label of either 0 or 1. If th
     .. note::     This method modifies the module in-place.  Returns:     Module: self
 
 
+???- note "embed_minibatch"
+
+    Forward pass on a slice [begin:end] of sentence_feature. If 'with_grad' is False, we run under torch.no_grad. If 'copy_random_state' is True, we create and return a RandContext so that we can exactly reproduce this forward pass later.
+
+    **Parameters**
+
+    - **sentence_feature**     (*'dict[str, Tensor]'*)
+    - **begin**     (*'int'*)
+    - **end**     (*'int'*)
+    - **with_grad**     (*'bool'*)
+    - **copy_random_state**     (*'bool'*)
+    - **random_state**     (*'RandContext | None'*)     – defaults to `None`
+
+???- note "embed_minibatch_iter"
+
+    Yields chunks of embeddings (and corresponding RandContext) for the given sentence_feature, respecting the mini_batch_size limit.
+
+    **Parameters**
+
+    - **sentence_feature**     (*'dict[str, Tensor]'*)
+    - **with_grad**     (*'bool'*)
+    - **copy_random_state**     (*'bool'*)
+    - **random_states**     (*'list[RandContext] | None'*)     – defaults to `None`
+
 ???- note "eval"
 
     Set the module in evaluation mode.
@@ -169,12 +224,12 @@ Contrastive loss. Expects as input two texts and a label of either 0 or 1. If th
 
 ???- note "forward"
 
-    Compute the Constrastive loss.
+    Compute the CachedConstrastive loss.
 
     **Parameters**
 
     - **sentence_features**     (*'Iterable[dict[str, Tensor]]'*)
-    - **labels**     (*'torch.Tensor | None'*)     – defaults to `None`
+    - **labels**     (*'Optional[Tensor]'*)     – defaults to `None`
 
 ???- note "get_buffer"
 

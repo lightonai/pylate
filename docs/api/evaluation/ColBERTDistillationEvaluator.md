@@ -6,46 +6,46 @@ ColBERT Distillation Evaluator. This class is used to monitor the distillation p
 
 ## Parameters
 
-- **queries** (*list[str]*)
+- **queries** (*'list[str]'*)
 
     Set of queries.
 
-- **documents** (*list[list[str]]*)
+- **documents** (*'list[list[str]]'*)
 
     Set of documents. Each query has a list of documents. Each document is a list of strings. Number of documents should be the same for each query.
 
-- **scores** (*list[list[float]]*)
+- **scores** (*'list[list[float]]'*)
 
     The scores associated with the documents. Each query / documents pairs has a list of scores.
 
-- **name** (*str*) – defaults to ``
+- **name** (*'str'*) – defaults to ``
 
     The name of the evaluator.
 
-- **batch_size** (*int*) – defaults to `16`
+- **batch_size** (*'int'*) – defaults to `16`
 
     The batch size.
 
-- **show_progress_bar** (*bool*) – defaults to `False`
+- **show_progress_bar** (*'bool'*) – defaults to `False`
 
     Whether to show the progress bar.
 
-- **write_csv** (*bool*) – defaults to `True`
+- **write_csv** (*'bool'*) – defaults to `True`
 
     Whether to write the results to a CSV file.
 
-- **truncate_dim** (*int | None*) – defaults to `None`
+- **truncate_dim** (*'int | None'*) – defaults to `None`
 
     The dimension to truncate the embeddings.
 
-- **normalize_scores** (*bool*) – defaults to `True`
+- **normalize_scores** (*'bool'*) – defaults to `True`
 
 
 ## Attributes
 
 - **description**
 
-    Returns a human-readable description of the evaluator: BinaryClassificationEvaluator -> Binary Classification  1. Remove "Evaluator" from the class name 2. Add a space before every capital letter
+    Returns a human-readable description of the evaluator: BinaryClassificationEvaluator -> Binary Classification  1. Replace "CE" prefix with "CrossEncoder" 2. Remove "Evaluator" from the class name 3. Add a space before every capital letter
 
 
 ## Examples
@@ -99,10 +99,15 @@ ColBERT Distillation Evaluator. This class is used to monitor the distillation p
 
     **Parameters**
 
-    - **model**     (*'SentenceTransformer'*)
-    - **output_path**     (*str*)     – defaults to `None`
-    - **epoch**     (*int*)     – defaults to `-1`
-    - **steps**     (*int*)     – defaults to `-1`
+    - **model**     (*"'SentenceTransformer'"*)
+    - **output_path**     (*'str'*)     – defaults to `None`
+    - **epoch**     (*'int'*)     – defaults to `-1`
+    - **steps**     (*'int'*)     – defaults to `-1`
+
+???- note "get_config_dict"
+
+    Return a dictionary with all meaningful configuration values of the evaluator to store in the model card.
+
 
 ???- note "prefix_name_to_metrics"
 

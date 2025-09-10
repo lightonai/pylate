@@ -24,7 +24,7 @@ with open("docs/index.md", mode="r") as file:
     content = file.read()
 
 with open("docs/index.md", mode="w") as file:
-    file.write(content.replace("docs/img/logo.png", "img/logo.png"))
+    file.write(content)
 
 
 def paragraph(text):
