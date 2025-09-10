@@ -6,109 +6,113 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
 ## Parameters
 
-- **model_name_or_path** (*str | None*) – defaults to `None`
+- **model_name_or_path** (*'str | None'*) – defaults to `None`
 
     If it is a filepath on disc, it loads the model from that path. If it is not a path, it first tries to download a pre-trained SentenceTransformer model. If that fails, tries to construct a model from the Hugging Face Hub with that name.
 
-- **modules** (*Optional[Iterable[torch.nn.modules.module.Module]]*) – defaults to `None`
+- **modules** (*'Optional[Iterable[nn.Module]]'*) – defaults to `None`
 
     A list of torch Modules that should be called sequentially, can be used to create custom SentenceTransformer models from scratch.
 
-- **device** (*str | None*) – defaults to `None`
+- **device** (*'str | None'*) – defaults to `None`
 
     Device (like "cuda", "cpu", "mps", "npu") that should be used for computation. If None, checks if a GPU can be used.
 
-- **prompts** (*dict[str, str] | None*) – defaults to `None`
+- **prompts** (*'dict[str, str] | None'*) – defaults to `None`
 
     A dictionary with prompts for the model. The key is the prompt name, the value is the prompt text. The prompt text will be prepended before any text to encode. For example: `{"query": "query: ", "passage": "passage: "}` or `{"clustering": "Identify the main category based on the titles in "}`.
 
-- **default_prompt_name** (*str | None*) – defaults to `None`
+- **default_prompt_name** (*'str | None'*) – defaults to `None`
 
     The name of the prompt that should be used by default. If not set, no prompt will be applied.
 
-- **similarity_fn_name** (*Union[str, [scores.SimilarityFunction](../../scores/SimilarityFunction), NoneType]*) – defaults to `None`
+- **similarity_fn_name** (*'Optional[str | SimilarityFunction]'*) – defaults to `None`
 
     The name of the similarity function to use. Valid options are "cosine", "dot", "euclidean", and "manhattan". If not set, it is automatically set to "cosine" if `similarity` or `similarity_pairwise` are called while `model.similarity_fn_name` is still `None`.
 
-- **cache_folder** (*str | None*) – defaults to `None`
+- **cache_folder** (*'str | None'*) – defaults to `None`
 
     Path to store models. Can also be set by the SENTENCE_TRANSFORMERS_HOME environment variable.
 
-- **trust_remote_code** (*bool*) – defaults to `False`
+- **trust_remote_code** (*'bool'*) – defaults to `False`
 
     Whether or not to allow for custom models defined on the Hub in their own modeling files. This option should only be set to True for repositories you trust and in which you have read the code, as it will execute code present on the Hub on your local machine.
 
-- **revision** (*str | None*) – defaults to `None`
+- **revision** (*'str | None'*) – defaults to `None`
 
     The specific model version to use. It can be a branch name, a tag name, or a commit id, for a stored model on Hugging Face.
 
-- **local_files_only** (*bool*) – defaults to `False`
+- **local_files_only** (*'bool'*) – defaults to `False`
 
     Whether or not to only look at local files (i.e., do not try to download the model).
 
-- **token** (*bool | str | None*) – defaults to `None`
+- **token** (*'bool | str | None'*) – defaults to `None`
 
     Hugging Face authentication token to download private models.
 
-- **use_auth_token** (*bool | str | None*) – defaults to `None`
+- **use_auth_token** (*'bool | str | None'*) – defaults to `None`
 
     Deprecated argument. Please use `token` instead.
 
-- **truncate_dim** (*int | None*) – defaults to `None`
+- **truncate_dim** (*'int | None'*) – defaults to `None`
 
     The dimension to truncate sentence embeddings to. `None` does no truncation. Truncation is only applicable during inference when :meth:`SentenceTransformer.encode` is called.
 
-- **embedding_size** (*int | None*) – defaults to `None`
+- **embedding_size** (*'int | None'*) – defaults to `None`
 
     The output size of the projection layer. Default to 128.
 
-- **bias** (*bool*) – defaults to `False`
+- **bias** (*'bool'*) – defaults to `False`
 
-- **query_prefix** (*str | None*) – defaults to `None`
+- **query_prefix** (*'str | None'*) – defaults to `None`
 
     Prefix to add to the queries.
 
-- **document_prefix** (*str | None*) – defaults to `None`
+- **document_prefix** (*'str | None'*) – defaults to `None`
 
     Prefix to add to the documents.
 
-- **add_special_tokens** (*bool*) – defaults to `True`
+- **add_special_tokens** (*'bool'*) – defaults to `True`
 
     Add the prefix to the inputs.
 
-- **truncation** (*bool*) – defaults to `True`
+- **truncation** (*'bool'*) – defaults to `True`
 
     Truncate the inputs to the encoder max lengths or use sliding window encoding.
 
-- **query_length** (*int | None*) – defaults to `None`
+- **query_length** (*'int | None'*) – defaults to `None`
 
     The length of the query to truncate/pad to with mask tokens. If set, will override the config value. Default to 32.
 
-- **document_length** (*int | None*) – defaults to `None`
+- **document_length** (*'int | None'*) – defaults to `None`
 
     The max length of the document to truncate. If set, will override the config value. Default to 180.
 
-- **attend_to_expansion_tokens** (*bool*) – defaults to `False`
+- **do_query_expansion** (*'bool | None'*) – defaults to `None`
+
+    Whether to do query expansion. If True, will pad the query to the `query_length` with mask tokens. Default to True.
+
+- **attend_to_expansion_tokens** (*'bool | None'*) – defaults to `None`
 
     Whether to attend to the expansion tokens in the attention layers model. If False, the original tokens will not only attend to the expansion tokens, only the expansion tokens will attend to the original tokens. Default is False (as in the original ColBERT codebase).
 
-- **skiplist_words** (*list[str] | None*) – defaults to `None`
+- **skiplist_words** (*'list[str] | None'*) – defaults to `None`
 
     A list of words to skip from the documents scoring (note that these tokens are used for encoding and are only skipped during the scoring). Default is the list of string.punctuation.
 
-- **model_kwargs** (*dict | None*) – defaults to `None`
+- **model_kwargs** (*'dict | None'*) – defaults to `None`
 
     Additional model configuration parameters to be passed to the Huggingface Transformers model. Particularly useful options are:  - ``torch_dtype``: Override the default `torch.dtype` and load the model under a specific `dtype`. The     different options are:          1. ``torch.float16``, ``torch.bfloat16`` or ``torch.float``: load in a specified ``dtype``,         ignoring the model's ``config.torch_dtype`` if one exists. If not specified - the model will get         loaded in ``torch.float`` (fp32).          2. ``"auto"`` - A ``torch_dtype`` entry in the ``config.json`` file of the model will be attempted         to be used. If this entry isn't found then next check the ``dtype`` of the first weight in the         checkpoint that's of a floating point type and use that as ``dtype``. This will load the model using         the ``dtype`` it was saved in at the end of the training. It can't be used as an indicator of how the         model was trained. Since it could be trained in one of half precision dtypes, but saved in fp32. - ``attn_implementation``: The attention implementation to use in the model (if relevant). Can be any of     `"eager"` (manual implementation of the attention), `"sdpa"` (using `F.scaled_dot_product_attention     <https://pytorch.org/docs/master/generated/torch.nn.functional.scaled_dot_product_attention.html>`_),     or `"flash_attention_2"` (using `Dao-AILab/flash-attention     <https://github.com/Dao-AILab/flash-attention>`_). By default, if available, SDPA will be used for     torch>=2.1.1. The default is otherwise the manual `"eager"` implementation.  See the `PreTrainedModel.from_pretrained <https://huggingface.co/docs/transformers/en/main_classes/model#transformers.PreTrainedModel.from_pretrained>`_ documentation for more details.
 
-- **tokenizer_kwargs** (*dict | None*) – defaults to `None`
+- **tokenizer_kwargs** (*'dict | None'*) – defaults to `None`
 
     Additional tokenizer configuration parameters to be passed to the Huggingface Transformers tokenizer. See the `AutoTokenizer.from_pretrained <https://huggingface.co/docs/transformers/en/model_doc/auto#transformers.AutoTokenizer.from_pretrained>`_ documentation for more details.
 
-- **config_kwargs** (*dict | None*) – defaults to `None`
+- **config_kwargs** (*'dict | None'*) – defaults to `None`
 
     Additional model configuration parameters to be passed to the Huggingface Transformers config. See the `AutoConfig.from_pretrained <https://huggingface.co/docs/transformers/en/model_doc/auto#transformers.AutoConfig.from_pretrained>`_ documentation for more details.
 
-- **model_card_data** (*pylate.hf_hub.model_card.PylateModelCardData | None*) – defaults to `None`
+- **model_card_data** (*'PylateModelCardData | None'*) – defaults to `None`
 
     A model card data object that contains information about the model. This is used to generate a model card when saving the model. If not set, a default model card data object is created.
 
@@ -125,7 +129,7 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
 - **similarity**
 
-    Compute the similarity between two collections of embeddings. The output will be a matrix with the similarity scores between all embeddings from the first parameter and all embeddings from the second parameter. This differs from `similarity_pairwise` which computes the similarity between each pair of embeddings.  Args:     embeddings1 (Union[Tensor, ndarray]): [num_embeddings_1, embedding_dim] or [embedding_dim]-shaped numpy array or torch tensor.     embeddings2 (Union[Tensor, ndarray]): [num_embeddings_2, embedding_dim] or [embedding_dim]-shaped numpy array or torch tensor.  Returns:     Tensor: A [num_embeddings_1, num_embeddings_2]-shaped torch tensor with similarity scores.  Example:     ::          >>> model = SentenceTransformer("all-mpnet-base-v2")         >>> sentences = [         ...     "The weather is so nice!",         ...     "It's so sunny outside.",         ...     "He's driving to the movie theater.",         ...     "She's going to the cinema.",         ... ]         >>> embeddings = model.encode(sentences, normalize_embeddings=True)         >>> model.similarity(embeddings, embeddings)         tensor([[1.0000, 0.7235, 0.0290, 0.1309],                 [0.7235, 1.0000, 0.0613, 0.1129],                 [0.0290, 0.0613, 1.0000, 0.5027],                 [0.1309, 0.1129, 0.5027, 1.0000]])         >>> model.similarity_fn_name         "cosine"         >>> model.similarity_fn_name = "euclidean"         >>> model.similarity(embeddings, embeddings)         tensor([[-0.0000, -0.7437, -1.3935, -1.3184],                 [-0.7437, -0.0000, -1.3702, -1.3320],                 [-1.3935, -1.3702, -0.0000, -0.9973],                 [-1.3184, -1.3320, -0.9973, -0.0000]])
+    Compute the similarity between two collections of embeddings. The output will be a matrix with the similarity scores between all embeddings from the first parameter and all embeddings from the second parameter. This differs from `similarity_pairwise` which computes the similarity between each pair of embeddings. This method supports only embeddings with fp32 precision and does not accommodate quantized embeddings.  Args:     embeddings1 (Union[Tensor, ndarray]): [num_embeddings_1, embedding_dim] or [embedding_dim]-shaped numpy array or torch tensor.     embeddings2 (Union[Tensor, ndarray]): [num_embeddings_2, embedding_dim] or [embedding_dim]-shaped numpy array or torch tensor.  Returns:     Tensor: A [num_embeddings_1, num_embeddings_2]-shaped torch tensor with similarity scores.  Example:     ::          >>> model = SentenceTransformer("all-mpnet-base-v2")         >>> sentences = [         ...     "The weather is so nice!",         ...     "It's so sunny outside.",         ...     "He's driving to the movie theater.",         ...     "She's going to the cinema.",         ... ]         >>> embeddings = model.encode(sentences, normalize_embeddings=True)         >>> model.similarity(embeddings, embeddings)         tensor([[1.0000, 0.7235, 0.0290, 0.1309],                 [0.7235, 1.0000, 0.0613, 0.1129],                 [0.0290, 0.0613, 1.0000, 0.5027],                 [0.1309, 0.1129, 0.5027, 1.0000]])         >>> model.similarity_fn_name         "cosine"         >>> model.similarity_fn_name = "euclidean"         >>> model.similarity(embeddings, embeddings)         tensor([[-0.0000, -0.7437, -1.3935, -1.3184],                 [-0.7437, -0.0000, -1.3702, -1.3320],                 [-1.3935, -1.3702, -0.0000, -0.9973],                 [-1.3184, -1.3320, -0.9973, -0.0000]])
 
 - **similarity_fn_name**
 
@@ -133,7 +137,7 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
 - **similarity_pairwise**
 
-    Compute the similarity between two collections of embeddings. The output will be a vector with the similarity scores between each pair of embeddings.  Args:     embeddings1 (Union[Tensor, ndarray]): [num_embeddings, embedding_dim] or [embedding_dim]-shaped numpy array or torch tensor.     embeddings2 (Union[Tensor, ndarray]): [num_embeddings, embedding_dim] or [embedding_dim]-shaped numpy array or torch tensor.  Returns:     Tensor: A [num_embeddings]-shaped torch tensor with pairwise similarity scores.  Example:     ::          >>> model = SentenceTransformer("all-mpnet-base-v2")         >>> sentences = [         ...     "The weather is so nice!",         ...     "It's so sunny outside.",         ...     "He's driving to the movie theater.",         ...     "She's going to the cinema.",         ... ]         >>> embeddings = model.encode(sentences, normalize_embeddings=True)         >>> model.similarity_pairwise(embeddings[::2], embeddings[1::2])         tensor([0.7235, 0.5027])         >>> model.similarity_fn_name         "cosine"         >>> model.similarity_fn_name = "euclidean"         >>> model.similarity_pairwise(embeddings[::2], embeddings[1::2])         tensor([-0.7437, -0.9973])
+    Compute the similarity between two collections of embeddings. The output will be a vector with the similarity scores between each pair of embeddings. This method supports only embeddings with fp32 precision and does not accommodate quantized embeddings.  Args:     embeddings1 (Union[Tensor, ndarray]): [num_embeddings, embedding_dim] or [embedding_dim]-shaped numpy array or torch tensor.     embeddings2 (Union[Tensor, ndarray]): [num_embeddings, embedding_dim] or [embedding_dim]-shaped numpy array or torch tensor.  Returns:     Tensor: A [num_embeddings]-shaped torch tensor with pairwise similarity scores.  Example:     ::          >>> model = SentenceTransformer("all-mpnet-base-v2")         >>> sentences = [         ...     "The weather is so nice!",         ...     "It's so sunny outside.",         ...     "He's driving to the movie theater.",         ...     "She's going to the cinema.",         ... ]         >>> embeddings = model.encode(sentences, normalize_embeddings=True)         >>> model.similarity_pairwise(embeddings[::2], embeddings[1::2])         tensor([0.7235, 0.5027])         >>> model.similarity_fn_name         "cosine"         >>> model.similarity_fn_name = "euclidean"         >>> model.similarity_pairwise(embeddings[::2], embeddings[1::2])         tensor([-0.7437, -0.9973])
 
 - **tokenizer**
 
@@ -235,11 +239,11 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     Append a given module to the end.
 
-    Args:     module (nn.Module): module to append
+    Args:     module (nn.Module): module to append  Example::      >>> import torch.nn as nn     >>> n = nn.Sequential(nn.Linear(1, 2), nn.Linear(2, 3))     >>> n.append(nn.Linear(3, 4))     Sequential(         (0): Linear(in_features=1, out_features=2, bias=True)         (1): Linear(in_features=2, out_features=3, bias=True)         (2): Linear(in_features=3, out_features=4, bias=True)     )
 
     **Parameters**
 
-    - **module**     (*torch.nn.modules.module.Module*)
+    - **module**     (*'Module'*)
 
 ???- note "apply"
 
@@ -299,11 +303,11 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     Move all model parameters and buffers to the GPU.
 
-    This also makes associated parameters and buffers different objects. So it should be called before constructing optimizer if the module will live on GPU while being optimized.  .. note::     This method modifies the module in-place.  Args:     device (int, optional): if specified, all parameters will be         copied to that device  Returns:     Module: self
+    This also makes associated parameters and buffers different objects. So it should be called before constructing the optimizer if the module will live on GPU while being optimized.  .. note::     This method modifies the module in-place.  Args:     device (int, optional): if specified, all parameters will be         copied to that device  Returns:     Module: self
 
     **Parameters**
 
-    - **device**     (*Union[int, torch.device, NoneType]*)     – defaults to `None`
+    - **device**     (*Union[torch.device, int, NoneType]*)     – defaults to `None`
         Device (like "cuda", "cpu", "mps", "npu") that should be used for computation. If None, checks if a GPU can be used.
 
 ???- note "disable_adapters"
@@ -329,21 +333,21 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **sentences**     (*str | list[str]*)
-    - **prompt_name**     (*str | None*)     – defaults to `None`
-    - **prompt**     (*str | None*)     – defaults to `None`
-    - **batch_size**     (*int*)     – defaults to `32`
-    - **show_progress_bar**     (*bool*)     – defaults to `None`
-    - **precision**     (*Literal['float32', 'int8', 'uint8', 'binary', 'ubinary']*)     – defaults to `float32`
-    - **convert_to_numpy**     (*bool*)     – defaults to `True`
-    - **convert_to_tensor**     (*bool*)     – defaults to `False`
-    - **padding**     (*bool*)     – defaults to `False`
-    - **device**     (*str*)     – defaults to `None`
+    - **sentences**     (*'str | list[str]'*)
+    - **prompt_name**     (*'str | None'*)     – defaults to `None`
+    - **prompt**     (*'str | None'*)     – defaults to `None`
+    - **batch_size**     (*'int'*)     – defaults to `32`
+    - **show_progress_bar**     (*'bool'*)     – defaults to `None`
+    - **precision**     (*"Literal['float32', 'int8', 'uint8', 'binary', 'ubinary']"*)     – defaults to `float32`
+    - **convert_to_numpy**     (*'bool'*)     – defaults to `True`
+    - **convert_to_tensor**     (*'bool'*)     – defaults to `False`
+    - **padding**     (*'bool'*)     – defaults to `False`
+    - **device**     (*'str'*)     – defaults to `None`
         Device (like "cuda", "cpu", "mps", "npu") that should be used for computation. If None, checks if a GPU can be used.
-    - **normalize_embeddings**     (*bool*)     – defaults to `True`
-    - **is_query**     (*bool*)     – defaults to `True`
-    - **pool_factor**     (*int*)     – defaults to `1`
-    - **protected_tokens**     (*int*)     – defaults to `1`
+    - **normalize_embeddings**     (*'bool'*)     – defaults to `True`
+    - **is_query**     (*'bool'*)     – defaults to `True`
+    - **pool_factor**     (*'int'*)     – defaults to `1`
+    - **protected_tokens**     (*'int'*)     – defaults to `1`
 
 ???- note "encode_multi_process"
 
@@ -351,24 +355,24 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **sentences**     (*list[str]*)
-    - **pool**     (*dict[str, object]*)
-    - **prompt_name**     (*str | None*)     – defaults to `None`
-    - **prompt**     (*str | None*)     – defaults to `None`
-    - **batch_size**     (*int*)     – defaults to `32`
-    - **chunk_size**     (*int*)     – defaults to `None`
-    - **precision**     (*Literal['float32', 'int8', 'uint8', 'binary', 'ubinary']*)     – defaults to `float32`
-    - **normalize_embeddings**     (*bool*)     – defaults to `True`
-    - **padding**     (*bool*)     – defaults to `False`
-    - **is_query**     (*bool*)     – defaults to `True`
-    - **pool_factor**     (*int*)     – defaults to `1`
-    - **protected_tokens**     (*int*)     – defaults to `1`
+    - **sentences**     (*'list[str]'*)
+    - **pool**     (*'dict[str, object]'*)
+    - **prompt_name**     (*'str | None'*)     – defaults to `None`
+    - **prompt**     (*'str | None'*)     – defaults to `None`
+    - **batch_size**     (*'int'*)     – defaults to `32`
+    - **chunk_size**     (*'int'*)     – defaults to `None`
+    - **precision**     (*"Literal['float32', 'int8', 'uint8', 'binary', 'ubinary']"*)     – defaults to `float32`
+    - **normalize_embeddings**     (*'bool'*)     – defaults to `True`
+    - **padding**     (*'bool'*)     – defaults to `False`
+    - **is_query**     (*'bool'*)     – defaults to `True`
+    - **pool_factor**     (*'int'*)     – defaults to `1`
+    - **protected_tokens**     (*'int'*)     – defaults to `1`
 
 ???- note "eval"
 
     Set the module in evaluation mode.
 
-    This has any effect only on certain modules. See documentations of particular modules for details of their behaviors in training/evaluation mode, if they are affected, e.g. :class:`Dropout`, :class:`BatchNorm`, etc.  This is equivalent with :meth:`self.train(False) <torch.nn.Module.train>`.  See :ref:`locally-disable-grad-doc` for a comparison between `.eval()` and several similar mechanisms that may be confused with it.  Returns:     Module: self
+    This has an effect only on certain modules. See the documentation of particular modules for details of their behaviors in training/evaluation mode, i.e. whether they are affected, e.g. :class:`Dropout`, :class:`BatchNorm`, etc.  This is equivalent with :meth:`self.train(False) <torch.nn.Module.train>`.  See :ref:`locally-disable-grad-doc` for a comparison between `.eval()` and several similar mechanisms that may be confused with it.  Returns:     Module: self
 
 
 ???- note "evaluate"
@@ -384,9 +388,17 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
 ???- note "extend"
 
+    Extends the current Sequential container with layers from another Sequential container.
+
+    Args:     sequential (Sequential): A Sequential container whose layers will be added to the current container.  Example::      >>> import torch.nn as nn     >>> n = nn.Sequential(nn.Linear(1, 2), nn.Linear(2, 3))     >>> other = nn.Sequential(nn.Linear(3, 4), nn.Linear(4, 5))     >>> n.extend(other) # or `n + other`     Sequential(         (0): Linear(in_features=1, out_features=2, bias=True)         (1): Linear(in_features=2, out_features=3, bias=True)         (2): Linear(in_features=3, out_features=4, bias=True)         (3): Linear(in_features=4, out_features=5, bias=True)     )
+
+    **Parameters**
+
+    - **sequential**     (*'Iterable[Module]'*)
+
 ???- note "extra_repr"
 
-    Set the extra representation of the module.
+    Return the extra representation of the module.
 
     To print customized extra information, you should re-implement this method in your own modules. Both single-line and multi-line strings are acceptable.
 
@@ -395,7 +407,7 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     Deprecated training method from before Sentence Transformers v3.0, it is recommended to use :class:`~sentence_transformers.trainer.SentenceTransformerTrainer` instead. This method uses :class:`~sentence_transformers.trainer.SentenceTransformerTrainer` behind the scenes, but does not provide as much flexibility as the Trainer itself.
 
-    This training approach uses a list of DataLoaders and Loss functions to train the model. Each DataLoader is sampled in turn for one batch. We sample only as many batches from each DataLoader as there are in the smallest one to make sure of equal training with each dataset, i.e. round robin sampling.  This method should produce equivalent results in v3.0+ as before v3.0, but if you encounter any issues with your existing training scripts, then you may wish to use :meth:`SentenceTransformer.old_fit <sentence_transformers.SentenceTransformer.old_fit>` instead. That uses the old training method from before v3.0.  Args:     train_objectives: Tuples of (DataLoader, LossFunction). Pass         more than one for multi-task learning     evaluator: An evaluator (sentence_transformers.evaluation)         evaluates the model performance during training on held-         out dev data. It is used to determine the best model         that is saved to disc.     epochs: Number of epochs for training     steps_per_epoch: Number of training steps per epoch. If set         to None (default), one epoch is equal the DataLoader         size from train_objectives.     scheduler: Learning rate scheduler. Available schedulers:         constantlr, warmupconstant, warmuplinear, warmupcosine,         warmupcosinewithhardrestarts     warmup_steps: Behavior depends on the scheduler. For         WarmupLinear (default), the learning rate is increased         from o up to the maximal learning rate. After these many         training steps, the learning rate is decreased linearly         back to zero.     optimizer_class: Optimizer     optimizer_params: Optimizer parameters     weight_decay: Weight decay for model parameters     evaluation_steps: If > 0, evaluate the model using evaluator         after each number of training steps     output_path: Storage path for the model and evaluation files     save_best_model: If true, the best model (according to         evaluator) is stored at output_path     max_grad_norm: Used for gradient normalization.     use_amp: Use Automatic Mixed Precision (AMP). Only for         Pytorch >= 1.6.0     callback: Callback function that is invoked after each         evaluation. It must accept the following three         parameters in this order: `score`, `epoch`, `steps`     show_progress_bar: If True, output a tqdm progress bar     checkpoint_path: Folder to save checkpoints during training     checkpoint_save_steps: Will save a checkpoint after so many         steps     checkpoint_save_total_limit: Total number of checkpoints to         store
+    This training approach uses a list of DataLoaders and Loss functions to train the model. Each DataLoader is sampled in turn for one batch. We sample only as many batches from each DataLoader as there are in the smallest one to make sure of equal training with each dataset, i.e. round robin sampling.  This method should produce equivalent results in v3.0+ as before v3.0, but if you encounter any issues with your existing training scripts, then you may wish to use :meth:`SentenceTransformer.old_fit <sentence_transformers.SentenceTransformer.old_fit>` instead. That uses the old training method from before v3.0.  Args:     train_objectives: Tuples of (DataLoader, LossFunction). Pass         more than one for multi-task learning     evaluator: An evaluator (sentence_transformers.evaluation)         evaluates the model performance during training on held-         out dev data. It is used to determine the best model         that is saved to disk.     epochs: Number of epochs for training     steps_per_epoch: Number of training steps per epoch. If set         to None (default), one epoch is equal the DataLoader         size from train_objectives.     scheduler: Learning rate scheduler. Available schedulers:         constantlr, warmupconstant, warmuplinear, warmupcosine,         warmupcosinewithhardrestarts     warmup_steps: Behavior depends on the scheduler. For         WarmupLinear (default), the learning rate is increased         from o up to the maximal learning rate. After these many         training steps, the learning rate is decreased linearly         back to zero.     optimizer_class: Optimizer     optimizer_params: Optimizer parameters     weight_decay: Weight decay for model parameters     evaluation_steps: If > 0, evaluate the model using evaluator         after each number of training steps     output_path: Storage path for the model and evaluation files     save_best_model: If true, the best model (according to         evaluator) is stored at output_path     max_grad_norm: Used for gradient normalization.     use_amp: Use Automatic Mixed Precision (AMP). Only for         Pytorch >= 1.6.0     callback: Callback function that is invoked after each         evaluation. It must accept the following three         parameters in this order: `score`, `epoch`, `steps`     show_progress_bar: If True, output a tqdm progress bar     checkpoint_path: Folder to save checkpoints during training     checkpoint_save_steps: Will save a checkpoint after so many         steps     checkpoint_save_total_limit: Total number of checkpoints to         store     resume_from_checkpoint: If true, searches for checkpoints         to continue training from.
 
     **Parameters**
 
@@ -418,6 +430,7 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
     - **checkpoint_path**     (*'str'*)     – defaults to `None`
     - **checkpoint_save_steps**     (*'int'*)     – defaults to `500`
     - **checkpoint_save_total_limit**     (*'int'*)     – defaults to `0`
+    - **resume_from_checkpoint**     (*'bool'*)     – defaults to `False`
 
 ???- note "float"
 
@@ -469,7 +482,7 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     Return any extra state to include in the module's state_dict.
 
-    Implement this and a corresponding :func:`set_extra_state` for your module if you need to store extra state. This function is called when building the module's `state_dict()`.  Note that extra state should be picklable to ensure working serialization of the state_dict. We only provide provide backwards compatibility guarantees for serializing Tensors; other objects may break backwards compatibility if their serialized pickled form changes.  Returns:     object: Any extra state to store in the module's state_dict
+    Implement this and a corresponding :func:`set_extra_state` for your module if you need to store extra state. This function is called when building the module's `state_dict()`.  Note that extra state should be picklable to ensure working serialization of the state_dict. We only provide backwards compatibility guarantees for serializing Tensors; other objects may break backwards compatibility if their serialized pickled form changes.  Returns:     object: Any extra state to store in the module's state_dict
 
 
 ???- note "get_max_seq_length"
@@ -502,7 +515,7 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     Return the submodule given by ``target`` if it exists, otherwise throw an error.
 
-    For example, let's say you have an ``nn.Module`` ``A`` that looks like this:  .. code-block:: text      A(         (net_b): Module(             (net_c): Module(                 (conv): Conv2d(16, 33, kernel_size=(3, 3), stride=(2, 2))             )             (linear): Linear(in_features=100, out_features=200, bias=True)         )     )  (The diagram shows an ``nn.Module`` ``A``. ``A`` has a nested submodule ``net_b``, which itself has two submodules ``net_c`` and ``linear``. ``net_c`` then has a submodule ``conv``.)  To check whether or not we have the ``linear`` submodule, we would call ``get_submodule("net_b.linear")``. To check whether we have the ``conv`` submodule, we would call ``get_submodule("net_b.net_c.conv")``.  The runtime of ``get_submodule`` is bounded by the degree of module nesting in ``target``. A query against ``named_modules`` achieves the same result, but it is O(N) in the number of transitive modules. So, for a simple check to see if some submodule exists, ``get_submodule`` should always be used.  Args:     target: The fully-qualified string name of the submodule         to look for. (See above example for how to specify a         fully-qualified string.)  Returns:     torch.nn.Module: The submodule referenced by ``target``  Raises:     AttributeError: If the target string references an invalid         path or resolves to something that is not an         ``nn.Module``
+    For example, let's say you have an ``nn.Module`` ``A`` that looks like this:  .. code-block:: text      A(         (net_b): Module(             (net_c): Module(                 (conv): Conv2d(16, 33, kernel_size=(3, 3), stride=(2, 2))             )             (linear): Linear(in_features=100, out_features=200, bias=True)         )     )  (The diagram shows an ``nn.Module`` ``A``. ``A`` which has a nested submodule ``net_b``, which itself has two submodules ``net_c`` and ``linear``. ``net_c`` then has a submodule ``conv``.)  To check whether or not we have the ``linear`` submodule, we would call ``get_submodule("net_b.linear")``. To check whether we have the ``conv`` submodule, we would call ``get_submodule("net_b.net_c.conv")``.  The runtime of ``get_submodule`` is bounded by the degree of module nesting in ``target``. A query against ``named_modules`` achieves the same result, but it is O(N) in the number of transitive modules. So, for a simple check to see if some submodule exists, ``get_submodule`` should always be used.  Args:     target: The fully-qualified string name of the submodule         to look for. (See above example for how to specify a         fully-qualified string.)  Returns:     torch.nn.Module: The submodule referenced by ``target``  Raises:     AttributeError: If at any point along the path resulting from         the target string the (sub)path resolves to a non-existent         attribute name or an object that is not an instance of ``nn.Module``.
 
     **Parameters**
 
@@ -521,24 +534,33 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
 ???- note "insert"
 
+    Inserts a module into the Sequential container at the specified index.
+
+    Args:     index (int): The index to insert the module.     module (Module): The module to be inserted.  Example::      >>> import torch.nn as nn     >>> n = nn.Sequential(nn.Linear(1, 2), nn.Linear(2, 3))     >>> n.insert(0, nn.Linear(3, 4))     Sequential(         (0): Linear(in_features=3, out_features=4, bias=True)         (1): Linear(in_features=1, out_features=2, bias=True)         (2): Linear(in_features=2, out_features=3, bias=True)     )
+
+    **Parameters**
+
+    - **index**     (*'int'*)
+    - **module**     (*'Module'*)
+
 ???- note "insert_prefix_token"
 
     Inserts a prefix token at the beginning of each sequence in the input tensor.
 
     **Parameters**
 
-    - **input_ids**     (*torch.Tensor*)
-    - **prefix_id**     (*int*)
+    - **input_ids**     (*'torch.Tensor'*)
+    - **prefix_id**     (*'int'*)
 
 ???- note "ipu"
 
     Move all model parameters and buffers to the IPU.
 
-    This also makes associated parameters and buffers different objects. So it should be called before constructing optimizer if the module will live on IPU while being optimized.  .. note::     This method modifies the module in-place.  Arguments:     device (int, optional): if specified, all parameters will be         copied to that device  Returns:     Module: self
+    This also makes associated parameters and buffers different objects. So it should be called before constructing the optimizer if the module will live on IPU while being optimized.  .. note::     This method modifies the module in-place.  Arguments:     device (int, optional): if specified, all parameters will be         copied to that device  Returns:     Module: self
 
     **Parameters**
 
-    - **device**     (*Union[int, torch.device, NoneType]*)     – defaults to `None`
+    - **device**     (*Union[torch.device, int, NoneType]*)     – defaults to `None`
         Device (like "cuda", "cpu", "mps", "npu") that should be used for computation. If None, checks if a GPU can be used.
 
 ???- note "load"
@@ -558,11 +580,11 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     Copy parameters and buffers from :attr:`state_dict` into this module and its descendants.
 
-    If :attr:`strict` is ``True``, then the keys of :attr:`state_dict` must exactly match the keys returned by this module's :meth:`~torch.nn.Module.state_dict` function.  .. warning::     If :attr:`assign` is ``True`` the optimizer must be created after     the call to :attr:`load_state_dict` unless     :func:`~torch.__future__.get_swap_module_params_on_conversion` is ``True``.  Args:     state_dict (dict): a dict containing parameters and         persistent buffers.     strict (bool, optional): whether to strictly enforce that the keys         in :attr:`state_dict` match the keys returned by this module's         :meth:`~torch.nn.Module.state_dict` function. Default: ``True``     assign (bool, optional): When ``False``, the properties of the tensors         in the current module are preserved while when ``True``, the         properties of the Tensors in the state dict are preserved. The only         exception is the ``requires_grad`` field of :class:`~torch.nn.Parameter`s         for which the value from the module is preserved.         Default: ``False``  Returns:     ``NamedTuple`` with ``missing_keys`` and ``unexpected_keys`` fields:         * **missing_keys** is a list of str containing the missing keys         * **unexpected_keys** is a list of str containing the unexpected keys  Note:     If a parameter or buffer is registered as ``None`` and its corresponding key     exists in :attr:`state_dict`, :meth:`load_state_dict` will raise a     ``RuntimeError``.
+    If :attr:`strict` is ``True``, then the keys of :attr:`state_dict` must exactly match the keys returned by this module's :meth:`~torch.nn.Module.state_dict` function.  .. warning::     If :attr:`assign` is ``True`` the optimizer must be created after     the call to :attr:`load_state_dict` unless     :func:`~torch.__future__.get_swap_module_params_on_conversion` is ``True``.  Args:     state_dict (dict): a dict containing parameters and         persistent buffers.     strict (bool, optional): whether to strictly enforce that the keys         in :attr:`state_dict` match the keys returned by this module's         :meth:`~torch.nn.Module.state_dict` function. Default: ``True``     assign (bool, optional): When set to ``False``, the properties of the tensors         in the current module are preserved whereas setting it to ``True`` preserves         properties of the Tensors in the state dict. The only         exception is the ``requires_grad`` field of :class:`~torch.nn.Parameter`         for which the value from the module is preserved. Default: ``False``  Returns:     ``NamedTuple`` with ``missing_keys`` and ``unexpected_keys`` fields:         * ``missing_keys`` is a list of str containing any keys that are expected             by this module but missing from the provided ``state_dict``.         * ``unexpected_keys`` is a list of str containing the keys that are not             expected by this module but present in the provided ``state_dict``.  Note:     If a parameter or buffer is registered as ``None`` and its corresponding key     exists in :attr:`state_dict`, :meth:`load_state_dict` will raise a     ``RuntimeError``.
 
     **Parameters**
 
-    - **state_dict**     (*Mapping[str, Any]*)
+    - **state_dict**     (*collections.abc.Mapping[str, typing.Any]*)
     - **strict**     (*bool*)     – defaults to `True`
     - **assign**     (*bool*)     – defaults to `False`
 
@@ -572,6 +594,17 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     Yields:     Module: a module in the network  Note:     Duplicate modules are returned only once. In the following     example, ``l`` will be returned only once.  Example::      >>> l = nn.Linear(2, 2)     >>> net = nn.Sequential(l, l)     >>> for idx, m in enumerate(net.modules()):     ...     print(idx, '->', m)      0 -> Sequential(       (0): Linear(in_features=2, out_features=2, bias=True)       (1): Linear(in_features=2, out_features=2, bias=True)     )     1 -> Linear(in_features=2, out_features=2, bias=True)
 
+
+???- note "mtia"
+
+    Move all model parameters and buffers to the MTIA.
+
+    This also makes associated parameters and buffers different objects. So it should be called before constructing the optimizer if the module will live on MTIA while being optimized.  .. note::     This method modifies the module in-place.  Arguments:     device (int, optional): if specified, all parameters will be         copied to that device  Returns:     Module: self
+
+    **Parameters**
+
+    - **device**     (*Union[torch.device, int, NoneType]*)     – defaults to `None`
+        Device (like "cuda", "cpu", "mps", "npu") that should be used for computation. If None, checks if a GPU can be used.
 
 ???- note "named_buffers"
 
@@ -600,7 +633,7 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **memo**     (*Optional[Set[ForwardRef('Module')]]*)     – defaults to `None`
+    - **memo**     (*Optional[set['Module']]*)     – defaults to `None`
     - **prefix**     (*str*)     – defaults to ``
     - **remove_duplicate**     (*bool*)     – defaults to `True`
 
@@ -660,9 +693,9 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **documents_embeddings**     (*list[torch.Tensor]*)
-    - **pool_factor**     (*int*)     – defaults to `1`
-    - **protected_tokens**     (*int*)     – defaults to `1`
+    - **documents_embeddings**     (*'list[torch.Tensor]'*)
+    - **pool_factor**     (*'int'*)     – defaults to `1`
+    - **protected_tokens**     (*'int'*)     – defaults to `1`
 
     **Returns**
 
@@ -700,13 +733,13 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **hook**     (*Callable[[ForwardRef('Module'), Union[Tuple[torch.Tensor, ...], torch.Tensor], Union[Tuple[torch.Tensor, ...], torch.Tensor]], Union[NoneType, Tuple[torch.Tensor, ...], torch.Tensor]]*)
+    - **hook**     (*Callable[[ForwardRef('Module'), Union[tuple[torch.Tensor, ...], torch.Tensor], Union[tuple[torch.Tensor, ...], torch.Tensor]], Union[NoneType, tuple[torch.Tensor, ...], torch.Tensor]]*)
 
 ???- note "register_buffer"
 
     Add a buffer to the module.
 
-    This is typically used to register a buffer that should not to be considered a model parameter. For example, BatchNorm's ``running_mean`` is not a parameter, but is part of the module's state. Buffers, by default, are persistent and will be saved alongside parameters. This behavior can be changed by setting :attr:`persistent` to ``False``. The only difference between a persistent buffer and a non-persistent buffer is that the latter will not be a part of this module's :attr:`state_dict`.  Buffers can be accessed as attributes using given names.  Args:     name (str): name of the buffer. The buffer can be accessed         from this module using the given name     tensor (Tensor or None): buffer to be registered. If ``None``, then operations         that run on buffers, such as :attr:`cuda`, are ignored. If ``None``,         the buffer is **not** included in the module's :attr:`state_dict`.     persistent (bool): whether the buffer is part of this module's         :attr:`state_dict`.  Example::      >>> # xdoctest: +SKIP("undefined vars")     >>> self.register_buffer('running_mean', torch.zeros(num_features))
+    This is typically used to register a buffer that should not be considered a model parameter. For example, BatchNorm's ``running_mean`` is not a parameter, but is part of the module's state. Buffers, by default, are persistent and will be saved alongside parameters. This behavior can be changed by setting :attr:`persistent` to ``False``. The only difference between a persistent buffer and a non-persistent buffer is that the latter will not be a part of this module's :attr:`state_dict`.  Buffers can be accessed as attributes using given names.  Args:     name (str): name of the buffer. The buffer can be accessed         from this module using the given name     tensor (Tensor or None): buffer to be registered. If ``None``, then operations         that run on buffers, such as :attr:`cuda`, are ignored. If ``None``,         the buffer is **not** included in the module's :attr:`state_dict`.     persistent (bool): whether the buffer is part of this module's         :attr:`state_dict`.  Example::      >>> # xdoctest: +SKIP("undefined vars")     >>> self.register_buffer('running_mean', torch.zeros(num_features))
 
     **Parameters**
 
@@ -718,11 +751,11 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     Register a forward hook on the module.
 
-    The hook will be called every time after :func:`forward` has computed an output.  If ``with_kwargs`` is ``False`` or not specified, the input contains only the positional arguments given to the module. Keyword arguments won't be passed to the hooks and only to the ``forward``. The hook can modify the output. It can modify the input inplace but it will not have effect on forward since this is called after :func:`forward` is called. The hook should have the following signature::      hook(module, args, output) -> None or modified output  If ``with_kwargs`` is ``True``, the forward hook will be passed the ``kwargs`` given to the forward function and be expected to return the output possibly modified. The hook should have the following signature::      hook(module, args, kwargs, output) -> None or modified output  Args:     hook (Callable): The user defined hook to be registered.     prepend (bool): If ``True``, the provided ``hook`` will be fired         before all existing ``forward`` hooks on this         :class:`torch.nn.modules.Module`. Otherwise, the provided         ``hook`` will be fired after all existing ``forward`` hooks on         this :class:`torch.nn.modules.Module`. Note that global         ``forward`` hooks registered with         :func:`register_module_forward_hook` will fire before all hooks         registered by this method.         Default: ``False``     with_kwargs (bool): If ``True``, the ``hook`` will be passed the         kwargs given to the forward function.         Default: ``False``     always_call (bool): If ``True`` the ``hook`` will be run regardless of         whether an exception is raised while calling the Module.         Default: ``False``  Returns:     :class:`torch.utils.hooks.RemovableHandle`:         a handle that can be used to remove the added hook by calling         ``handle.remove()``
+    The hook will be called every time after :func:`forward` has computed an output.  If ``with_kwargs`` is ``False`` or not specified, the input contains only the positional arguments given to the module. Keyword arguments won't be passed to the hooks and only to the ``forward``. The hook can modify the output. It can modify the input inplace but it will not have effect on forward since this is called after :func:`forward` is called. The hook should have the following signature::      hook(module, args, output) -> None or modified output  If ``with_kwargs`` is ``True``, the forward hook will be passed the ``kwargs`` given to the forward function and be expected to return the output possibly modified. The hook should have the following signature::      hook(module, args, kwargs, output) -> None or modified output  Args:     hook (Callable): The user defined hook to be registered.     prepend (bool): If ``True``, the provided ``hook`` will be fired         before all existing ``forward`` hooks on this         :class:`torch.nn.Module`. Otherwise, the provided         ``hook`` will be fired after all existing ``forward`` hooks on         this :class:`torch.nn.Module`. Note that global         ``forward`` hooks registered with         :func:`register_module_forward_hook` will fire before all hooks         registered by this method.         Default: ``False``     with_kwargs (bool): If ``True``, the ``hook`` will be passed the         kwargs given to the forward function.         Default: ``False``     always_call (bool): If ``True`` the ``hook`` will be run regardless of         whether an exception is raised while calling the Module.         Default: ``False``  Returns:     :class:`torch.utils.hooks.RemovableHandle`:         a handle that can be used to remove the added hook by calling         ``handle.remove()``
 
     **Parameters**
 
-    - **hook**     (*Union[Callable[[~T, Tuple[Any, ...], Any], Optional[Any]], Callable[[~T, Tuple[Any, ...], Dict[str, Any], Any], Optional[Any]]]*)
+    - **hook**     (*Union[Callable[[~T, tuple[Any, ...], Any], Optional[Any]], Callable[[~T, tuple[Any, ...], dict[str, Any], Any], Optional[Any]]]*)
     - **prepend**     (*bool*)     – defaults to `False`
     - **with_kwargs**     (*bool*)     – defaults to `False`
     - **always_call**     (*bool*)     – defaults to `False`
@@ -731,11 +764,11 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     Register a forward pre-hook on the module.
 
-    The hook will be called every time before :func:`forward` is invoked.  If ``with_kwargs`` is false or not specified, the input contains only the positional arguments given to the module. Keyword arguments won't be passed to the hooks and only to the ``forward``. The hook can modify the input. User can either return a tuple or a single modified value in the hook. We will wrap the value into a tuple if a single value is returned (unless that value is already a tuple). The hook should have the following signature::      hook(module, args) -> None or modified input  If ``with_kwargs`` is true, the forward pre-hook will be passed the kwargs given to the forward function. And if the hook modifies the input, both the args and kwargs should be returned. The hook should have the following signature::      hook(module, args, kwargs) -> None or a tuple of modified input and kwargs  Args:     hook (Callable): The user defined hook to be registered.     prepend (bool): If true, the provided ``hook`` will be fired before         all existing ``forward_pre`` hooks on this         :class:`torch.nn.modules.Module`. Otherwise, the provided         ``hook`` will be fired after all existing ``forward_pre`` hooks         on this :class:`torch.nn.modules.Module`. Note that global         ``forward_pre`` hooks registered with         :func:`register_module_forward_pre_hook` will fire before all         hooks registered by this method.         Default: ``False``     with_kwargs (bool): If true, the ``hook`` will be passed the kwargs         given to the forward function.         Default: ``False``  Returns:     :class:`torch.utils.hooks.RemovableHandle`:         a handle that can be used to remove the added hook by calling         ``handle.remove()``
+    The hook will be called every time before :func:`forward` is invoked.  If ``with_kwargs`` is false or not specified, the input contains only the positional arguments given to the module. Keyword arguments won't be passed to the hooks and only to the ``forward``. The hook can modify the input. User can either return a tuple or a single modified value in the hook. We will wrap the value into a tuple if a single value is returned (unless that value is already a tuple). The hook should have the following signature::      hook(module, args) -> None or modified input  If ``with_kwargs`` is true, the forward pre-hook will be passed the kwargs given to the forward function. And if the hook modifies the input, both the args and kwargs should be returned. The hook should have the following signature::      hook(module, args, kwargs) -> None or a tuple of modified input and kwargs  Args:     hook (Callable): The user defined hook to be registered.     prepend (bool): If true, the provided ``hook`` will be fired before         all existing ``forward_pre`` hooks on this         :class:`torch.nn.Module`. Otherwise, the provided         ``hook`` will be fired after all existing ``forward_pre`` hooks         on this :class:`torch.nn.Module`. Note that global         ``forward_pre`` hooks registered with         :func:`register_module_forward_pre_hook` will fire before all         hooks registered by this method.         Default: ``False``     with_kwargs (bool): If true, the ``hook`` will be passed the kwargs         given to the forward function.         Default: ``False``  Returns:     :class:`torch.utils.hooks.RemovableHandle`:         a handle that can be used to remove the added hook by calling         ``handle.remove()``
 
     **Parameters**
 
-    - **hook**     (*Union[Callable[[~T, Tuple[Any, ...]], Optional[Any]], Callable[[~T, Tuple[Any, ...], Dict[str, Any]], Optional[Tuple[Any, Dict[str, Any]]]]]*)
+    - **hook**     (*Union[Callable[[~T, tuple[Any, ...]], Optional[Any]], Callable[[~T, tuple[Any, ...], dict[str, Any]], Optional[tuple[Any, dict[str, Any]]]]]*)
     - **prepend**     (*bool*)     – defaults to `False`
     - **with_kwargs**     (*bool*)     – defaults to `False`
 
@@ -743,29 +776,39 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     Register a backward hook on the module.
 
-    The hook will be called every time the gradients with respect to a module are computed, i.e. the hook will execute if and only if the gradients with respect to module outputs are computed. The hook should have the following signature::      hook(module, grad_input, grad_output) -> tuple(Tensor) or None  The :attr:`grad_input` and :attr:`grad_output` are tuples that contain the gradients with respect to the inputs and outputs respectively. The hook should not modify its arguments, but it can optionally return a new gradient with respect to the input that will be used in place of :attr:`grad_input` in subsequent computations. :attr:`grad_input` will only correspond to the inputs given as positional arguments and all kwarg arguments are ignored. Entries in :attr:`grad_input` and :attr:`grad_output` will be ``None`` for all non-Tensor arguments.  For technical reasons, when this hook is applied to a Module, its forward function will receive a view of each Tensor passed to the Module. Similarly the caller will receive a view of each Tensor returned by the Module's forward function.  .. warning ::     Modifying inputs or outputs inplace is not allowed when using backward hooks and     will raise an error.  Args:     hook (Callable): The user-defined hook to be registered.     prepend (bool): If true, the provided ``hook`` will be fired before         all existing ``backward`` hooks on this         :class:`torch.nn.modules.Module`. Otherwise, the provided         ``hook`` will be fired after all existing ``backward`` hooks on         this :class:`torch.nn.modules.Module`. Note that global         ``backward`` hooks registered with         :func:`register_module_full_backward_hook` will fire before         all hooks registered by this method.  Returns:     :class:`torch.utils.hooks.RemovableHandle`:         a handle that can be used to remove the added hook by calling         ``handle.remove()``
+    The hook will be called every time the gradients with respect to a module are computed, and its firing rules are as follows:      1. Ordinarily, the hook fires when the gradients are computed with respect to the module inputs.     2. If none of the module inputs require gradients, the hook will fire when the gradients are computed        with respect to module outputs.     3. If none of the module outputs require gradients, then the hooks will not fire.  The hook should have the following signature::      hook(module, grad_input, grad_output) -> tuple(Tensor) or None  The :attr:`grad_input` and :attr:`grad_output` are tuples that contain the gradients with respect to the inputs and outputs respectively. The hook should not modify its arguments, but it can optionally return a new gradient with respect to the input that will be used in place of :attr:`grad_input` in subsequent computations. :attr:`grad_input` will only correspond to the inputs given as positional arguments and all kwarg arguments are ignored. Entries in :attr:`grad_input` and :attr:`grad_output` will be ``None`` for all non-Tensor arguments.  For technical reasons, when this hook is applied to a Module, its forward function will receive a view of each Tensor passed to the Module. Similarly the caller will receive a view of each Tensor returned by the Module's forward function.  .. warning ::     Modifying inputs or outputs inplace is not allowed when using backward hooks and     will raise an error.  Args:     hook (Callable): The user-defined hook to be registered.     prepend (bool): If true, the provided ``hook`` will be fired before         all existing ``backward`` hooks on this         :class:`torch.nn.Module`. Otherwise, the provided         ``hook`` will be fired after all existing ``backward`` hooks on         this :class:`torch.nn.Module`. Note that global         ``backward`` hooks registered with         :func:`register_module_full_backward_hook` will fire before         all hooks registered by this method.  Returns:     :class:`torch.utils.hooks.RemovableHandle`:         a handle that can be used to remove the added hook by calling         ``handle.remove()``
 
     **Parameters**
 
-    - **hook**     (*Callable[[ForwardRef('Module'), Union[Tuple[torch.Tensor, ...], torch.Tensor], Union[Tuple[torch.Tensor, ...], torch.Tensor]], Union[NoneType, Tuple[torch.Tensor, ...], torch.Tensor]]*)
+    - **hook**     (*Callable[[ForwardRef('Module'), Union[tuple[torch.Tensor, ...], torch.Tensor], Union[tuple[torch.Tensor, ...], torch.Tensor]], Union[NoneType, tuple[torch.Tensor, ...], torch.Tensor]]*)
     - **prepend**     (*bool*)     – defaults to `False`
 
 ???- note "register_full_backward_pre_hook"
 
     Register a backward pre-hook on the module.
 
-    The hook will be called every time the gradients for the module are computed. The hook should have the following signature::      hook(module, grad_output) -> tuple[Tensor] or None  The :attr:`grad_output` is a tuple. The hook should not modify its arguments, but it can optionally return a new gradient with respect to the output that will be used in place of :attr:`grad_output` in subsequent computations. Entries in :attr:`grad_output` will be ``None`` for all non-Tensor arguments.  For technical reasons, when this hook is applied to a Module, its forward function will receive a view of each Tensor passed to the Module. Similarly the caller will receive a view of each Tensor returned by the Module's forward function.  .. warning ::     Modifying inputs inplace is not allowed when using backward hooks and     will raise an error.  Args:     hook (Callable): The user-defined hook to be registered.     prepend (bool): If true, the provided ``hook`` will be fired before         all existing ``backward_pre`` hooks on this         :class:`torch.nn.modules.Module`. Otherwise, the provided         ``hook`` will be fired after all existing ``backward_pre`` hooks         on this :class:`torch.nn.modules.Module`. Note that global         ``backward_pre`` hooks registered with         :func:`register_module_full_backward_pre_hook` will fire before         all hooks registered by this method.  Returns:     :class:`torch.utils.hooks.RemovableHandle`:         a handle that can be used to remove the added hook by calling         ``handle.remove()``
+    The hook will be called every time the gradients for the module are computed. The hook should have the following signature::      hook(module, grad_output) -> tuple[Tensor] or None  The :attr:`grad_output` is a tuple. The hook should not modify its arguments, but it can optionally return a new gradient with respect to the output that will be used in place of :attr:`grad_output` in subsequent computations. Entries in :attr:`grad_output` will be ``None`` for all non-Tensor arguments.  For technical reasons, when this hook is applied to a Module, its forward function will receive a view of each Tensor passed to the Module. Similarly the caller will receive a view of each Tensor returned by the Module's forward function.  .. warning ::     Modifying inputs inplace is not allowed when using backward hooks and     will raise an error.  Args:     hook (Callable): The user-defined hook to be registered.     prepend (bool): If true, the provided ``hook`` will be fired before         all existing ``backward_pre`` hooks on this         :class:`torch.nn.Module`. Otherwise, the provided         ``hook`` will be fired after all existing ``backward_pre`` hooks         on this :class:`torch.nn.Module`. Note that global         ``backward_pre`` hooks registered with         :func:`register_module_full_backward_pre_hook` will fire before         all hooks registered by this method.  Returns:     :class:`torch.utils.hooks.RemovableHandle`:         a handle that can be used to remove the added hook by calling         ``handle.remove()``
 
     **Parameters**
 
-    - **hook**     (*Callable[[ForwardRef('Module'), Union[Tuple[torch.Tensor, ...], torch.Tensor]], Union[NoneType, Tuple[torch.Tensor, ...], torch.Tensor]]*)
+    - **hook**     (*Callable[[ForwardRef('Module'), Union[tuple[torch.Tensor, ...], torch.Tensor]], Union[NoneType, tuple[torch.Tensor, ...], torch.Tensor]]*)
     - **prepend**     (*bool*)     – defaults to `False`
 
 ???- note "register_load_state_dict_post_hook"
 
-    Register a post hook to be run after module's ``load_state_dict`` is called.
+    Register a post-hook to be run after module's :meth:`~nn.Module.load_state_dict` is called.
 
     It should have the following signature::     hook(module, incompatible_keys) -> None  The ``module`` argument is the current module that this hook is registered on, and the ``incompatible_keys`` argument is a ``NamedTuple`` consisting of attributes ``missing_keys`` and ``unexpected_keys``. ``missing_keys`` is a ``list`` of ``str`` containing the missing keys and ``unexpected_keys`` is a ``list`` of ``str`` containing the unexpected keys.  The given incompatible_keys can be modified inplace if needed.  Note that the checks performed when calling :func:`load_state_dict` with ``strict=True`` are affected by modifications the hook makes to ``missing_keys`` or ``unexpected_keys``, as expected. Additions to either set of keys will result in an error being thrown when ``strict=True``, and clearing out both missing and unexpected keys will avoid an error.  Returns:     :class:`torch.utils.hooks.RemovableHandle`:         a handle that can be used to remove the added hook by calling         ``handle.remove()``
+
+    **Parameters**
+
+    - **hook**
+
+???- note "register_load_state_dict_pre_hook"
+
+    Register a pre-hook to be run before module's :meth:`~nn.Module.load_state_dict` is called.
+
+    It should have the following signature::     hook(module, state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs) -> None  # noqa: B950  Arguments:     hook (Callable): Callable hook that will be invoked before         loading the state dict.
 
     **Parameters**
 
@@ -791,11 +834,21 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
     - **name**     (*str*)
     - **param**     (*Optional[torch.nn.parameter.Parameter]*)
 
+???- note "register_state_dict_post_hook"
+
+    Register a post-hook for the :meth:`~torch.nn.Module.state_dict` method.
+
+    It should have the following signature::     hook(module, state_dict, prefix, local_metadata) -> None  The registered hooks can modify the ``state_dict`` inplace.
+
+    **Parameters**
+
+    - **hook**
+
 ???- note "register_state_dict_pre_hook"
 
     Register a pre-hook for the :meth:`~torch.nn.Module.state_dict` method.
 
-    These hooks will be called with arguments: ``self``, ``prefix``, and ``keep_vars`` before calling ``state_dict`` on ``self``. The registered hooks can be used to perform pre-processing before the ``state_dict`` call is made.
+    It should have the following signature::     hook(module, prefix, keep_vars) -> None  The registered hooks can be used to perform pre-processing before the ``state_dict`` call is made.
 
     **Parameters**
 
@@ -819,11 +872,11 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **path**     (*str*)
-    - **model_name**     (*str | None*)     – defaults to `None`
-    - **create_model_card**     (*bool*)     – defaults to `True`
-    - **train_datasets**     (*list[str] | None*)     – defaults to `None`
-    - **safe_serialization**     (*bool*)     – defaults to `True`
+    - **path**     (*'str'*)
+    - **model_name**     (*'str | None'*)     – defaults to `None`
+    - **create_model_card**     (*'bool'*)     – defaults to `True`
+    - **train_datasets**     (*'list[str] | None'*)     – defaults to `None`
+    - **safe_serialization**     (*'bool'*)     – defaults to `True`
 
 ???- note "save_pretrained"
 
@@ -890,6 +943,18 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     - **include_prompt**     (*'bool'*)
 
+???- note "set_submodule"
+
+    Set the submodule given by ``target`` if it exists, otherwise throw an error.
+
+    .. note::     If ``strict`` is set to ``False`` (default), the method will replace an existing submodule     or create a new submodule if the parent module exists. If ``strict`` is set to ``True``,     the method will only attempt to replace an existing submodule and throw an error if     the submodule does not exist.  For example, let's say you have an ``nn.Module`` ``A`` that looks like this:  .. code-block:: text      A(         (net_b): Module(             (net_c): Module(                 (conv): Conv2d(3, 3, 3)             )             (linear): Linear(3, 3)         )     )  (The diagram shows an ``nn.Module`` ``A``. ``A`` has a nested submodule ``net_b``, which itself has two submodules ``net_c`` and ``linear``. ``net_c`` then has a submodule ``conv``.)  To override the ``Conv2d`` with a new submodule ``Linear``, you could call ``set_submodule("net_b.net_c.conv", nn.Linear(1, 1))`` where ``strict`` could be ``True`` or ``False``  To add a new submodule ``Conv2d`` to the existing ``net_b`` module, you would call ``set_submodule("net_b.conv", nn.Conv2d(1, 1, 1))``.  In the above if you set ``strict=True`` and call ``set_submodule("net_b.conv", nn.Conv2d(1, 1, 1), strict=True)``, an AttributeError will be raised because ``net_b`` does not have a submodule named ``conv``.  Args:     target: The fully-qualified string name of the submodule         to look for. (See above example for how to specify a         fully-qualified string.)     module: The module to set the submodule to.     strict: If ``False``, the method will replace an existing submodule         or create a new submodule if the parent module exists. If ``True``,         the method will only attempt to replace an existing submodule and throw an error         if the submodule doesn't already exist.  Raises:     ValueError: If the ``target`` string is empty or if ``module`` is not an instance of ``nn.Module``.     AttributeError: If at any point along the path resulting from         the ``target`` string the (sub)path resolves to a non-existent         attribute name or an object that is not an instance of ``nn.Module``.
+
+    **Parameters**
+
+    - **target**     (*str*)
+    - **module**     (*'Module'*)
+    - **strict**     (*bool*)     – defaults to `False`
+
 ???- note "share_memory"
 
     See :meth:`torch.Tensor.share_memory_`.
@@ -901,8 +966,8 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **input_ids**     (*torch.Tensor*)
-    - **skiplist**     (*list[int]*)
+    - **input_ids**     (*'torch.Tensor'*)
+    - **skiplist**     (*'list[int]'*)
 
 ???- note "smart_batching_collate"
 
@@ -920,7 +985,7 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **target_devices**     (*list[str]*)     – defaults to `None`
+    - **target_devices**     (*'list[str]'*)     – defaults to `None`
 
     **Returns**
 
@@ -974,19 +1039,19 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     Tokenizes the input texts.
 
-    Args:     texts (Union[list[str], list[dict], list[tuple[str, str]]]): A list of texts to be tokenized.     is_query (bool): Flag to indicate if the texts are queries. Defaults to True.     pad_document (bool): Flag to indicate if documents should be padded to max length. Defaults to False.  Returns:     dict[str, torch.Tensor]: A dictionary of tensors with the tokenized texts, including "input_ids",         "attention_mask", and optionally "token_type_ids".
+    Args:     texts (Union[list[str], list[dict], list[tuple[str, str]]]): A list of texts to be tokenized.     is_query (bool): Flag to indicate if the texts are queries. Defaults to True.     pad (bool): Flag to indicate if elements should be padded to max length. Defaults to False.  Returns:     dict[str, torch.Tensor]: A dictionary of tensors with the tokenized texts, including "input_ids",         "attention_mask", and optionally "token_type_ids".
 
     **Parameters**
 
-    - **texts**     (*list[str] | list[dict] | list[tuple[str, str]]*)
-    - **is_query**     (*bool*)     – defaults to `True`
-    - **pad_document**     (*bool*)     – defaults to `False`
+    - **texts**     (*'list[str] | list[dict] | list[tuple[str, str]]'*)
+    - **is_query**     (*'bool'*)     – defaults to `True`
+    - **pad**     (*'bool'*)     – defaults to `False`
 
 ???- note "train"
 
     Set the module in training mode.
 
-    This has any effect only on certain modules. See documentations of particular modules for details of their behaviors in training/evaluation mode, if they are affected, e.g. :class:`Dropout`, :class:`BatchNorm`, etc.  Args:     mode (bool): whether to set training mode (``True``) or evaluation                  mode (``False``). Default: ``True``.  Returns:     Module: self
+    This has an effect only on certain modules. See the documentation of particular modules for details of their behaviors in training/evaluation mode, i.e., whether they are affected, e.g. :class:`Dropout`, :class:`BatchNorm`, etc.  Args:     mode (bool): whether to set training mode (``True``) or evaluation                  mode (``False``). Default: ``True``.  Returns:     Module: self
 
     **Parameters**
 
@@ -1021,7 +1086,7 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **device**     (*Union[int, torch.device, NoneType]*)     – defaults to `None`
+    - **device**     (*Union[torch.device, int, NoneType]*)     – defaults to `None`
         Device (like "cuda", "cpu", "mps", "npu") that should be used for computation. If None, checks if a GPU can be used.
 
 ???- note "zero_grad"

@@ -6,7 +6,7 @@ ColBERT retriever.
 
 ## Parameters
 
-- **index** (*[indexes.Voyager](../../indexes/Voyager)*)
+- **index** (*'Voyager | PLAID'*)
 
 
 
@@ -20,12 +20,8 @@ ColBERT retriever.
 ...     device="cpu",
 ... )
 
->>> documents_ids = ["1", "2"]
-
->>> documents = [
-...     "fruits are healthy.",
-...     "fruits are good for health.",
-... ]
+>>> documents_ids = [f"document_id_{i}" for i in range(20)]
+>>> documents = [f"This is the content of document {i}." for i in range(20)]
 
 >>> documents_embeddings = model.encode(
 ...     sentences=documents,
@@ -33,12 +29,12 @@ ColBERT retriever.
 ...     is_query=False,
 ... )
 
->>> index = indexes.Voyager(
+>>> index = indexes.PLAID(
 ...     index_folder="test_indexes",
 ...     index_name="colbert",
 ...     override=True,
-...     embedding_size=128,
 ... )
+✅ Index with FastPlaid backend.
 
 >>> index = index.add_documents(
 ...     documents_ids=documents_ids,
@@ -76,6 +72,13 @@ ColBERT retriever.
 
 >>> assert isinstance(results, list)
 >>> assert len(results) == 1
+
+>>> results = retriever.retrieve(
+...     queries_embeddings=queries_embeddings,
+...     k=2,
+...     device="cpu",
+...     subset=["document_id_10"],
+... )
 ```
 
 ## Methods
@@ -86,8 +89,9 @@ ColBERT retriever.
 
     **Parameters**
 
-    - **queries_embeddings**     (*list[list | numpy.ndarray | torch.Tensor]*)
-    - **k**     (*int*)     – defaults to `10`
-    - **k_token**     (*int*)     – defaults to `100`
-    - **device**     (*str | None*)     – defaults to `None`
-    - **batch_size**     (*int*)     – defaults to `50`
+    - **queries_embeddings**     (*'list[list | np.ndarray | torch.Tensor]'*)
+    - **k**     (*'int'*)     – defaults to `10`
+    - **k_token**     (*'int'*)     – defaults to `100`
+    - **device**     (*'str | None'*)     – defaults to `None`
+    - **batch_size**     (*'int'*)     – defaults to `50`
+    - **subset**     (*'list[list[str]] | list[str] | None'*)     – defaults to `None`

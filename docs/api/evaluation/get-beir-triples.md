@@ -6,15 +6,15 @@ Build BEIR triples.
 
 ## Parameters
 
-- **documents** (*list*)
+- **documents** (*'list'*)
 
     Documents.
 
-- **queries** (*list[str]*)
+- **queries** (*'list[str]'*)
 
     Queries.
 
-- **qrels** (*dict*)
+- **qrels** (*'dict'*)
 
 
 

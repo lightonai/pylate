@@ -6,19 +6,19 @@ Dataset processing class for knowledge distillation training.
 
 ## Parameters
 
-- **queries** (*datasets.arrow_dataset.Dataset | datasets.dataset_dict.DatasetDict*)
+- **queries** (*'datasets.Dataset | datasets.DatasetDict'*)
 
     Queries dataset.
 
-- **documents** (*datasets.arrow_dataset.Dataset | datasets.dataset_dict.DatasetDict*)
+- **documents** (*'datasets.Dataset | datasets.DatasetDict'*)
 
     Documents dataset.
 
-- **split** (*str*) – defaults to `train`
+- **split** (*'str'*) – defaults to `train`
 
     Split to use for the queries and documents datasets. Used only if the queries and documents are of type `datasets.DatasetDict`.
 
-- **n_ways** (*int*) – defaults to `32`
+- **n_ways** (*'int'*) – defaults to `32`
 
     Number of scores to keep for the distillation.
 
@@ -68,7 +68,7 @@ Dataset processing class for knowledge distillation training.
 
     **Parameters**
 
-    - **example**     (*dict*)
+    - **example**     (*'dict'*)
 
 ???- note "transform"
 
@@ -76,4 +76,4 @@ Dataset processing class for knowledge distillation training.
 
     **Parameters**
 
-    - **examples**     (*dict*)
+    - **examples**     (*'dict'*)

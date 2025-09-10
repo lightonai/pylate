@@ -6,15 +6,17 @@ Computes the ColBERT scores between queries and documents embeddings. The score 
 
 ## Parameters
 
-- **queries_embeddings** (*list | numpy.ndarray | torch.Tensor*)
+- **queries_embeddings** (*'list | np.ndarray | torch.Tensor'*)
 
     The first tensor. The queries embeddings. Shape: (batch_size, num tokens queries, embedding_size)
 
-- **documents_embeddings** (*list | numpy.ndarray | torch.Tensor*)
+- **documents_embeddings** (*'list | np.ndarray | torch.Tensor'*)
 
     The second tensor. The documents embeddings. Shape: (batch_size, num tokens documents, embedding_size)
 
-- **mask** (*torch.Tensor*) – defaults to `None`
+- **queries_mask** (*'torch.Tensor'*) – defaults to `None`
+
+- **documents_mask** (*'torch.Tensor'*) – defaults to `None`
 
 
 
@@ -31,17 +33,28 @@ Computes the ColBERT scores between queries and documents embeddings. The score 
 
 >>> documents_embeddings = torch.tensor([
 ...     [[10.], [0.], [1.]],
-...     [[0.], [100.], [1.]],
+...     [[0.], [100.], [10.]],
 ...     [[1.], [0.], [1000.]],
+... ])
+
+>>> documents_mask = torch.tensor([
+...     [1., 1., 1.],
+...     [1., 0., 1.],
+...     [1., 1., 1.],
+... ])
+>>> query_mask = torch.tensor([
+...     [1., 1., 1., 1.], [1., 1., 1., 1.], [1., 1., 0., 1.]
 ... ])
 
 >>> scores = colbert_scores(
 ...     queries_embeddings=queries_embeddings,
-...     documents_embeddings=documents_embeddings
+...     documents_embeddings=documents_embeddings,
+...     queries_mask=query_mask,
+...     documents_mask=documents_mask,
 ... )
 
 >>> scores
-tensor([[  10.,  100., 1000.],
-        [  20.,  200., 2000.],
-        [  30.,  300., 3000.]])
+tensor([[  10.,  10., 1000.],
+        [  20.,  20., 2000.],
+        [  0.,  0., 0.]])
 ```

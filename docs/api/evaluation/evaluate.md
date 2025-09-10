@@ -6,17 +6,17 @@ Evaluate candidates matchs.
 
 ## Parameters
 
-- **scores** (*list[list[dict]]*)
+- **scores** (*'list[list[dict]]'*)
 
-- **qrels** (*dict*)
+- **qrels** (*'dict'*)
 
     Qrels.
 
-- **queries** (*list[str]*)
+- **queries** (*'list[str]'*)
 
     index of queries of qrels.
 
-- **metrics** (*list | None*) – defaults to `None`
+- **metrics** (*'list | None'*) – defaults to `None`
 
     Metrics to compute.
 

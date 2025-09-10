@@ -101,6 +101,8 @@ A dataclass for storing data used in the model card.
 
 ???- note "get_codecarbon_data"
 
+???- note "get_model_specific_metadata"
+
 ???- note "infer_datasets"
 
 ???- note "pop"
@@ -132,6 +134,12 @@ A dataclass for storing data used in the model card.
 
 ???- note "set_widget_examples"
 
+    A function to create widget examples from a dataset. For now, set_widget_examples is not compatible with our transform/map operations, so we make it a no-op until it is fixed
+
+    **Parameters**
+
+    - **dataset**     (*'Dataset | DatasetDict'*)
+
 ???- note "to_dict"
 
     Converts CardData to a dict.
@@ -148,6 +156,8 @@ A dataclass for storing data used in the model card.
     **Parameters**
 
     - **line_break**     – defaults to `None`
+
+???- note "tokenize"
 
 ???- note "try_to_set_base_model"
 

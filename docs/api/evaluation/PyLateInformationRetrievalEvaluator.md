@@ -51,7 +51,7 @@ This class evaluates an Information Retrieval (IR) setting. This is a direct ext
 
 - **description**
 
-    Returns a human-readable description of the evaluator: BinaryClassificationEvaluator -> Binary Classification  1. Remove "Evaluator" from the class name 2. Add a space before every capital letter
+    Returns a human-readable description of the evaluator: BinaryClassificationEvaluator -> Binary Classification  1. Replace "CE" prefix with "CrossEncoder" 2. Remove "Evaluator" from the class name 3. Add a space before every capital letter
 
 
 
@@ -77,6 +77,11 @@ This class evaluates an Information Retrieval (IR) setting. This is a direct ext
 ???- note "compute_metrices"
 
 ???- note "compute_metrics"
+
+???- note "get_config_dict"
+
+    Return a dictionary with all meaningful configuration values of the evaluator to store in the model card.
+
 
 ???- note "output_scores"
 

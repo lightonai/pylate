@@ -6,10 +6,10 @@ Load a custom dataset.
 
 ## Parameters
 
-- **path** (*str*)
+- **path** (*'str'*)
 
     Path of the dataset.
 
-- **split** (*str*) – defaults to `test`
+- **split** (*'str'*) – defaults to `test`
 
     Split to load.

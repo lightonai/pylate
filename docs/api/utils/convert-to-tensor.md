@@ -6,7 +6,7 @@ Converts a list or numpy array to a torch tensor.
 
 ## Parameters
 
-- **x** (*torch.Tensor | numpy.ndarray | list[torch.Tensor | numpy.ndarray | list | float]*)
+- **x** (*'torch.Tensor | np.ndarray | list[torch.Tensor | np.ndarray | list | float]'*)
 
     The input data. It can be a torch tensor, a numpy array, or a list of torch tensors, numpy arrays, or lists.
 

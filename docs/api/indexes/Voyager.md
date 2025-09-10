@@ -6,27 +6,27 @@ Voyager index. The Voyager index is a fast and efficient index for approximate n
 
 ## Parameters
 
-- **index_folder** (*str*) – defaults to `indexes`
+- **index_folder** (*'str'*) – defaults to `indexes`
 
-- **index_name** (*str*) – defaults to `colbert`
+- **index_name** (*'str'*) – defaults to `colbert`
 
-- **override** (*bool*) – defaults to `False`
+- **override** (*'bool'*) – defaults to `False`
 
     Whether to override the collection if it already exists.
 
-- **embedding_size** (*int*) – defaults to `128`
+- **embedding_size** (*'int'*) – defaults to `128`
 
     The number of dimensions of the embeddings.
 
-- **M** (*int*) – defaults to `64`
+- **M** (*'int'*) – defaults to `64`
 
     The number of subquantizers.
 
-- **ef_construction** (*int*) – defaults to `200`
+- **ef_construction** (*'int'*) – defaults to `200`
 
     The number of candidates to evaluate during the construction of the index.
 
-- **ef_search** (*int*) – defaults to `200`
+- **ef_search** (*'int'*) – defaults to `200`
 
     The number of candidates to evaluate during the search.
 
@@ -34,54 +34,35 @@ Voyager index. The Voyager index is a fast and efficient index for approximate n
 
 ## Examples
 
-```python
->>> from pylate import indexes, models
+from pylate import indexes, models
 
->>> index = indexes.Voyager(
-...     index_folder="test_indexes",
-...     index_name="colbert",
-...     override=True,
-...     embedding_size=128,
-... )
+index = indexes.Voyager(
+    index_folder="test_indexes",
+    index_name="colbert",
+    override=True,
+    embedding_size=128,
+)
 
->>> model = models.ColBERT(
-...     model_name_or_path="sentence-transformers/all-MiniLM-L6-v2",
-... )
+model = models.ColBERT(
+    model_name_or_path="sentence-transformers/all-MiniLM-L6-v2",
+)
 
->>> documents_embeddings = model.encode(
-...     ["fruits are healthy.", "fruits are good for health.", "fruits are bad for health."],
-...     is_query=False,
-... )
+documents_embeddings = model.encode(
+    ["fruits are healthy.", "fruits are good for health.", "fruits are bad for health."],
+    is_query=False,
+)
 
->>> index = index.add_documents(
-...     documents_ids=["1", "2", "3"],
-...     documents_embeddings=documents_embeddings
-... )
+index = index.add_documents(
+    documents_ids=["1", "2", "3"],
+    documents_embeddings=documents_embeddings,
+)
 
->>> queries_embeddings = model.encode(
-...     ["fruits are healthy.", "fruits are good for health and fun."],
-...     is_query=True,
-... )
+queries_embeddings = model.encode(
+     ["fruits are healthy.", "fruits are good for health and fun."],
+     is_query=True,
+)
 
->>> matchs = index(queries_embeddings, k=30)
-
->>> assert matchs["distances"].shape[0] == 2
->>> assert isinstance(matchs, dict)
->>> assert "documents_ids" in matchs
->>> assert "distances" in matchs
-
->>> queries_embeddings = model.encode(
-...     "fruits are healthy.",
-...     is_query=True,
-... )
-
->>> matchs = index(queries_embeddings, k=30)
-
->>> assert matchs["distances"].shape[0] == 1
->>> assert isinstance(matchs, dict)
->>> assert "documents_ids" in matchs
->>> assert "distances" in matchs
-```
+matchs = index(queries_embeddings, k=30)
 
 ## Methods
 
@@ -91,8 +72,8 @@ Voyager index. The Voyager index is a fast and efficient index for approximate n
 
     **Parameters**
 
-    - **queries_embeddings**     (*numpy.ndarray | torch.Tensor*)
-    - **k**     (*int*)     – defaults to `10`
+    - **queries_embeddings**     (*'np.ndarray | torch.Tensor'*)
+    - **k**     (*'int'*)     – defaults to `10`
 
 ???- note "add_documents"
 
@@ -100,9 +81,9 @@ Voyager index. The Voyager index is a fast and efficient index for approximate n
 
     **Parameters**
 
-    - **documents_ids**     (*str | list[str]*)
-    - **documents_embeddings**     (*list[numpy.ndarray | torch.Tensor]*)
-    - **batch_size**     (*int*)     – defaults to `2000`
+    - **documents_ids**     (*'str | list[str]'*)
+    - **documents_embeddings**     (*'list[np.ndarray | torch.Tensor]'*)
+    - **batch_size**     (*'int'*)     – defaults to `2000`
 
 ???- note "get_documents_embeddings"
 
@@ -110,7 +91,7 @@ Voyager index. The Voyager index is a fast and efficient index for approximate n
 
     **Parameters**
 
-    - **document_ids**     (*list[list[str]]*)
+    - **document_ids**     (*'list[list[str]]'*)
 
 ???- note "remove_documents"
 
@@ -118,4 +99,4 @@ Voyager index. The Voyager index is a fast and efficient index for approximate n
 
     **Parameters**
 
-    - **documents_ids**     (*list[str]*)
+    - **documents_ids**     (*'list[str]'*)

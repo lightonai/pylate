@@ -6,11 +6,11 @@ Computes the ColBERT score for each query-document pair. The score is computed a
 
 ## Parameters
 
-- **queries_embeddings** (*torch.Tensor*)
+- **queries_embeddings** (*'torch.Tensor'*)
 
     The first tensor. The queries embeddings. Shape: (batch_size, num tokens queries, embedding_size)
 
-- **documents_embeddings** (*torch.Tensor*)
+- **documents_embeddings** (*'torch.Tensor'*)
 
     The second tensor. The documents embeddings. Shape: (batch_size, num tokens documents, embedding_size)
 

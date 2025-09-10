@@ -6,19 +6,19 @@ Rerank the documents based on the queries embeddings.
 
 ## Parameters
 
-- **documents_ids** (*list[list[int | str]]*)
+- **documents_ids** (*'list[list[int | str]]'*)
 
     The documents ids.
 
-- **queries_embeddings** (*list[list[float | int] | numpy.ndarray | torch.Tensor]*)
+- **queries_embeddings** (*'list[list[float | int] | np.ndarray | torch.Tensor]'*)
 
     The queries embeddings which is a dictionary of queries and their embeddings.
 
-- **documents_embeddings** (*list[list[float | int] | numpy.ndarray | torch.Tensor]*)
+- **documents_embeddings** (*'list[list[float | int] | np.ndarray | torch.Tensor]'*)
 
     The documents embeddings which is a dictionary of documents ids and their embeddings.
 
-- **device** (*str*) – defaults to `None`
+- **device** (*'str'*) – defaults to `None`
 
 
 
