@@ -141,14 +141,16 @@ class ColBERTDistillationEvaluator(SentenceEvaluator):
             if self.truncate_dim is None
             else model.truncate_sentence_embeddings(self.truncate_dim)
         ):
-            queries_embeddings = torch.stack(
+            queries_embeddings = torch.nn.utils.rnn.pad_sequence(
                 model.encode(
                     self.queries,
                     batch_size=self.batch_size,
                     show_progress_bar=self.show_progress_bar,
                     convert_to_tensor=True,
                     is_query=True,
-                )
+                ),
+                batch_first=True,
+                padding_value=0,
             )
 
             documents_embeddings = torch.nn.utils.rnn.pad_sequence(

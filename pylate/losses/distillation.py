@@ -99,6 +99,12 @@ class Distillation(torch.nn.Module):
             else self.model.module.skiplist
         )
 
+        do_query_expansion = (
+            self.model.do_query_expansion
+            if hasattr(self.model, "do_query_expansion")
+            else self.model.module.do_query_expansion
+        )
+
         masks = extract_skiplist_mask(
             sentence_features=sentence_features, skiplist=skiplist
         )
@@ -109,7 +115,8 @@ class Distillation(torch.nn.Module):
         scores = self.score_metric(
             queries_embeddings,
             documents_embeddings,
-            documents_embeddings_mask,
+            queries_mask=masks[0] if not do_query_expansion else None,
+            documents_mask=documents_embeddings_mask,
         )
         if self.normalize_scores:
             # Compute max and min along the num_scores dimension (dim=1)

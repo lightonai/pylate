@@ -263,6 +263,11 @@ class CachedContrastive(nn.Module):
             # Adjust the labels to match the gathered embeddings positions
             labels = labels + rank * batch_size
         losses: list[torch.Tensor] = []
+        do_query_expansion = (
+            self.model.do_query_expansion
+            if hasattr(self.model, "do_query_expansion")
+            else self.model.module.do_query_expansion
+        )
         for begin in tqdm.trange(
             0,
             batch_size,
@@ -284,7 +289,10 @@ class CachedContrastive(nn.Module):
                                         len(group_embeddings),
                                     )
                                 ],
-                                mask[
+                                queries_mask=masks[0][begin:end]
+                                if not do_query_expansion
+                                else None,
+                                documents_mask=documents_mask[
                                     g_start : min(
                                         g_start + self.mini_batch_size,
                                         len(group_embeddings),
@@ -297,7 +305,9 @@ class CachedContrastive(nn.Module):
                         ],
                         dim=1,
                     )
-                    for group_embeddings, mask in zip(embeddings_other, masks[1:])
+                    for group_embeddings, documents_mask in zip(
+                        embeddings_other, masks[1:]
+                    )
                 ],
                 dim=1,
             )

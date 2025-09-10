@@ -92,6 +92,8 @@ class ColBERT(SentenceTransformer):
         The length of the query to truncate/pad to with mask tokens. If set, will override the config value. Default to 32.
     document_length
         The max length of the document to truncate. If set, will override the config value. Default to 180.
+    do_query_expansion
+        Whether to do query expansion. If True, will pad the query to the `query_length` with mask tokens. Default to True.
     attend_to_expansion_tokens
         Whether to attend to the expansion tokens in the attention layers model. If False, the original tokens will
         not only attend to the expansion tokens, only the expansion tokens will attend to the original tokens. Default
@@ -210,6 +212,7 @@ class ColBERT(SentenceTransformer):
         truncation: bool = True,
         query_length: int | None = None,
         document_length: int | None = None,
+        do_query_expansion: bool | None = None,
         attend_to_expansion_tokens: bool | None = None,
         skiplist_words: list[str] | None = None,
         model_kwargs: dict | None = None,
@@ -221,6 +224,7 @@ class ColBERT(SentenceTransformer):
         self.document_prefix = document_prefix
         self.query_length = query_length
         self.document_length = document_length
+        self.do_query_expansion = do_query_expansion
         self.attend_to_expansion_tokens = attend_to_expansion_tokens
         self.skiplist_words = skiplist_words
         model_card_data = model_card_data or PylateModelCardData()
@@ -406,11 +410,25 @@ class ColBERT(SentenceTransformer):
         self.skiplist = [
             self.tokenizer.convert_tokens_to_ids(word) for word in self.skiplist_words
         ]
+
+        self.do_query_expansion = (
+            do_query_expansion
+            if do_query_expansion is not None
+            else self.do_query_expansion
+            if self.do_query_expansion is not None
+            else True
+        )
+
         self.attend_to_expansion_tokens = (
             attend_to_expansion_tokens
             if attend_to_expansion_tokens is not None
-            else self.attend_to_expansion_tokens or False
+            else self.attend_to_expansion_tokens
+            if self.attend_to_expansion_tokens is not None
+            else False
         )
+        # If we do not do query expansion, we do not attend to the expansion tokens
+        if not self.do_query_expansion:
+            self.attend_to_expansion_tokens = False
 
     @staticmethod
     def load(input_path) -> "ColBERT":
@@ -670,10 +688,14 @@ class ColBERT(SentenceTransformer):
                         input=skiplist_mask, other=out_features["attention_mask"]
                     )
                 else:
-                    # We keep all tokens in the query (no skiplist) and we do not want to prune expansion tokens in queries even if we do not attend to them in attention layers
-                    masks = torch.ones_like(
-                        input=out_features["input_ids"], dtype=torch.bool
-                    )
+                    if self.do_query_expansion:
+                        # We keep all tokens in the query (no skiplist) and we do not want to prune expansion tokens in queries even if we do not attend to them in attention layers
+                        masks = torch.ones_like(
+                            input=out_features["input_ids"], dtype=torch.bool
+                        )
+                    else:
+                        # We only keep the original tokens and prune padding tokens
+                        masks = out_features["attention_mask"].bool()
 
                 embeddings = []
                 for (
@@ -703,7 +725,7 @@ class ColBERT(SentenceTransformer):
 
                 all_embeddings.extend(embeddings)
 
-        # Pad the embeddings to the same length. Documents can have different lengths while queries are already padded.
+        # Pad the embeddings to the same length. Documents can have different lengths while queries are already padded (when using query expansion, else requires padding as well).
         if padding:
             all_embeddings = torch.nn.utils.rnn.pad_sequence(
                 sequences=all_embeddings, batch_first=True, padding_value=0
@@ -1010,7 +1032,7 @@ class ColBERT(SentenceTransformer):
         self,
         texts: list[str] | list[dict] | list[tuple[str, str]],
         is_query: bool = True,
-        pad_document: bool = False,
+        pad: bool = False,
     ) -> dict[str, torch.Tensor]:
         """
         Tokenizes the input texts.
@@ -1018,7 +1040,7 @@ class ColBERT(SentenceTransformer):
         Args:
             texts (Union[list[str], list[dict], list[tuple[str, str]]]): A list of texts to be tokenized.
             is_query (bool): Flag to indicate if the texts are queries. Defaults to True.
-            pad_document (bool): Flag to indicate if documents should be padded to max length. Defaults to False.
+            pad (bool): Flag to indicate if elements should be padded to max length. Defaults to False.
 
         Returns:
             dict[str, torch.Tensor]: A dictionary of tensors with the tokenized texts, including "input_ids",
@@ -1030,8 +1052,12 @@ class ColBERT(SentenceTransformer):
             max_length - 1
         )  # Subtract 1 for the prefix token
 
-        # Pad queries (query expansion) and handle padding for documents if specified
-        tokenize_args = {"padding": "max_length"} if pad_document or is_query else {}
+        # Pad queries (if query expansion) and handle padding for documents if specified
+        tokenize_args = (
+            {"padding": "max_length"}
+            if pad or (is_query and self.do_query_expansion)
+            else {}
+        )
 
         # Tokenize the texts
         tokenized_outputs = self._first_module().tokenize(texts, **tokenize_args)
@@ -1098,6 +1124,7 @@ class ColBERT(SentenceTransformer):
             config["document_length"] = self.document_length
             config["attend_to_expansion_tokens"] = self.attend_to_expansion_tokens
             config["skiplist_words"] = self.skiplist_words
+            config["do_query_expansion"] = self.do_query_expansion
             json.dump(config, fOut, indent=2)
 
     def _load_auto_model(
@@ -1231,6 +1258,8 @@ class ColBERT(SentenceTransformer):
                 ]
             if "skiplist_words" in self._model_config:
                 self.skiplist_words = self._model_config["skiplist_words"]
+            if "do_query_expansion" in self._model_config:
+                self.do_query_expansion = self._model_config["do_query_expansion"]
 
         return [
             module

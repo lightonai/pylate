@@ -43,14 +43,18 @@ class PyLateInformationRetrievalEvaluator(InformationRetrievalEvaluator):
             if self.truncate_dim is None
             else model.truncate_sentence_embeddings(self.truncate_dim)
         ):
-            query_embeddings = model.encode(
-                self.queries,
-                prompt_name=self.query_prompt_name,
-                prompt=self.query_prompt,
-                batch_size=self.batch_size,
-                is_query=True,
-                show_progress_bar=self.show_progress_bar,
-                convert_to_tensor=True,
+            query_embeddings = torch.nn.utils.rnn.pad_sequence(
+                model.encode(
+                    self.queries,
+                    prompt_name=self.query_prompt_name,
+                    prompt=self.query_prompt,
+                    batch_size=self.batch_size,
+                    is_query=True,
+                    show_progress_bar=self.show_progress_bar,
+                    convert_to_tensor=True,
+                ),
+                batch_first=True,
+                padding_value=0,
             )
 
         queries_result_list = {}
