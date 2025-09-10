@@ -115,8 +115,8 @@ class Distillation(torch.nn.Module):
         scores = self.score_metric(
             queries_embeddings,
             documents_embeddings,
-            masks[0] if not do_query_expansion else None,
-            documents_embeddings_mask,
+            queries_mask=masks[0] if not do_query_expansion else None,
+            documents_mask=documents_embeddings_mask,
         )
         if self.normalize_scores:
             # Compute max and min along the num_scores dimension (dim=1)

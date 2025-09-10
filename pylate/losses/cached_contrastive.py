@@ -289,8 +289,10 @@ class CachedContrastive(nn.Module):
                                         len(group_embeddings),
                                     )
                                 ],
-                                masks[0][begin:end] if not do_query_expansion else None,
-                                documents_mask[
+                                queries_mask=masks[0][begin:end]
+                                if not do_query_expansion
+                                else None,
+                                documents_mask=documents_mask[
                                     g_start : min(
                                         g_start + self.mini_batch_size,
                                         len(group_embeddings),

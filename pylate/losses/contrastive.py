@@ -192,8 +192,8 @@ class Contrastive(nn.Module):
                 self.score_metric(
                     embeddings[0],
                     group_embeddings,
-                    masks[0] if not do_query_expansion else None,
-                    documents_masks,
+                    queries_mask=masks[0] if not do_query_expansion else None,
+                    documents_mask=documents_masks,
                 )
                 for group_embeddings, documents_masks in zip(embeddings[1:], masks[1:])
             ],
