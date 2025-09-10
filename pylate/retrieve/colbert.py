@@ -29,12 +29,8 @@ class ColBERT:
     ...     device="cpu",
     ... )
 
-    >>> documents_ids = ["1", "2"]
-
-    >>> documents = [
-    ...     "fruits are healthy.",
-    ...     "fruits are good for health.",
-    ... ]
+    >>> documents_ids = [f"document_id_{i}" for i in range(20)]
+    >>> documents = [f"This is the content of document {i}." for i in range(20)]
 
     >>> documents_embeddings = model.encode(
     ...     sentences=documents,
@@ -42,12 +38,12 @@ class ColBERT:
     ...     is_query=False,
     ... )
 
-    >>> index = indexes.Voyager(
+    >>> index = indexes.PLAID(
     ...     index_folder="test_indexes",
     ...     index_name="colbert",
     ...     override=True,
-    ...     embedding_size=128,
     ... )
+    ✅ Index with FastPlaid backend.
 
     >>> index = index.add_documents(
     ...     documents_ids=documents_ids,
@@ -86,6 +82,13 @@ class ColBERT:
     >>> assert isinstance(results, list)
     >>> assert len(results) == 1
 
+    >>> results = retriever.retrieve(
+    ...     queries_embeddings=queries_embeddings,
+    ...     k=2,
+    ...     device="cpu",
+    ...     subset=["document_id_10"],
+    ... )
+
     """
 
     def __init__(self, index: Voyager | PLAID) -> None:
@@ -98,6 +101,7 @@ class ColBERT:
         k_token: int = 100,
         device: str | None = None,
         batch_size: int = 50,
+        subset: list[list[str]] | list[str] | None = None,
     ) -> list[list[dict]]:
         """Retrieve documents for a list of queries.
 
@@ -111,56 +115,63 @@ class ColBERT:
             The number of documents to retrieve from the index. Defaults to `k`.
         device
             The device to use for the embeddings. Defaults to queries_embeddings device.
+        subset
+            Optional subset of document IDs to restrict search to.
+            Can be a single list (same filter for all queries) or
+            list of lists (different filter per query).
+            Document IDs should match the IDs used when adding documents.
+            Only supported with PLAID index.
 
         """
-        # PLAID is the only index that handle candidate generation and reranking internally and so a single call to the index is enough
-        if isinstance(self.index, PLAID):
+        # PLAID index directly retrieves the documents
+        if not isinstance(self.index, Voyager):
             return self.index(
                 queries_embeddings=queries_embeddings,
                 k=k,
+                subset=subset,
             )
+
         # Other indexes first generate candidates by calling the index and then rerank them
-        else:
-            if k > k_token:
-                logger.warning(
-                    f"k ({k}) is greater than k_token ({k_token}), setting k_token to k."
+        if k > k_token:
+            logger.warning(
+                f"k ({k}) is greater than k_token ({k_token}), setting k_token to k."
+            )
+            k_token = k
+        reranking_results = []
+        if isinstance(self.index, Voyager):
+            for queries_embeddings_batch in iter_batch(
+                queries_embeddings,
+                batch_size=batch_size,
+                desc=f"Retrieving documents (bs={batch_size})",
+            ):
+                retrieved_elements = self.index(
+                    queries_embeddings=queries_embeddings_batch,
+                    k=k_token,
                 )
-                k_token = k
-            reranking_results = []
-            if isinstance(self.index, Voyager):
-                for queries_embeddings_batch in iter_batch(
-                    queries_embeddings,
-                    batch_size=batch_size,
-                    desc=f"Retrieving documents (bs={batch_size})",
-                ):
-                    retrieved_elements = self.index(
+
+                documents_ids = [
+                    list(
+                        set(
+                            [
+                                document_id
+                                for query_token_document_ids in query_documents_ids
+                                for document_id in query_token_document_ids
+                            ]
+                        )
+                    )
+                    for query_documents_ids in retrieved_elements["documents_ids"]
+                ]
+
+                documents_embeddings = self.index.get_documents_embeddings(
+                    documents_ids
+                )
+
+                reranking_results.extend(
+                    rerank(
+                        documents_ids=documents_ids,
                         queries_embeddings=queries_embeddings_batch,
-                        k=k_token,
+                        documents_embeddings=documents_embeddings,
+                        device=device,
                     )
-
-                    documents_ids = [
-                        list(
-                            set(
-                                [
-                                    document_id
-                                    for query_token_document_ids in query_documents_ids
-                                    for document_id in query_token_document_ids
-                                ]
-                            )
-                        )
-                        for query_documents_ids in retrieved_elements["documents_ids"]
-                    ]
-
-                    documents_embeddings = self.index.get_documents_embeddings(
-                        documents_ids
-                    )
-
-                    reranking_results.extend(
-                        rerank(
-                            documents_ids=documents_ids,
-                            queries_embeddings=queries_embeddings_batch,
-                            documents_embeddings=documents_embeddings,
-                            device=device,
-                        )
-                    )
-                return [query_results[:k] for query_results in reranking_results]
+                )
+            return [query_results[:k] for query_results in reranking_results]
