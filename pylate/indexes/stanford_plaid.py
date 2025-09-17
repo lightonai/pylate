@@ -7,6 +7,7 @@ import numpy as np
 import torch
 from sqlitedict import SqliteDict
 
+from ..rank import RerankResult
 from .base import Base
 from .stanford_nlp import Indexer, IndexUpdater, Searcher
 from .stanford_nlp.infra import ColBERTConfig
@@ -243,7 +244,7 @@ class StanfordPLAID(Base):
         self,
         queries_embeddings: np.ndarray | torch.Tensor,
         k: int = 10,
-    ) -> dict:
+    ) -> list[list[RerankResult]]:
         """Query the index for the nearest neighbors of the queries embeddings.
 
         Parameters
@@ -264,7 +265,7 @@ class StanfordPLAID(Base):
             distances.append(result[2])
         results = [
             [
-                {"id": doc_id, "score": score}
+                RerankResult(id=doc_id, score=score)
                 for doc_id, score in zip(query_documents, query_distances)
             ]
             for query_documents, query_distances in zip(documents, distances)

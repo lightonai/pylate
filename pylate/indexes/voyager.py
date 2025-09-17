@@ -34,8 +34,6 @@ class Voyager(Base):
 
     Parameters
     ----------
-    name
-        The name of the collection.
     override
         Whether to override the collection if it already exists.
     embedding_size

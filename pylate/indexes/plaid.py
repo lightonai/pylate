@@ -6,6 +6,7 @@ import warnings
 import numpy as np
 import torch
 
+from ..rank import RerankResult
 from .base import Base
 
 logger = logging.getLogger(__name__)
@@ -231,7 +232,7 @@ class PLAID(Base):
         queries_embeddings: np.ndarray | torch.Tensor,
         k: int = 10,
         subset: list[list[str]] | list[str] | None = None,
-    ) -> list[list[dict[str, str | float]]]:
+    ) -> list[list[RerankResult]]:
         """Query the index for the nearest neighbors of the query embeddings.
 
         Parameters

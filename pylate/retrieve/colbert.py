@@ -6,7 +6,7 @@ import numpy as np
 import torch
 
 from ..indexes import PLAID, Voyager
-from ..rank import rerank
+from ..rank import RerankResult, rerank
 from ..utils import iter_batch
 
 logger = logging.getLogger(__name__)
@@ -102,7 +102,7 @@ class ColBERT:
         device: str | None = None,
         batch_size: int = 50,
         subset: list[list[str]] | list[str] | None = None,
-    ) -> list[list[dict]]:
+    ) -> list[list[RerankResult]] | None:
         """Retrieve documents for a list of queries.
 
         Parameters
@@ -115,6 +115,8 @@ class ColBERT:
             The number of documents to retrieve from the index. Defaults to `k`.
         device
             The device to use for the embeddings. Defaults to queries_embeddings device.
+        batch_size
+            The batch size to use for retrieval.
         subset
             Optional subset of document IDs to restrict search to.
             Can be a single list (same filter for all queries) or
@@ -124,7 +126,7 @@ class ColBERT:
 
         """
         # PLAID index directly retrieves the documents
-        if not isinstance(self.index, Voyager):
+        if isinstance(self.index, PLAID):
             return self.index(
                 queries_embeddings=queries_embeddings,
                 k=k,
@@ -138,40 +140,37 @@ class ColBERT:
             )
             k_token = k
         reranking_results = []
-        if isinstance(self.index, Voyager):
-            for queries_embeddings_batch in iter_batch(
-                queries_embeddings,
-                batch_size=batch_size,
-                desc=f"Retrieving documents (bs={batch_size})",
-            ):
-                retrieved_elements = self.index(
+        for queries_embeddings_batch in iter_batch(
+            queries_embeddings,
+            batch_size=batch_size,
+            desc=f"Retrieving documents (bs={batch_size})",
+        ):
+            retrieved_elements = self.index(
+                queries_embeddings=queries_embeddings_batch,
+                k=k_token,
+            )
+
+            documents_ids = [
+                list(
+                    set(
+                        [
+                            document_id
+                            for query_token_document_ids in query_documents_ids
+                            for document_id in query_token_document_ids
+                        ]
+                    )
+                )
+                for query_documents_ids in retrieved_elements["documents_ids"]
+            ]
+
+            documents_embeddings = self.index.get_documents_embeddings(documents_ids)
+
+            reranking_results.extend(
+                rerank(
+                    documents_ids=documents_ids,
                     queries_embeddings=queries_embeddings_batch,
-                    k=k_token,
+                    documents_embeddings=documents_embeddings,
+                    device=device,
                 )
-
-                documents_ids = [
-                    list(
-                        set(
-                            [
-                                document_id
-                                for query_token_document_ids in query_documents_ids
-                                for document_id in query_token_document_ids
-                            ]
-                        )
-                    )
-                    for query_documents_ids in retrieved_elements["documents_ids"]
-                ]
-
-                documents_embeddings = self.index.get_documents_embeddings(
-                    documents_ids
-                )
-
-                reranking_results.extend(
-                    rerank(
-                        documents_ids=documents_ids,
-                        queries_embeddings=queries_embeddings_batch,
-                        documents_embeddings=documents_embeddings,
-                        device=device,
-                    )
-                )
-            return [query_results[:k] for query_results in reranking_results]
+            )
+        return [query_results[:k] for query_results in reranking_results]
