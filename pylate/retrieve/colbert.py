@@ -126,7 +126,7 @@ class ColBERT:
 
         """
         # PLAID index directly retrieves the documents
-        if isinstance(self.index, PLAID) or not hasattr(self.index, Voyager):
+        if isinstance(self.index, PLAID) or not isinstance(self.index, Voyager):
             return self.index(
                 queries_embeddings=queries_embeddings,
                 k=k,
