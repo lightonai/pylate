@@ -4,6 +4,7 @@ import itertools
 from typing import Callable
 
 import torch
+import random
 
 
 class ColBERTCollator:
@@ -59,7 +60,7 @@ class ColBERTCollator:
     """
 
     def __init__(
-        self, tokenize_fn: Callable, valid_label_columns: list[str] | None = None
+        self, tokenize_fn: Callable, valid_label_columns: list[str] | None = None, num_negatives: int | None = None
     ) -> None:
         self.tokenize_fn = tokenize_fn
 
@@ -67,6 +68,7 @@ class ColBERTCollator:
             valid_label_columns = ["label", "scores"]
 
         self.valid_label_columns = valid_label_columns
+        self.num_negatives = num_negatives
 
     def __call__(self, features: list[dict]) -> dict[str, torch.Tensor]:
         """Collate a list of features into a batch."""
@@ -85,6 +87,12 @@ class ColBERTCollator:
                 columns.remove(label_column)
                 break
 
+        
+        # Columns are query, positive, then negatives
+        if(self.num_negatives and len(columns) > self.num_negatives + 2):
+            kept_columns = columns[:2]
+            kept_columns.extend(random.sample(columns[2:], self.num_negatives))
+            columns = kept_columns
         # Tokenize the text.
         for column in columns:
             # We do not tokenize columns containing the ids. It would be better to throw them away during the dataset processing (TODO), but this break sentence transformers datasets extraction.
