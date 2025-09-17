@@ -102,7 +102,7 @@ class ColBERT:
         device: str | None = None,
         batch_size: int = 50,
         subset: list[list[str]] | list[str] | None = None,
-    ) -> list[list[RerankResult]] | None:
+    ) -> list[list[RerankResult]]:
         """Retrieve documents for a list of queries.
 
         Parameters
