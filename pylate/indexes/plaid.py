@@ -157,7 +157,7 @@ class PLAID(Base):
             )
 
         if use_fast:
-            print("✅ Index with FastPlaid backend.")
+            logging.info("✅ Index with FastPlaid backend.")
             from .fast_plaid import FastPlaid
 
             self._index = FastPlaid(
@@ -175,7 +175,7 @@ class PLAID(Base):
                 device=device,
             )
         else:
-            print("📚 Index with Stanford backend.")
+            logging.info("📚 Index with Stanford backend.")
             from .stanford_plaid import StanfordPLAID
 
             # Extract Stanford PLAID parameters from kwargs with defaults
