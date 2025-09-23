@@ -9,7 +9,7 @@ description = "A library for training and retrieval with ColBERT."
 readme = "README.md"
 authors = [{ name = "LightOn" }]
 license = "MIT"
-requires-python = ">=3.9, <3.13"
+requires-python = ">=3.9"
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
@@ -25,7 +25,7 @@ dependencies = [
     "ujson == 5.10.0",
     "ninja == 1.11.1.4",
     "fastkmeans == 0.5.0",
-    "fast-plaid>=1.2.3.260,<=1.2.3.280",
+    "fast-plaid>=1.2.4.260,<=1.2.4.280",
 ]
 keywords = []
 
