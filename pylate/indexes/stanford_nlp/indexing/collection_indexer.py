@@ -310,7 +310,12 @@ class CollectionIndexer:
 
         do_fork_for_faiss = False  # set to True to free faiss GPU-0 memory at the cost of one more copy of `sample`.
 
-        args_ = [self.config.dim, self.num_partitions, self.config.kmeans_niters, self.config.use_triton]
+        args_ = [
+            self.config.dim,
+            self.num_partitions,
+            self.config.kmeans_niters,
+            self.config.use_triton,
+        ]
 
         if do_fork_for_faiss:
             # For this to work reliably, write the sample to disk. Pickle may not handle >4GB of data.
