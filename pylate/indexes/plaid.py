@@ -126,6 +126,7 @@ class PLAID(Base):
         batch_size: int = 1 << 18,
         show_progress: bool = True,
         device: str | list[str] | None = None,
+        use_triton: bool | None = None,
         **kwargs,
     ) -> None:
         self.use_fast = use_fast
@@ -173,6 +174,7 @@ class PLAID(Base):
                 batch_size=batch_size,
                 show_progress=show_progress,
                 device=device,
+                use_triton=use_triton,
             )
         else:
             print("📚 Index with Stanford backend.")

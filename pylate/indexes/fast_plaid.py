@@ -99,6 +99,7 @@ class FastPlaid(Base):
         batch_size: int = 1 << 18,
         show_progress: bool = True,
         device: str | list[str] | None = None,
+        use_triton: bool | None = None,
     ) -> None:
         self.index_folder = index_folder
         self.index_name = index_name
@@ -111,6 +112,7 @@ class FastPlaid(Base):
         self.batch_size = batch_size
         self.show_progress = show_progress
         self.device = device
+        self.use_triton = use_triton
 
         # Create the index directory structure
         self.index_path = os.path.join(index_folder, index_name)
@@ -187,6 +189,7 @@ class FastPlaid(Base):
                 max_points_per_centroid=self.max_points_per_centroid,
                 nbits=self.nbits,
                 n_samples_kmeans=self.n_samples_kmeans,
+                use_triton_kmeans=self.use_triton,
             )
             plaid_ids = list(range(len(documents_embeddings_torch)))
             self.is_indexed = True
