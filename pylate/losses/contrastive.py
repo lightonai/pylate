@@ -201,12 +201,13 @@ class Contrastive(nn.Module):
         )
 
         # compute constrastive loss using cross-entropy over the scores
-
-        return (
-            F.cross_entropy(
-                input=scores / self.temperature,
-                target=labels,
-                reduction="mean" if self.size_average else "sum",
-            )
-            * get_world_size()
+        loss = F.cross_entropy(
+            input=scores / self.temperature,
+            target=labels,
+            reduction="mean" if self.size_average else "sum",
         )
+
+        # Scale by world size when gathering across device
+        if self.gather_across_devices:
+            loss *= get_world_size()
+        return loss
