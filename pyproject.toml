@@ -25,7 +25,7 @@ dependencies = [
     "ujson == 5.10.0",
     "ninja == 1.11.1.4",
     "fastkmeans == 0.5.0",
-    "fast-plaid>=1.2.1.260,<=1.2.1.280",
+    "fast-plaid>=1.2.3.260,<=1.2.3.280",
 ]
 keywords = []
 

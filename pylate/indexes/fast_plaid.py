@@ -83,6 +83,8 @@ class FastPlaid(Base):
         If CUDA is not available, it defaults to "cpu".
         Can be a single device string (e.g., "cuda:0" or "cpu").
         Can be a list of device strings (e.g., ["cuda:0", "cuda:1"]).
+    use_triton
+        Whether to use triton kernels when computing kmeans using fast-plaid. Triton kernels are faster, but yields some variance due to race condition, set to false to get 100% reproducable results. If unset, will use triton kernels if possible.
 
     """
 
@@ -100,6 +102,7 @@ class FastPlaid(Base):
         batch_size: int = 1 << 18,
         show_progress: bool = True,
         device: str | list[str] | None = None,
+        use_triton: bool | None = None,
     ) -> None:
         self.index_folder = index_folder
         self.index_name = index_name
@@ -112,6 +115,7 @@ class FastPlaid(Base):
         self.batch_size = batch_size
         self.show_progress = show_progress
         self.device = device
+        self.use_triton = use_triton
 
         # Create the index directory structure
         self.index_path = os.path.join(index_folder, index_name)
@@ -188,6 +192,7 @@ class FastPlaid(Base):
                 max_points_per_centroid=self.max_points_per_centroid,
                 nbits=self.nbits,
                 n_samples_kmeans=self.n_samples_kmeans,
+                use_triton_kmeans=self.use_triton,
             )
             plaid_ids = list(range(len(documents_embeddings_torch)))
             self.is_indexed = True

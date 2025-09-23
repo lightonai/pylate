@@ -60,6 +60,8 @@ class PLAID(Base):
         If CUDA is not available, it defaults to "cpu".
         Can be a single device string (e.g., "cuda:0" or "cpu").
         Can be a list of device strings (e.g., ["cuda:0", "cuda:1"]).
+    use_triton
+        Whether to use triton kernels when computing kmeans using fast-plaid. Triton kernels are faster, but yields some variance due to race condition, set to false to get 100% reproducable results. If unset, will use triton kernels if possible.
     **kwargs
         Additional arguments. Stanford PLAID specific parameters (embedding_size, nranks,
         index_bsize, ndocs, centroid_score_threshold, ncells, search_batch_size) are
@@ -127,6 +129,7 @@ class PLAID(Base):
         batch_size: int = 1 << 18,
         show_progress: bool = True,
         device: str | list[str] | None = None,
+        use_triton: bool | None = None,
         **kwargs,
     ) -> None:
         self.use_fast = use_fast
@@ -174,6 +177,7 @@ class PLAID(Base):
                 batch_size=batch_size,
                 show_progress=show_progress,
                 device=device,
+                use_triton=use_triton,
             )
         else:
             print("📚 Index with Stanford backend.")
@@ -201,6 +205,7 @@ class PLAID(Base):
                 centroid_score_threshold=centroid_score_threshold,
                 ncells=ncells,
                 search_batch_size=search_batch_size,
+                use_triton=use_triton,
             )
 
     def add_documents(

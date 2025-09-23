@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 from dataclasses import dataclass
 
@@ -113,6 +115,8 @@ class IndexingSettings:
     kmeans_niters: int = DefaultVal(4)
 
     resume: bool = DefaultVal(False)
+
+    use_triton: bool | None = DefaultVal(None)
 
     @property
     def index_path_(self):

@@ -57,6 +57,8 @@ class StanfordPLAID(Base):
         The number of cells to consider for search.
     search_batch_size
         The batch size to use when searching.
+    use_triton
+        Whether to use triton kernels when computing kmeans using fast-plaid. Triton kernels are faster, but yields some variance due to race condition, set to false to get 100% reproducable results. If unset, will use triton kernels if possible.
 
     Examples:
     --------
@@ -108,6 +110,7 @@ class StanfordPLAID(Base):
         centroid_score_threshold: float = 0.35,
         ncells: int = 8,
         search_batch_size: int = 2**18,
+        use_triton: bool | None = None,
     ) -> None:
         self.config = ColBERTConfig(
             nbits=nbits,
@@ -122,6 +125,7 @@ class StanfordPLAID(Base):
             centroid_score_threshold=centroid_score_threshold,
             ncells=ncells,
             search_batch_size=search_batch_size,
+            use_triton=use_triton,
         )
         self.index_name = index_name
         self.index_folder = index_folder
