@@ -312,14 +312,14 @@ class CachedContrastive(nn.Module):
                 dim=1,
             )
             # We don't want to average the loss across the mini-batch as mini-batch sizes can vary, which would create an issue similar to this one: https://huggingface.co/blog/gradient_accumulation#where-does-it-stem-from
-            loss_mbatch = (
-                F.cross_entropy(
-                    input=scores / self.temperature,
-                    target=labels[begin:end],
-                    reduction="sum",
-                )
-                * get_world_size()
+            loss_mbatch = F.cross_entropy(
+                input=scores / self.temperature,
+                target=labels[begin:end],
+                reduction="sum",
             )
+            # Scale by world size when gathering across device
+            if self.gather_across_devices:
+                loss_mbatch *= get_world_size()
 
             if with_backward:
                 loss_mbatch.backward()
