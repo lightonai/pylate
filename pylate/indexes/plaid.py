@@ -73,7 +73,6 @@ class PLAID(Base):
     ...    index_name="plaid_colbert",
     ...    override=True,
     ... )
-    ✅ Index with FastPlaid backend.
 
     >>> model = models.ColBERT(
     ...    model_name_or_path="lightonai/GTE-ModernColBERT-v1",
