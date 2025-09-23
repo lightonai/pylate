@@ -64,7 +64,7 @@ api = ["fastapi >= 0.114.1", "uvicorn >= 0.30.6", "batched >= 0.1.2"]
 packages = ["pylate"]
 
 [tool.setuptools.package-data]
-pylate = ["hf_hub/model_card_template.md"]
+pylate = ["hf_hub/model_card_template.md", "py.typed"]
 
 [tool.ruff]
 line-length = 88
