@@ -8,6 +8,7 @@ import torch
 from fast_plaid import search
 from sqlitedict import SqliteDict
 
+from ..rank import RerankResult
 from .base import Base
 
 logger = logging.getLogger(__name__)
@@ -262,7 +263,7 @@ class FastPlaid(Base):
         | list[torch.Tensor],
         k: int = 10,
         subset: list[list[str]] | list[str] | None = None,
-    ) -> list[list[dict[str, str | float]]]:
+    ) -> list[list[RerankResult]]:
         """Query the index for the nearest neighbors of the queries embeddings.
 
         Parameters
@@ -335,7 +336,7 @@ class FastPlaid(Base):
             for plaid_id, score in query_results:
                 if plaid_id in plaid_ids_to_documents_ids:
                     doc_id = plaid_ids_to_documents_ids[plaid_id]
-                    query_docs.append({"id": doc_id, "score": float(score)})
+                    query_docs.append(RerankResult(id=doc_id, score=float(score)))
             results.append(query_docs)
 
         plaid_ids_to_documents_ids.close()

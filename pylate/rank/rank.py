@@ -2,9 +2,26 @@ from __future__ import annotations
 
 import numpy as np
 import torch
+from typing_extensions import TypedDict
 
 from ..scores import colbert_scores
 from ..utils import convert_to_tensor as func_convert_to_tensor
+
+
+class RerankResult(TypedDict):
+    """
+    Rerank result for ranking.
+
+    Parameters
+    ----------
+    id
+        The document id.
+    score
+        The document score.
+    """
+
+    id: int | str
+    score: float
 
 
 def reshape_embeddings(
@@ -27,19 +44,19 @@ def rerank(
     queries_embeddings: list[list[float | int] | np.ndarray | torch.Tensor],
     documents_embeddings: list[list[float | int] | np.ndarray | torch.Tensor],
     device: str = None,
-) -> list[list[dict[str, float]]]:
+) -> list[list[RerankResult]]:
     """Rerank the documents based on the queries embeddings.
 
     Parameters
     ----------
-    queries
-        The queries.
     documents_ids
         The documents ids.
     queries_embeddings
         The queries embeddings which is a dictionary of queries and their embeddings.
     documents_embeddings
         The documents embeddings which is a dictionary of documents ids and their embeddings.
+    device
+        The device to use for the reranking. If None, the device of the queries embeddings will be used.
 
     Examples
     --------
@@ -132,7 +149,7 @@ def rerank(
 
         results.append(
             [
-                {"id": doc_id, "score": score}
+                RerankResult(id=doc_id, score=score)
                 for doc_id, score in zip(query_documents, scores)
             ]
         )
