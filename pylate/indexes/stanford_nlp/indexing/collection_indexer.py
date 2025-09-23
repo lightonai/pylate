@@ -576,12 +576,19 @@ class CollectionIndexer:
 
 
 def compute_faiss_kmeans(
-    dim, num_partitions, kmeans_niters, use_triton, shared_lists, return_value_queue=None
+    dim,
+    num_partitions,
+    kmeans_niters,
+    use_triton,
+    shared_lists,
+    return_value_queue=None,
 ):
     use_gpu = torch.cuda.is_available()
     if use_faiss:
         if use_triton is not None:
-            print("You set use_triton but are using faiss to compute kmeans, parameter will be ignored")
+            print(
+                "You set use_triton but are using faiss to compute kmeans, parameter will be ignored"
+            )
         kmeans = faiss.Kmeans(
             dim,
             num_partitions,
