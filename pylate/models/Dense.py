@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 
 import torch
@@ -12,6 +13,8 @@ from torch import nn
 from transformers.utils import cached_file
 
 __all__ = ["Dense"]
+
+logger = logging.getLogger(__name__)
 
 
 class Dense(DenseSentenceTransformer):
@@ -125,7 +128,7 @@ class Dense(DenseSentenceTransformer):
                     use_auth_token=use_auth_token,
                 )
             except EnvironmentError:
-                print("No safetensor model found, falling back to bin.")
+                logging.warning("No safetensor model found, falling back to bin.")
                 model_name_or_path = cached_file(
                     model_name_or_path,
                     filename="pytorch_model.bin",
@@ -143,7 +146,7 @@ class Dense(DenseSentenceTransformer):
                     model_name_or_path, "model.safetensors"
                 )
             else:
-                print("No safetensor model found, falling back to bin.")
+                logging.warning("No safetensor model found, falling back to bin.")
                 model_name_or_path = os.path.join(
                     model_name_or_path, "pytorch_model.bin"
                 )

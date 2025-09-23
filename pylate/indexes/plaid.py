@@ -76,7 +76,6 @@ class PLAID(Base):
     ...    index_name="plaid_colbert",
     ...    override=True,
     ... )
-    ✅ Index with FastPlaid backend.
 
     >>> model = models.ColBERT(
     ...    model_name_or_path="lightonai/GTE-ModernColBERT-v1",
@@ -161,7 +160,7 @@ class PLAID(Base):
             )
 
         if use_fast:
-            print("✅ Index with FastPlaid backend.")
+            logging.info("✅ Index with FastPlaid backend.")
             from .fast_plaid import FastPlaid
 
             self._index = FastPlaid(
@@ -180,7 +179,7 @@ class PLAID(Base):
                 use_triton=use_triton,
             )
         else:
-            print("📚 Index with Stanford backend.")
+            logging.info("📚 Index with Stanford backend.")
             from .stanford_plaid import StanfordPLAID
 
             # Extract Stanford PLAID parameters from kwargs with defaults

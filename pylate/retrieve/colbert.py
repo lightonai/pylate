@@ -43,7 +43,6 @@ class ColBERT:
     ...     index_name="colbert",
     ...     override=True,
     ... )
-    ✅ Index with FastPlaid backend.
 
     >>> index = index.add_documents(
     ...     documents_ids=documents_ids,
