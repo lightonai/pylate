@@ -9,7 +9,7 @@ description = "A library for training and retrieval with ColBERT."
 readme = "README.md"
 authors = [{ name = "LightOn" }]
 license = "MIT"
-requires-python = ">=3.9"
+requires-python = ">=3.9, <3.13"
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
