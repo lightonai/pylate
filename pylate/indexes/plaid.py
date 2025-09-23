@@ -204,6 +204,7 @@ class PLAID(Base):
                 centroid_score_threshold=centroid_score_threshold,
                 ncells=ncells,
                 search_batch_size=search_batch_size,
+                use_triton=use_triton,
             )
 
     def add_documents(

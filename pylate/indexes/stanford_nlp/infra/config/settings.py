@@ -114,6 +114,8 @@ class IndexingSettings:
 
     resume: bool = DefaultVal(False)
 
+    use_triton: bool | None = DefaultVal(None)
+
     @property
     def index_path_(self):
         return self.index_path or os.path.join(self.index_root_, self.index_name)
