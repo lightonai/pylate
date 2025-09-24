@@ -1280,7 +1280,7 @@ class ColBERT(SentenceTransformer):
         local_files_only: bool = False,
     ) -> str | None:
         """
-        Overwrite the _get_model_type method to return the model type from the config_sentence_transformers.json file and default to "ColBERT". This is because, ST only use load_sbert_model if the model_type is equals to the class name, else it will use load_auto_model. 
+        Overwrite the _get_model_type method to return the model type from the config_sentence_transformers.json file and default to "ColBERT". This is because, ST only use load_sbert_model if the model_type is equals to the class name, else it will use load_auto_model.
 
         Args:
             model_name_or_path (str): The name or path of the pre-trained model.
@@ -1306,4 +1306,6 @@ class ColBERT(SentenceTransformer):
 
         with open(config_sentence_transformers_json_path, encoding="utf8") as fIn:
             config = json.load(fIn)
-            return config.get("model_type", "ColBERT")  # Default to "SentenceTransformer" if not specified
+            return config.get(
+                "model_type", "ColBERT"
+            )  # Default to "SentenceTransformer" if not specified
