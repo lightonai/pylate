@@ -8,7 +8,8 @@ from torch import Tensor, nn
 
 from ..models import ColBERT
 from ..scores import colbert_scores
-from ..utils import all_gather, all_gather_with_gradients, get_rank, get_world_size
+from ..utils import (all_gather, all_gather_with_gradients, get_rank,
+                     get_world_size)
 
 
 def extract_skiplist_mask(
@@ -143,12 +144,14 @@ class Contrastive(nn.Module):
             The labels for the contrastive loss. Not used in this implementation, but kept for compatibility with Trainer.
 
         """
+        # with torch.no_grad():
         embeddings = [
             torch.nn.functional.normalize(
                 self.model(sentence_feature)["token_embeddings"], p=2, dim=-1
             )
             for sentence_feature in sentence_features
         ]
+
         # handle the model being wrapped in (D)DP and so require to access module first
         skiplist = (
             self.model.skiplist
@@ -160,12 +163,40 @@ class Contrastive(nn.Module):
             if hasattr(self.model, "do_query_expansion")
             else self.model.module.do_query_expansion
         )
-        masks = extract_skiplist_mask(
-            sentence_features=sentence_features, skiplist=skiplist
-        )
+        # masks = extract_skiplist_mask(
+        #     sentence_features=sentence_features, skiplist=skiplist
+        # )
+        masks = [sentence_feature["attention_mask"] for sentence_feature in sentence_features]
         batch_size = embeddings[0].size(0)
+        # q_nets = self.model.generate_q_net(embeddings[0], masks[0])
+        # q_nets, batch_size, seqlen = self.model.generate_q_nets_per_token(embeddings[0], masks[0])
+        # print(q_nets)
+        # print(self.model.compute_similarity_with_qnet(embeddings[0], embeddings[1], q_nets))
+        # print("Simi shape:", self.model.compute_similarity_with_per_token_qnets(q_nets,embeddings[1], masks[0], batch_size, seqlen).shape)
+
+        # scores = self.model.compute_similarity_with_per_token_qnets(q_nets,embeddings[1], masks[0], batch_size, seqlen)
+        scores = self.model.compute_similarity_with_hyperencoder(embeddings[0], embeddings[1], masks[0])
+        
         # create corresponding labels
         labels = torch.arange(0, batch_size, device=embeddings[0].device)
+        sorted_indices = torch.argsort(scores, dim=1, descending=True)
+        
+        # Find the rank of the positive (correct) sample for each query
+        # The positive for query i is at position i (diagonal)
+        ranks = torch.zeros(batch_size, device=scores.device)
+        for i in range(batch_size):
+            # Find where the correct label (i) appears in the sorted indices
+            rank_position = (sorted_indices[i] == labels[i]).nonzero(as_tuple=True)[0].item()
+            ranks[i] = rank_position + 1  # +1 because ranks are 1-indexed
+        
+        # Print mean rank and individual ranks
+        mean_rank = ranks.mean().item()
+        print(f"Mean rank of positives: {mean_rank:.2f}")
+        # print(f"Individual ranks: {ranks.tolist()}")
+        # print(scores.shape)
+        # print(labels)
+        # print(scores[labels])
+        # print(scores[:2])
         # Possibly gather the embeddings across devices to have more in-batch negatives.
         if self.gather_across_devices:
             # Note that we only gather the documents embeddings and not the queries embeddings (embeddings[0]), but are keeping gradients. This is to lower the memory usage, see https://github.com/mlfoundations/open_clip/issues/616
@@ -187,18 +218,18 @@ class Contrastive(nn.Module):
             labels = labels + rank * batch_size
         # Note: the queries mask is not used, if added, take care that the expansion tokens are not masked from scoring (because they might be masked during encoding).
         # We might not need to compute the mask for queries but I let the logic there for now
-        scores = torch.cat(
-            [
-                self.score_metric(
-                    embeddings[0],
-                    group_embeddings,
-                    queries_mask=masks[0] if not do_query_expansion else None,
-                    documents_mask=documents_masks,
-                )
-                for group_embeddings, documents_masks in zip(embeddings[1:], masks[1:])
-            ],
-            dim=1,
-        )
+        # scores = torch.cat(
+        #     [
+        #         self.score_metric(
+        #             embeddings[0],
+        #             group_embeddings,
+        #             queries_mask=masks[0] if not do_query_expansion else None,
+        #             documents_mask=documents_masks,
+        #         )
+        #         for group_embeddings, documents_masks in zip(embeddings[1:], masks[1:])
+        #     ],
+        #     dim=1,
+        # )
 
         # compute constrastive loss using cross-entropy over the scores
 
