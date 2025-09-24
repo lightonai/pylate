@@ -15,7 +15,7 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "sentence-transformers == 5.1.0",
+    "sentence-transformers == 5.1.1",
     "datasets >= 2.20.0",
     "accelerate >= 0.31.0",
     "voyager >= 2.0.9",
