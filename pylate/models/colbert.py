@@ -1138,6 +1138,7 @@ class ColBERT(SentenceTransformer):
         model_kwargs: dict | None = None,
         tokenizer_kwargs: dict | None = None,
         config_kwargs: dict | None = None,
+        has_modules: bool = False,
     ) -> list[nn.Module]:
         """Create a Transformer model from a model name or path. This module is distinct
         from SentenceTransformer as it do not set the pooling layer.
@@ -1162,6 +1163,8 @@ class ColBERT(SentenceTransformer):
             Additional keyword arguments for the tokenizer. Defaults to None.
         config_kwargs
             Additional keyword arguments for the config. Defaults to None.
+        has_modules (bool, optional)
+            Whether the model has modules.json. Defaults to False.
 
         """
         logger.warning(
@@ -1267,3 +1270,42 @@ class ColBERT(SentenceTransformer):
             if isinstance(module, Transformer)
             or isinstance(module, DenseSentenceTransformer)
         ], module_kwargs
+
+    def _get_model_type(
+        self,
+        model_name_or_path: str,
+        token: bool | str | None,
+        cache_folder: str | None,
+        revision: str | None = None,
+        local_files_only: bool = False,
+    ) -> str | None:
+        """
+        Overwrite the _get_model_type method to return the model type from the config_sentence_transformers.json file and default to "ColBERT". This is because, ST only use load_sbert_model if the model_type is equals to the class name, else it will use load_auto_model.
+
+        Args:
+            model_name_or_path (str): The name or path of the pre-trained model.
+            token (Optional[Union[bool, str]]): The token to use for the model.
+            cache_folder (Optional[str]): The folder to cache the model.
+            revision (Optional[str], optional): The revision of the model. Defaults to None.
+            local_files_only (bool, optional): Whether to use only local files. Defaults to False.
+
+        Returns:
+            Optional[str]: The model type (SentenceTransformer or SparseEncoder) if available, None otherwise.
+        """
+        config_sentence_transformers_json_path = load_file_path(
+            model_name_or_path,
+            "config_sentence_transformers.json",
+            token=token,
+            cache_folder=cache_folder,
+            revision=revision,
+            local_files_only=local_files_only,
+        )
+
+        if config_sentence_transformers_json_path is None:
+            return "ColBERT"
+
+        with open(config_sentence_transformers_json_path, encoding="utf8") as fIn:
+            config = json.load(fIn)
+            return config.get(
+                "model_type", "ColBERT"
+            )  # Default to "SentenceTransformer" if not specified
