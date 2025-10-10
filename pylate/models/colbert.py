@@ -1167,6 +1167,21 @@ class ColBERT(SentenceTransformer):
             Whether the model has modules.json. Defaults to False.
 
         """
+        # Due to a change in ST, load_sbert is now only call by default for PyLate models directly (because the class name match the config name). However, ST models needs to be called with load_sbert to load the modules, so if the model has modules, we load it with load_sbert even if the class name is not ColBERT (it is a ST model)
+        if has_modules:
+            model, module_kwargs = self._load_sbert_model(
+                model_name_or_path=model_name_or_path,
+                token=token,
+                cache_folder=cache_folder,
+                revision=revision,
+                trust_remote_code=trust_remote_code,
+                local_files_only=local_files_only,
+                model_kwargs=model_kwargs,
+                tokenizer_kwargs=tokenizer_kwargs,
+                config_kwargs=config_kwargs,
+            )
+            return model
+
         logger.warning(
             f"No sentence-transformers model found with name {model_name_or_path}."
         )
