@@ -82,6 +82,8 @@ class ColBERT(SentenceTransformer):
         The output size of the projection layer. Default to 128. Can be a list to have multiple projection layers.
     activation_functions
         The activation functions to use for the projection layer. Default to identity. When a single value is set, it'll use this one for all the layers. If a list is passed, needs to be the same size as embedding_size.
+    use_residual
+        Whether to use a residual for projection layer. Default to False. When a single value is set, it'll use this one for all the layers. If a list is passed, needs to be the same size as embedding_size.
     use_existing_dense_layers
         Whether to use the existing dense layers from the loaded model (Stanford or ST). Default to True and will remove all the dense layers if set to False.
     query_prefix
@@ -348,6 +350,8 @@ class ColBERT(SentenceTransformer):
                 )
             if activation_functions is None:
                 activation_functions = torch.nn.Identity()
+            if use_residual is None:
+                use_residual = False
             # The input size of the first dense is the base model output size
             hidden_size = self[0].get_word_embedding_dimension()
         else:
@@ -371,7 +375,14 @@ class ColBERT(SentenceTransformer):
             assert len(embedding_size) == len(activation_functions), (
                 "Embedding size and activation functions needs to have the same size"
             )
-
+            if isinstance(use_residual, bool):
+                use_residual = [use_residual for _ in range(len(embedding_size))]
+            elif use_residual is None:
+                use_residual = [False for _ in range(len(embedding_size))]
+            # Make sure embedding_size and use_residual have the same size
+            assert len(embedding_size) == len(use_residual), (
+                "Embedding size and activation functions needs to have the same size"
+            )
         # Add dense layers
         if embedding_size is not None:
             logger.info(
