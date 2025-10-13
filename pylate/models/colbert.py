@@ -256,7 +256,6 @@ class ColBERT(SentenceTransformer):
             config_kwargs=config_kwargs,
             model_card_data=model_card_data,
         )
-        hidden_size = self[0].get_word_embedding_dimension()
 
         # If the model is a stanford-nlp ColBERT, load the weights of the dense layer
         if (
@@ -347,31 +346,46 @@ class ColBERT(SentenceTransformer):
                 logger.info(
                     "There is currently no projection layer and embedding size is not defined, defaulting to 128."
                 )
-                logger.info("Created a PyLate model from base encoder.")
+            if activation_functions is None:
+                activation_functions = torch.nn.Identity()
+            # The input size of the first dense is the base model output size
+            hidden_size = self[0].get_word_embedding_dimension()
+        else:
+            # Else, the input size of the first dense is the last dense layer output size
+            hidden_size = self[-1].out_features
+        if embedding_size is not None:
+            # Logic is coded for list
+            if isinstance(embedding_size, int):
+                embedding_size = [embedding_size]
+            # If activation function is a single value, cast it to the size of embedding_size
+            if isinstance(activation_functions, torch.nn.Module):
+                activation_functions = activation_functions = [
+                    activation_functions for _ in range(len(embedding_size))
+                ]
+            # Activation_functions is not defined, default to identity for all layers
+            activation_functions = [
+                torch.nn.Identity() for _ in range(len(embedding_size))
+            ]
+            # Make sure embedding_size and activation_functions have the same size
+            assert len(embedding_size) == len(activation_functions), (
+                "Embedding size and activation functions needs to have the same size"
+            )
+
+        # Add dense layers
+        if embedding_size is not None:
+            logger.info(
+                f"Adding dense layers with size {hidden_size} and activations {activation_functions}"
+            )
+            for i in range(len(embedding_size)):
                 self.append(
                     Dense(
-                        in_features=hidden_size, out_features=embedding_size, bias=bias
+                        in_features=hidden_size,
+                        out_features=embedding_size[i],
+                        bias=bias,
+                        activation_function=activation_functions[i],
                     )
                 )
-
-        elif (
-            embedding_size is not None
-            and self[1].get_sentence_embedding_dimension() != embedding_size
-        ):
-            logger.warning(
-                f"The checkpoint contains a dense layer with output dimension ({hidden_size}, {self[1].get_sentence_embedding_dimension()}). Replacing it with a Dense layer with output dimensions ({hidden_size}, {embedding_size})."
-            )
-            self[1] = Dense(
-                in_features=hidden_size, out_features=embedding_size, bias=bias
-            )
-
-        elif not isinstance(self[1], Dense):
-            logger.warning(
-                f"Converting the existing Dense layer from SentenceTransform with output dimensions ({hidden_size}, {self[1].get_sentence_embedding_dimension()})."
-            )
-            self[1] = Dense.from_sentence_transformers(dense=self[1])
-        else:
-            logger.info("PyLate model loaded successfully.")
+                hidden_size = embedding_size[i]
 
         # Ensure all tensors in the model are of the same dtype as the first tensor
         try:
