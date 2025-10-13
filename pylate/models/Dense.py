@@ -28,6 +28,8 @@ class Dense(DenseSentenceTransformer):
         Size of the output embeddings after linear projection
     bias
         Add a bias vector
+    activation_function
+        The activation function to use for the dense layer. Default to identity.
     init_weight
         Initial value for the matrix of the linear layer
     init_bias
