@@ -396,6 +396,7 @@ class ColBERT(SentenceTransformer):
                         out_features=embedding_size[i],
                         bias=bias,
                         activation_function=activation_functions[i],
+                        use_residual=use_residual[i]
                     )
                 )
                 hidden_size = embedding_size[i]
