@@ -204,7 +204,9 @@ class ColBERT(SentenceTransformer):
         token: bool | str | None = None,
         use_auth_token: bool | str | None = None,
         truncate_dim: int | None = None,
-        embedding_size: int | None = None,
+        embedding_size: int | list[int] | None = None,
+        use_existing_dense_layers: bool = True,
+        activation_functions: torch.nn.Module | list[torch.nn.Module] | None = None,
         bias: bool = False,
         query_prefix: str | None = None,
         document_prefix: str | None = None,
@@ -252,76 +254,92 @@ class ColBERT(SentenceTransformer):
         )
         hidden_size = self[0].get_word_embedding_dimension()
 
-        # Add a linear projection layer to the model in order to project the embeddings to the desired size.
-        if len(self) < 2:
-            # If the model is a stanford-nlp ColBERT, load the weights of the dense layer
-            if (
-                self[0].auto_model.config.architectures is not None
-                and self[0].auto_model.config.architectures[0] == "HF_ColBERT"
-            ):
-                self.append(
-                    Dense.from_stanford_weights(
-                        model_name_or_path,
-                        cache_folder,
-                        revision,
-                        local_files_only,
-                        token,
-                        use_auth_token,
-                    )
+        # If the model is a stanford-nlp ColBERT, load the weights of the dense layer
+        if (
+            self[0].auto_model.config.architectures is not None
+            and self[0].auto_model.config.architectures[0] == "HF_ColBERT"
+        ):
+            self.append(
+                Dense.from_stanford_weights(
+                    model_name_or_path,
+                    cache_folder,
+                    revision,
+                    local_files_only,
+                    token,
+                    use_auth_token,
                 )
-                logger.info("Loaded the weights from Stanford NLP model.")
-                try:
-                    metadata = cached_file(
-                        model_name_or_path,
-                        filename="artifact.metadata",
-                        cache_dir=cache_folder,
-                        revision=revision,
-                        local_files_only=local_files_only,
-                        token=token,
-                        use_auth_token=use_auth_token,
+            )
+            logger.info("Loaded the weights from Stanford NLP model.")
+            try:
+                metadata = cached_file(
+                    model_name_or_path,
+                    filename="artifact.metadata",
+                    cache_dir=cache_folder,
+                    revision=revision,
+                    local_files_only=local_files_only,
+                    token=token,
+                    use_auth_token=use_auth_token,
+                )
+                with open(metadata, "r") as f:
+                    metadata = json.load(f)
+                    # If the user do not override the values, read from config file
+                    meta_query_token_id = metadata.get("query_token_id", None)
+                    if self.query_prefix is None and meta_query_token_id:
+                        self.query_prefix = meta_query_token_id
+
+                    meta_doc_token_id = metadata.get("doc_token_id", None)
+                    if self.document_prefix is None and meta_doc_token_id:
+                        self.document_prefix = meta_doc_token_id
+
+                    meta_query_maxlen = metadata.get("query_maxlen", None)
+                    if self.query_length is None and meta_query_maxlen:
+                        self.query_length = meta_query_maxlen
+
+                    meta_doc_maxlen = metadata.get("doc_maxlen", None)
+                    if self.document_length is None and meta_doc_maxlen:
+                        self.document_length = meta_doc_maxlen
+
+                    meta_attend_to_mask_tokens = metadata.get(
+                        "attend_to_mask_tokens", None
                     )
-                    with open(metadata, "r") as f:
-                        metadata = json.load(f)
-                        # If the user do not override the values, read from config file
-                        meta_query_token_id = metadata.get("query_token_id", None)
-                        if self.query_prefix is None and meta_query_token_id:
-                            self.query_prefix = meta_query_token_id
+                    if (
+                        self.attend_to_expansion_tokens is None
+                        and meta_attend_to_mask_tokens
+                    ):
+                        self.attend_to_expansion_tokens = meta_attend_to_mask_tokens
 
-                        meta_doc_token_id = metadata.get("doc_token_id", None)
-                        if self.document_prefix is None and meta_doc_token_id:
-                            self.document_prefix = meta_doc_token_id
+                logger.info("Loaded the configuration from Stanford NLP model.")
+            except EnvironmentError:
+                if self.query_prefix is None:
+                    self.query_prefix = "[unused0]"
+                if self.document_prefix is None:
+                    self.document_prefix = "[unused1]"
+                # We do not set the query/doc length as they'll be set to the default values afterwards. We do it for prefixes as the default from stanford is different from ours
+                logger.warning(
+                    "Could not load the configuration file from Stanford NLP model, using default values."
+                )
 
-                        meta_query_maxlen = metadata.get("query_maxlen", None)
-                        if self.query_length is None and meta_query_maxlen:
-                            self.query_length = meta_query_maxlen
+        # This could maybe be in the loop below, but I do not find a clean way to only print once while not checking all the layers before converting them (although if one is ST, all should be ST)
+        elif not isinstance(self[1], Dense):
+            logger.info("Loaded and converting ST model to PyLate.")
+        else:
+            logger.info("Loaded PyLate model.")
 
-                        meta_doc_maxlen = metadata.get("doc_maxlen", None)
-                        if self.document_length is None and meta_doc_maxlen:
-                            self.document_length = meta_doc_maxlen
+        # Convert ST dense layers to PyLate dense layers
+        for i in range(1, len(self)):
+            if not isinstance(self[i], Dense):
+                self[i] = Dense.from_sentence_transformers(dense=self[i])
 
-                        meta_attend_to_mask_tokens = metadata.get(
-                            "attend_to_mask_tokens", None
-                        )
-                        if (
-                            self.attend_to_expansion_tokens is None
-                            and meta_attend_to_mask_tokens
-                        ):
-                            self.attend_to_expansion_tokens = meta_attend_to_mask_tokens
+        if not use_existing_dense_layers:
+            logger.info("Removing existing dense layers")
+            while len(self) > 1:
+                del self[1]
 
-                    logger.info("Loaded the configuration from Stanford NLP model.")
-                except EnvironmentError:
-                    if self.query_prefix is None:
-                        self.query_prefix = "[unused0]"
-                    if self.document_prefix is None:
-                        self.document_prefix = "[unused1]"
-                    # We do not set the query/doc length as they'll be set to the default values afterwards. We do it for prefixes as the default from stanford is different from ours
-                    logger.warning(
-                        "Could not load the configuration file from Stanford NLP model, using default values."
-                    )
-            else:
-                # Add a linear projection layer to the model in order to project the embeddings to the desired size
-                embedding_size = embedding_size or 128
-
+        # If there is no projection layer (or we deleted those) and no projection is defined, default to 128
+        if len(self) < 2:
+            logger.info("Creating a PyLate model from base model")
+            if embedding_size is None:
+                embedding_size = 128
                 logger.info(
                     f"The checkpoint does not contain a linear projection layer. Adding one with output dimensions ({hidden_size}, {embedding_size})."
                 )
