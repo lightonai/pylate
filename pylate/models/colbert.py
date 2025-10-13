@@ -325,31 +325,28 @@ class ColBERT(SentenceTransformer):
                 logger.info(
                     f"The checkpoint does not contain a linear projection layer. Adding one with output dimensions ({hidden_size}, {embedding_size})."
                 )
-                logger.info("Created a PyLate model from base encoder.")
                 self.append(
                     Dense(
                         in_features=hidden_size, out_features=embedding_size, bias=bias
                     )
                 )
-
-        elif (
-            embedding_size is not None
-            and self[1].get_sentence_embedding_dimension() != embedding_size
-        ):
+                logger.info("Created a PyLate model from base encoder.")
+        # Convert ST dense layers to PyLate dense layers
+        for i in range(1, len(self)):
+            if not isinstance(self[i], Dense):
+                self[i] = Dense.from_sentence_transformers(dense=self[i])
+        # If the user defined an output dimension and the last linear dimension is not the same, add a dense layer
+        if embedding_size is not None and self[-1].out_features != embedding_size:
             logger.warning(
-                f"The checkpoint contains a dense layer with output dimension ({hidden_size}, {self[1].get_sentence_embedding_dimension()}). Replacing it with a Dense layer with output dimensions ({hidden_size}, {embedding_size})."
+                f"The checkpoint contains a final projection layer with output dimension ({self[-1].in_features}, {self[-1].out_features}). Adding a dense layer with output dimensions ({self[-1].out_features}, {embedding_size})."
             )
-            self[1] = Dense(
-                in_features=hidden_size, out_features=embedding_size, bias=bias
+            self.append(
+                Dense(
+                    in_features=self[-1].out_features,
+                    out_features=embedding_size,
+                    bias=bias,
+                )
             )
-
-        elif not isinstance(self[1], Dense):
-            logger.warning(
-                f"Converting the existing Dense layer from SentenceTransform with output dimensions ({hidden_size}, {self[1].get_sentence_embedding_dimension()})."
-            )
-            self[1] = Dense.from_sentence_transformers(dense=self[1])
-        else:
-            logger.info("PyLate model loaded successfully.")
 
         # Ensure all tensors in the model are of the same dtype as the first tensor
         try:
