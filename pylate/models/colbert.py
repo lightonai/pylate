@@ -326,10 +326,11 @@ class ColBERT(SentenceTransformer):
                 )
 
         # This could maybe be in the loop below, but I do not find a clean way to only print once while not checking all the layers before converting them (although if one is ST, all should be ST)
-        elif not isinstance(self[1], Dense):
-            logger.info("Loaded and converting ST model to PyLate.")
-        else:
-            logger.info("Loaded PyLate model.")
+        if len(self) > 1:
+            if not isinstance(self[1], Dense):
+                logger.info("Loaded and converting ST model to PyLate.")
+            else:
+                logger.info("Loaded PyLate model.")
 
         # Convert ST dense layers to PyLate dense layers
         for i in range(1, len(self)):
@@ -358,6 +359,7 @@ class ColBERT(SentenceTransformer):
         else:
             # Else, the input size of the first dense is the last dense layer output size
             hidden_size = self[-1].out_features
+        print("EMBHEDDING SIE", embedding_size)
         if embedding_size is not None:
             # Logic is coded for list
             if isinstance(embedding_size, int):
@@ -367,15 +369,16 @@ class ColBERT(SentenceTransformer):
                 activation_functions = activation_functions = [
                     activation_functions for _ in range(len(embedding_size))
                 ]
-            elif activation_function is None:
+            elif activation_functions is None:
                 # Activation_functions is not defined, default to identity for all layers
                 activation_functions = [
                     torch.nn.Identity() for _ in range(len(embedding_size))
-            ]
+                ]
             # Make sure embedding_size and activation_functions have the same size
             assert len(embedding_size) == len(activation_functions), (
                 "Embedding size and activation functions needs to have the same size"
             )
+            print("USE RESIDUAL", use_residual)
             if isinstance(use_residual, bool):
                 use_residual = [use_residual for _ in range(len(embedding_size))]
             elif use_residual is None:
