@@ -23,7 +23,7 @@ class Dense(DenseSentenceTransformer):
     Parameters
     ----------
     in_features
-        Size of the embeddings in output of the tansformer.
+        Size of the embeddings in output of the transformer.
     out_features
         Size of the output embeddings after linear projection
     bias
