@@ -341,7 +341,7 @@ class ColBERT(SentenceTransformer):
             if embedding_size is None:
                 embedding_size = 128
                 logger.info(
-                    f"The checkpoint does not contain a linear projection layer. Adding one with output dimensions ({hidden_size}, {embedding_size})."
+                    "There is currently no projection layer and embedding size is not defined, defaulting to 128."
                 )
                 logger.info("Created a PyLate model from base encoder.")
                 self.append(
