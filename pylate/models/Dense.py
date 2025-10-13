@@ -69,7 +69,7 @@ class Dense(DenseSentenceTransformer):
     def forward(self, features: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """Performs linear projection on the token embeddings."""
         token_embeddings = features["token_embeddings"]
-        projected_embeddings = self.linear(token_embeddings)
+        projected_embeddings = self.activation_function(self.linear(token_embeddings))
         features["token_embeddings"] = projected_embeddings
         return features
 
@@ -79,7 +79,9 @@ class Dense(DenseSentenceTransformer):
         Our Dense model does not have the activation function.
         """
         config = dense.get_config_dict()
-        config["activation_function"] = nn.Identity()
+        config["activation_function"] = import_from_string(
+            config["activation_function"]
+        )()
         model = Dense(**config)
         model.load_state_dict(dense.state_dict())
         return model
