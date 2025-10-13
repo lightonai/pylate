@@ -185,6 +185,9 @@ class Dense(DenseSentenceTransformer):
         model.load_state_dict(state_dict)
         return model
 
+    def get_config_dict(self):
+        return {**super().get_config_dict(), "use_residual": self.use_residual}
+
     @staticmethod
     def load(input_path) -> "Dense":
         """Load a Dense layer."""
