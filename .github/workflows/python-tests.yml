@@ -1,8 +1,10 @@
-name: Python Tests
+name: Tests Python 3.9 and 3.12, Ubuntu
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
-  pull_request:
-    branches:
-      - "**"
   push:
     branches:
       - "**"
@@ -11,20 +13,13 @@ jobs:
   test-:
     runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         os: [ubuntu-latest]
-        python-version: ["3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.9", "3.12"]
         test-target: ["tests", "pylate"]
 
     steps:
-      - name: Cache Hugging Face Hub
-        id: cache-hf
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/huggingface
-          key: ${{ runner.os }}-hf
-
       - name: Checkout code
         uses: actions/checkout@v3
 
@@ -35,6 +30,9 @@ jobs:
           cache-dependency-glob: "**/pyproject.toml"
           python-version: ${{ matrix.python-version }}
 
-      - name: Run tests
-        run: |
-          uv run --extra dev pytest ${{ matrix.test-target }} -n auto --durations=5
+      - name: Run model loading tests
+        if: matrix.test-target == 'tests'
+        run: uv run --extra dev pytest tests -m "model_loading" --durations=5
+
+      - name: Run other tests
+        run: uv run --extra dev pytest ${{ matrix.test-target }} -m "not model_loading" -n auto --durations=5

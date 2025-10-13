@@ -1,11 +1,37 @@
 from __future__ import annotations
 
+import os
+import shutil
+
 import pytest
+from huggingface_hub.constants import HUGGINGFACE_HUB_CACHE
 
 from pylate import models
 
 
+@pytest.fixture(scope="function")
+def cleanup_hf_cache():
+    """A pytest fixture that runs after each test function.
+
+    It completely removes the Hugging Face Hub cache directory.
+    """
+
+    yield
+
+    print("Cleaning up Hugging Face cache...")
+    if os.path.exists(HUGGINGFACE_HUB_CACHE):
+        try:
+            shutil.rmtree(HUGGINGFACE_HUB_CACHE)
+            print("Hugging Face cache deleted successfully.")
+        except OSError as e:
+            print(f"Error deleting cache directory {HUGGINGFACE_HUB_CACHE}: {e}")
+    else:
+        print("Cache directory not found, skipping cleanup.")
+
+
+@pytest.mark.model_loading
 @pytest.mark.flaky(reruns=3, reruns_delay=5)
+@pytest.mark.usefixtures("cleanup_hf_cache")
 @pytest.mark.parametrize(
     "model_name_or_path, revision, query_prefix, document_prefix, max_seq_length, query_length, config",
     [

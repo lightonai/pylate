@@ -95,7 +95,4 @@ filterwarnings = [
 addopts = "--doctest-modules --verbose -ra --cov-config=.coveragerc -m \"not web and not slow\""
 doctest_optionflags = "NORMALIZE_WHITESPACE NUMBER"
 norecursedirs = ["build", "docs", "node_modules", "pylate/server"]
-markers = [
-    "web: tests that require using the Internet",
-    "slow: tests that take a long time to run",
-]
+markers = ["model_loading: marks tests that download large models"]
