@@ -80,7 +80,7 @@ class Dense(DenseSentenceTransformer):
         projected_embeddings = self.activation_function(self.linear(token_embeddings))
         if self.use_residual:
             residual_embeddings = token_embeddings
-            if self.residual is not None:
+            if self.in_features != self.out_features:
                 residual_embeddings = self.residual(token_embeddings)
             projected_embeddings += residual_embeddings
         features["token_embeddings"] = projected_embeddings
