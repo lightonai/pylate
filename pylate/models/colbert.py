@@ -79,7 +79,11 @@ class ColBERT(SentenceTransformer):
         The dimension to truncate sentence embeddings to. `None` does no truncation. Truncation is only applicable
         during inference when :meth:`SentenceTransformer.encode` is called.
     embedding_size
-        The output size of the projection layer. Default to 128.
+        The output size of the projection layer. Default to 128. Can be a list to have multiple projection layers.
+    activation_functions
+        The activation functions to use for the projection layer. Default to identity. When a single value is set, it'll use this one for all the layers. If a list is passed, needs to be the same size as embedding_size.
+    use_existing_dense_layers
+        Whether to use the existing dense layers from the loaded model (Stanford or ST). Default to True and will remove all the dense layers if set to False.
     query_prefix
         Prefix to add to the queries.
     document_prefix
@@ -205,8 +209,8 @@ class ColBERT(SentenceTransformer):
         use_auth_token: bool | str | None = None,
         truncate_dim: int | None = None,
         embedding_size: int | list[int] | None = None,
-        use_existing_dense_layers: bool = True,
         activation_functions: torch.nn.Module | list[torch.nn.Module] | None = None,
+        use_existing_dense_layers: bool = True,
         bias: bool = False,
         query_prefix: str | None = None,
         document_prefix: str | None = None,
