@@ -1,8 +1,10 @@
-name: PLAID Tests
+name: Tests PLAID windows and MacOS, Python 3.12
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
-  pull_request:
-    branches:
-      - "**"
   push:
     branches:
       - "**"
@@ -11,20 +13,13 @@ jobs:
   tests:
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: true
       matrix:
-        os: [windows-latest, ubuntu-latest, macos-latest]
-        python-version: ["3.12"]
+        os: [windows-latest, macos-latest]
+        python-version: ["3.9", "3.12"]
 
     steps:
       - uses: actions/checkout@v3
-
-      - name: Set up MSVC Build environment
-        uses: ilammy/msvc-dev-cmd@v1
-
-      - uses: actions/cache@v4
-        with:
-          path: ~/.cache/huggingface
-          key: ${{ runner.os }}-hf
 
       - uses: astral-sh/setup-uv@v5
         with:
