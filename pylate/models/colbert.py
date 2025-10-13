@@ -212,6 +212,7 @@ class ColBERT(SentenceTransformer):
         truncate_dim: int | None = None,
         embedding_size: int | list[int] | None = None,
         activation_functions: torch.nn.Module | list[torch.nn.Module] | None = None,
+        use_residual: bool | list[bool] | None = None,
         use_existing_dense_layers: bool = True,
         bias: bool = False,
         query_prefix: str | None = None,
