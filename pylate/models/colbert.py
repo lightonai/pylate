@@ -362,9 +362,10 @@ class ColBERT(SentenceTransformer):
                 activation_functions = activation_functions = [
                     activation_functions for _ in range(len(embedding_size))
                 ]
-            # Activation_functions is not defined, default to identity for all layers
-            activation_functions = [
-                torch.nn.Identity() for _ in range(len(embedding_size))
+            elif activation_function is None:
+                # Activation_functions is not defined, default to identity for all layers
+                activation_functions = [
+                    torch.nn.Identity() for _ in range(len(embedding_size))
             ]
             # Make sure embedding_size and activation_functions have the same size
             assert len(embedding_size) == len(activation_functions), (
