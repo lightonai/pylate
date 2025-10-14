@@ -34,8 +34,6 @@ class Dense(DenseSentenceTransformer):
         Initial value for the bias of the linear layer.
     use_residual
         Whether to use residual for the linear layer.
-    use_residual
-        Whether to use residual for the linear layer.
 
     Examples
     --------
