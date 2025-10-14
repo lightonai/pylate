@@ -387,8 +387,21 @@ class ColBERT(SentenceTransformer):
         # Set the query prefix ID using the tokenizer.
         self.query_prefix_id = self.tokenizer.convert_tokens_to_ids(self.query_prefix)
 
-        # Set the padding token ID to be the same as the mask token ID for queries.
-        self.tokenizer.pad_token_id = self.tokenizer.mask_token_id
+        # Set the padding token ID
+        # If it is a MLM model, use the MASK token
+        if self.tokenizer.mask_token_id is not None:
+            self.tokenizer.pad_token_id = self.tokenizer.mask_token_id
+        # If it's a LLM, use the EOS token
+        elif self.tokenizer.eos_token_id is not None:
+            self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
+        elif self.tokenizer.pad_token_id is not None:
+            logger.warning(
+                "Could not find either a MASK token or EOS token to use for padding token in query expansion, using the default padding token."
+            )
+        else:
+            raise NotImplementedError(
+                "The model does not have a MASK token or EOS token to be used as the padding token for query expansion and does not have a pad token set."
+            )
 
         self.document_length = (
             document_length
