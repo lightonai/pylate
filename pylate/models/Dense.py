@@ -32,6 +32,10 @@ class Dense(DenseSentenceTransformer):
         Initial value for the matrix of the linear layer
     init_bias
         Initial value for the bias of the linear layer.
+    use_residual
+        Whether to use residual for the linear layer.
+    use_residual
+        Whether to use residual for the linear layer.
 
     Examples
     --------
@@ -61,15 +65,24 @@ class Dense(DenseSentenceTransformer):
         activation_function=nn.Identity(),
         init_weight: torch.Tensor = None,
         init_bias: torch.Tensor = None,
+        use_residual: bool = False,
     ) -> None:
         super(Dense, self).__init__(
             in_features, out_features, bias, activation_function, init_weight, init_bias
         )
+        self.use_residual = use_residual
+        if use_residual and self.in_features != self.out_features:
+            self.residual = nn.Linear(in_features, self.out_features, bias=False)
 
     def forward(self, features: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """Performs linear projection on the token embeddings."""
         token_embeddings = features["token_embeddings"]
         projected_embeddings = self.activation_function(self.linear(token_embeddings))
+        if self.use_residual:
+            residual_embeddings = token_embeddings
+            if self.in_features != self.out_features:
+                residual_embeddings = self.residual(token_embeddings)
+            projected_embeddings = projected_embeddings + residual_embeddings
         features["token_embeddings"] = projected_embeddings
         return features
 
