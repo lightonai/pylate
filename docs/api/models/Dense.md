@@ -62,9 +62,9 @@ Performs linear projection on the token embeddings to a lower dimension.
 
     **Parameters**
 
-    - **args**
-    - **kwargs**
-
+    - **args**    
+    - **kwargs**    
+    
 ???- note "add_module"
 
     Add a child module to the current module.
@@ -73,9 +73,9 @@ Performs linear projection on the token embeddings to a lower dimension.
 
     **Parameters**
 
-    - **name**     (*str*)
-    - **module**     (*Optional[ForwardRef('Module')]*)
-
+    - **name**     (*str*)    
+    - **module**     (*Optional[ForwardRef('Module')]*)    
+    
 ???- note "apply"
 
     Apply ``fn`` recursively to every submodule (as returned by ``.children()``) as well as self.
@@ -84,15 +84,15 @@ Performs linear projection on the token embeddings to a lower dimension.
 
     **Parameters**
 
-    - **fn**     (*Callable[[ForwardRef('Module')], NoneType]*)
-
+    - **fn**     (*Callable[[ForwardRef('Module')], NoneType]*)    
+    
 ???- note "bfloat16"
 
     Casts all floating point parameters and buffers to ``bfloat16`` datatype.
 
     .. note::     This method modifies the module in-place.  Returns:     Module: self
 
-
+    
 ???- note "buffers"
 
     Return an iterator over module buffers.
@@ -101,15 +101,15 @@ Performs linear projection on the token embeddings to a lower dimension.
 
     **Parameters**
 
-    - **recurse**     (*bool*)     – defaults to `True`
-
+    - **recurse**     (*bool*)     – defaults to `True`    
+    
 ???- note "children"
 
     Return an iterator over immediate children modules.
 
     Yields:     Module: a child module
 
-
+    
 ???- note "compile"
 
     Compile this Module's forward using :func:`torch.compile`.
@@ -118,16 +118,16 @@ Performs linear projection on the token embeddings to a lower dimension.
 
     **Parameters**
 
-    - **args**
-    - **kwargs**
-
+    - **args**    
+    - **kwargs**    
+    
 ???- note "cpu"
 
     Move all model parameters and buffers to the CPU.
 
     .. note::     This method modifies the module in-place.  Returns:     Module: self
 
-
+    
 ???- note "cuda"
 
     Move all model parameters and buffers to the GPU.
@@ -136,63 +136,63 @@ Performs linear projection on the token embeddings to a lower dimension.
 
     **Parameters**
 
-    - **device**     (*Union[torch.device, int, NoneType]*)     – defaults to `None`
-
+    - **device**     (*Union[int, torch.device, NoneType]*)     – defaults to `None`    
+    
 ???- note "double"
 
     Casts all floating point parameters and buffers to ``double`` datatype.
 
     .. note::     This method modifies the module in-place.  Returns:     Module: self
 
-
+    
 ???- note "eval"
 
     Set the module in evaluation mode.
 
     This has an effect only on certain modules. See the documentation of particular modules for details of their behaviors in training/evaluation mode, i.e. whether they are affected, e.g. :class:`Dropout`, :class:`BatchNorm`, etc.  This is equivalent with :meth:`self.train(False) <torch.nn.Module.train>`.  See :ref:`locally-disable-grad-doc` for a comparison between `.eval()` and several similar mechanisms that may be confused with it.  Returns:     Module: self
 
-
+    
 ???- note "extra_repr"
 
     Return the extra representation of the module.
 
     To print customized extra information, you should re-implement this method in your own modules. Both single-line and multi-line strings are acceptable.
 
-
+    
 ???- note "float"
 
     Casts all floating point parameters and buffers to ``float`` datatype.
 
     .. note::     This method modifies the module in-place.  Returns:     Module: self
 
-
+    
 ???- note "forward"
 
     Performs linear projection on the token embeddings.
 
     **Parameters**
 
-    - **features**     (*'dict[str, torch.Tensor]'*)
-
+    - **features**     (*'dict[str, torch.Tensor]'*)    
+    
 ???- note "from_sentence_transformers"
 
     Converts a SentenceTransformer Dense model to a Dense model. Our Dense model does not have the activation function.
 
-    - **dense**     (*'DenseSentenceTransformer'*)
-
+    - **dense**     (*'DenseSentenceTransformer'*)    
+    
 ???- note "from_stanford_weights"
 
     Load the weight of the Dense layer using weights from a stanford-nlp checkpoint.
 
     **Parameters**
 
-    - **model_name_or_path**     (*'str | os.PathLike'*)
-    - **cache_folder**     (*'str | os.PathLike | None'*)     – defaults to `None`
-    - **revision**     (*'str | None'*)     – defaults to `None`
-    - **local_files_only**     (*'bool | None'*)     – defaults to `None`
-    - **token**     (*'str | bool | None'*)     – defaults to `None`
-    - **use_auth_token**     (*'str | bool | None'*)     – defaults to `None`
-
+    - **model_name_or_path**     (*'str | os.PathLike'*)    
+    - **cache_folder**     (*'str | os.PathLike | None'*)     – defaults to `None`    
+    - **revision**     (*'str | None'*)     – defaults to `None`    
+    - **local_files_only**     (*'bool | None'*)     – defaults to `None`    
+    - **token**     (*'str | bool | None'*)     – defaults to `None`    
+    - **use_auth_token**     (*'str | bool | None'*)     – defaults to `None`    
+    
 ???- note "get_buffer"
 
     Return the buffer given by ``target`` if it exists, otherwise throw an error.
@@ -201,22 +201,22 @@ Performs linear projection on the token embeddings to a lower dimension.
 
     **Parameters**
 
-    - **target**     (*str*)
-
+    - **target**     (*str*)    
+    
 ???- note "get_config_dict"
 
     Returns a dictionary of the configuration parameters of the module.
 
     These parameters are used to save the module's configuration when saving the model to disk, and again used to initialize the module when loading it from a pre-trained model. The keys used in the dictionary are defined in the ``config_keys`` class variable.  Returns:     dict[str, Any]: A dictionary of the configuration parameters of the module.
 
-
+    
 ???- note "get_extra_state"
 
     Return any extra state to include in the module's state_dict.
 
     Implement this and a corresponding :func:`set_extra_state` for your module if you need to store extra state. This function is called when building the module's `state_dict()`.  Note that extra state should be picklable to ensure working serialization of the state_dict. We only provide backwards compatibility guarantees for serializing Tensors; other objects may break backwards compatibility if their serialized pickled form changes.  Returns:     object: Any extra state to store in the module's state_dict
 
-
+    
 ???- note "get_parameter"
 
     Return the parameter given by ``target`` if it exists, otherwise throw an error.
@@ -225,8 +225,8 @@ Performs linear projection on the token embeddings to a lower dimension.
 
     **Parameters**
 
-    - **target**     (*str*)
-
+    - **target**     (*str*)    
+    
 ???- note "get_sentence_embedding_dimension"
 
 ???- note "get_submodule"
@@ -237,15 +237,15 @@ Performs linear projection on the token embeddings to a lower dimension.
 
     **Parameters**
 
-    - **target**     (*str*)
-
+    - **target**     (*str*)    
+    
 ???- note "half"
 
     Casts all floating point parameters and buffers to ``half`` datatype.
 
     .. note::     This method modifies the module in-place.  Returns:     Module: self
 
-
+    
 ???- note "ipu"
 
     Move all model parameters and buffers to the IPU.
@@ -254,14 +254,14 @@ Performs linear projection on the token embeddings to a lower dimension.
 
     **Parameters**
 
-    - **device**     (*Union[torch.device, int, NoneType]*)     – defaults to `None`
-
+    - **device**     (*Union[int, torch.device, NoneType]*)     – defaults to `None`    
+    
 ???- note "load"
 
     Load a Dense layer.
 
-    - **input_path**
-
+    - **input_path**    
+    
 ???- note "load_config"
 
     Load the configuration of the module from a model checkpoint. The checkpoint can be either a local directory or a model id on Hugging Face. The configuration is loaded from a JSON file, which contains the parameters used to initialize the module.
@@ -270,14 +270,14 @@ Performs linear projection on the token embeddings to a lower dimension.
 
     **Parameters**
 
-    - **model_name_or_path**     (*'str'*)
-    - **subfolder**     (*'str'*)     – defaults to ``
-    - **config_filename**     (*'str | None'*)     – defaults to `None`
-    - **token**     (*'bool | str | None'*)     – defaults to `None`
-    - **cache_folder**     (*'str | None'*)     – defaults to `None`
-    - **revision**     (*'str | None'*)     – defaults to `None`
-    - **local_files_only**     (*'bool'*)     – defaults to `False`
-
+    - **model_name_or_path**     (*'str'*)    
+    - **subfolder**     (*'str'*)     – defaults to ``    
+    - **config_filename**     (*'str | None'*)     – defaults to `None`    
+    - **token**     (*'bool | str | None'*)     – defaults to `None`    
+    - **cache_folder**     (*'str | None'*)     – defaults to `None`    
+    - **revision**     (*'str | None'*)     – defaults to `None`    
+    - **local_files_only**     (*'bool'*)     – defaults to `False`    
+    
 ???- note "load_dir_path"
 
     A utility function to load a directory from a model checkpoint. The checkpoint can be either a local directory or a model id on Hugging Face.
@@ -286,13 +286,13 @@ Performs linear projection on the token embeddings to a lower dimension.
 
     **Parameters**
 
-    - **model_name_or_path**     (*'str'*)
-    - **subfolder**     (*'str'*)     – defaults to ``
-    - **token**     (*'bool | str | None'*)     – defaults to `None`
-    - **cache_folder**     (*'str | None'*)     – defaults to `None`
-    - **revision**     (*'str | None'*)     – defaults to `None`
-    - **local_files_only**     (*'bool'*)     – defaults to `False`
-
+    - **model_name_or_path**     (*'str'*)    
+    - **subfolder**     (*'str'*)     – defaults to ``    
+    - **token**     (*'bool | str | None'*)     – defaults to `None`    
+    - **cache_folder**     (*'str | None'*)     – defaults to `None`    
+    - **revision**     (*'str | None'*)     – defaults to `None`    
+    - **local_files_only**     (*'bool'*)     – defaults to `False`    
+    
 ???- note "load_file_path"
 
     A utility function to load a file from a model checkpoint. The checkpoint can be either a local directory or a model id on Hugging Face. The file is loaded from the specified subfolder within the model directory.
@@ -301,26 +301,26 @@ Performs linear projection on the token embeddings to a lower dimension.
 
     **Parameters**
 
-    - **model_name_or_path**     (*'str'*)
-    - **filename**     (*'str'*)
-    - **subfolder**     (*'str'*)     – defaults to ``
-    - **token**     (*'bool | str | None'*)     – defaults to `None`
-    - **cache_folder**     (*'str | None'*)     – defaults to `None`
-    - **revision**     (*'str | None'*)     – defaults to `None`
-    - **local_files_only**     (*'bool'*)     – defaults to `False`
-
+    - **model_name_or_path**     (*'str'*)    
+    - **filename**     (*'str'*)    
+    - **subfolder**     (*'str'*)     – defaults to ``    
+    - **token**     (*'bool | str | None'*)     – defaults to `None`    
+    - **cache_folder**     (*'str | None'*)     – defaults to `None`    
+    - **revision**     (*'str | None'*)     – defaults to `None`    
+    - **local_files_only**     (*'bool'*)     – defaults to `False`    
+    
 ???- note "load_state_dict"
 
     Copy parameters and buffers from :attr:`state_dict` into this module and its descendants.
 
-    If :attr:`strict` is ``True``, then the keys of :attr:`state_dict` must exactly match the keys returned by this module's :meth:`~torch.nn.Module.state_dict` function.  .. warning::     If :attr:`assign` is ``True`` the optimizer must be created after     the call to :attr:`load_state_dict` unless     :func:`~torch.__future__.get_swap_module_params_on_conversion` is ``True``.  Args:     state_dict (dict): a dict containing parameters and         persistent buffers.     strict (bool, optional): whether to strictly enforce that the keys         in :attr:`state_dict` match the keys returned by this module's         :meth:`~torch.nn.Module.state_dict` function. Default: ``True``     assign (bool, optional): When set to ``False``, the properties of the tensors         in the current module are preserved whereas setting it to ``True`` preserves         properties of the Tensors in the state dict. The only         exception is the ``requires_grad`` field of :class:`~torch.nn.Parameter`         for which the value from the module is preserved. Default: ``False``  Returns:     ``NamedTuple`` with ``missing_keys`` and ``unexpected_keys`` fields:         * ``missing_keys`` is a list of str containing any keys that are expected             by this module but missing from the provided ``state_dict``.         * ``unexpected_keys`` is a list of str containing the keys that are not             expected by this module but present in the provided ``state_dict``.  Note:     If a parameter or buffer is registered as ``None`` and its corresponding key     exists in :attr:`state_dict`, :meth:`load_state_dict` will raise a     ``RuntimeError``.
+    If :attr:`strict` is ``True``, then the keys of :attr:`state_dict` must exactly match the keys returned by this module's :meth:`~torch.nn.Module.state_dict` function.  .. warning::     If :attr:`assign` is ``True`` the optimizer must be created after     the call to :attr:`load_state_dict` unless     :func:`~torch.__future__.get_swap_module_params_on_conversion` is ``True``.  Args:     state_dict (dict): a dict containing parameters and         persistent buffers.     strict (bool, optional): whether to strictly enforce that the keys         in :attr:`state_dict` match the keys returned by this module's         :meth:`~torch.nn.Module.state_dict` function. Default: ``True``     assign (bool, optional): When set to ``False``, the properties of the tensors         in the current module are preserved whereas setting it to ``True`` preserves         properties of the Tensors in the state dict. The only         exception is the ``requires_grad`` field of :class:`~torch.nn.Parameter`s         for which the value from the module is preserved.         Default: ``False``  Returns:     ``NamedTuple`` with ``missing_keys`` and ``unexpected_keys`` fields:         * **missing_keys** is a list of str containing any keys that are expected             by this module but missing from the provided ``state_dict``.         * **unexpected_keys** is a list of str containing the keys that are not             expected by this module but present in the provided ``state_dict``.  Note:     If a parameter or buffer is registered as ``None`` and its corresponding key     exists in :attr:`state_dict`, :meth:`load_state_dict` will raise a     ``RuntimeError``.
 
     **Parameters**
 
-    - **state_dict**     (*collections.abc.Mapping[str, typing.Any]*)
-    - **strict**     (*bool*)     – defaults to `True`
-    - **assign**     (*bool*)     – defaults to `False`
-
+    - **state_dict**     (*collections.abc.Mapping[str, typing.Any]*)    
+    - **strict**     (*bool*)     – defaults to `True`    
+    - **assign**     (*bool*)     – defaults to `False`    
+    
 ???- note "load_torch_weights"
 
     A utility function to load the PyTorch weights of a model from a checkpoint. The checkpoint can be either a local directory or a model id on Hugging Face. The weights are loaded from either a ``model.safetensors`` file or a ``pytorch_model.bin`` file, depending on which one is available. This method either loads the weights into the model or returns the weights as a state dictionary.
@@ -329,21 +329,21 @@ Performs linear projection on the token embeddings to a lower dimension.
 
     **Parameters**
 
-    - **model_name_or_path**     (*'str'*)
-    - **subfolder**     (*'str'*)     – defaults to ``
-    - **token**     (*'bool | str | None'*)     – defaults to `None`
-    - **cache_folder**     (*'str | None'*)     – defaults to `None`
-    - **revision**     (*'str | None'*)     – defaults to `None`
-    - **local_files_only**     (*'bool'*)     – defaults to `False`
-    - **model**     (*'Self | None'*)     – defaults to `None`
-
+    - **model_name_or_path**     (*'str'*)    
+    - **subfolder**     (*'str'*)     – defaults to ``    
+    - **token**     (*'bool | str | None'*)     – defaults to `None`    
+    - **cache_folder**     (*'str | None'*)     – defaults to `None`    
+    - **revision**     (*'str | None'*)     – defaults to `None`    
+    - **local_files_only**     (*'bool'*)     – defaults to `False`    
+    - **model**     (*'Self | None'*)     – defaults to `None`    
+    
 ???- note "modules"
 
     Return an iterator over all modules in the network.
 
     Yields:     Module: a module in the network  Note:     Duplicate modules are returned only once. In the following     example, ``l`` will be returned only once.  Example::      >>> l = nn.Linear(2, 2)     >>> net = nn.Sequential(l, l)     >>> for idx, m in enumerate(net.modules()):     ...     print(idx, '->', m)      0 -> Sequential(       (0): Linear(in_features=2, out_features=2, bias=True)       (1): Linear(in_features=2, out_features=2, bias=True)     )     1 -> Linear(in_features=2, out_features=2, bias=True)
 
-
+    
 ???- note "mtia"
 
     Move all model parameters and buffers to the MTIA.
@@ -352,8 +352,8 @@ Performs linear projection on the token embeddings to a lower dimension.
 
     **Parameters**
 
-    - **device**     (*Union[torch.device, int, NoneType]*)     – defaults to `None`
-
+    - **device**     (*Union[int, torch.device, NoneType]*)     – defaults to `None`    
+    
 ???- note "named_buffers"
 
     Return an iterator over module buffers, yielding both the name of the buffer as well as the buffer itself.
@@ -362,17 +362,17 @@ Performs linear projection on the token embeddings to a lower dimension.
 
     **Parameters**
 
-    - **prefix**     (*str*)     – defaults to ``
-    - **recurse**     (*bool*)     – defaults to `True`
-    - **remove_duplicate**     (*bool*)     – defaults to `True`
-
+    - **prefix**     (*str*)     – defaults to ``    
+    - **recurse**     (*bool*)     – defaults to `True`    
+    - **remove_duplicate**     (*bool*)     – defaults to `True`    
+    
 ???- note "named_children"
 
     Return an iterator over immediate children modules, yielding both the name of the module as well as the module itself.
 
     Yields:     (str, Module): Tuple containing a name and child module  Example::      >>> # xdoctest: +SKIP("undefined vars")     >>> for name, module in model.named_children():     >>>     if name in ['conv4', 'conv5']:     >>>         print(module)
 
-
+    
 ???- note "named_modules"
 
     Return an iterator over all modules in the network, yielding both the name of the module as well as the module itself.
@@ -381,10 +381,10 @@ Performs linear projection on the token embeddings to a lower dimension.
 
     **Parameters**
 
-    - **memo**     (*Optional[set['Module']]*)     – defaults to `None`
-    - **prefix**     (*str*)     – defaults to ``
-    - **remove_duplicate**     (*bool*)     – defaults to `True`
-
+    - **memo**     (*Optional[set['Module']]*)     – defaults to `None`    
+    - **prefix**     (*str*)     – defaults to ``    
+    - **remove_duplicate**     (*bool*)     – defaults to `True`    
+    
 ???- note "named_parameters"
 
     Return an iterator over module parameters, yielding both the name of the parameter as well as the parameter itself.
@@ -393,10 +393,10 @@ Performs linear projection on the token embeddings to a lower dimension.
 
     **Parameters**
 
-    - **prefix**     (*str*)     – defaults to ``
-    - **recurse**     (*bool*)     – defaults to `True`
-    - **remove_duplicate**     (*bool*)     – defaults to `True`
-
+    - **prefix**     (*str*)     – defaults to ``    
+    - **recurse**     (*bool*)     – defaults to `True`    
+    - **remove_duplicate**     (*bool*)     – defaults to `True`    
+    
 ???- note "parameters"
 
     Return an iterator over module parameters.
@@ -405,8 +405,8 @@ Performs linear projection on the token embeddings to a lower dimension.
 
     **Parameters**
 
-    - **recurse**     (*bool*)     – defaults to `True`
-
+    - **recurse**     (*bool*)     – defaults to `True`    
+    
 ???- note "register_backward_hook"
 
     Register a backward hook on the module.
@@ -415,20 +415,20 @@ Performs linear projection on the token embeddings to a lower dimension.
 
     **Parameters**
 
-    - **hook**     (*Callable[[ForwardRef('Module'), Union[tuple[torch.Tensor, ...], torch.Tensor], Union[tuple[torch.Tensor, ...], torch.Tensor]], Union[NoneType, tuple[torch.Tensor, ...], torch.Tensor]]*)
-
+    - **hook**     (*Callable[[ForwardRef('Module'), Union[tuple[torch.Tensor, ...], torch.Tensor], Union[tuple[torch.Tensor, ...], torch.Tensor]], Union[NoneType, tuple[torch.Tensor, ...], torch.Tensor]]*)    
+    
 ???- note "register_buffer"
 
     Add a buffer to the module.
 
-    This is typically used to register a buffer that should not be considered a model parameter. For example, BatchNorm's ``running_mean`` is not a parameter, but is part of the module's state. Buffers, by default, are persistent and will be saved alongside parameters. This behavior can be changed by setting :attr:`persistent` to ``False``. The only difference between a persistent buffer and a non-persistent buffer is that the latter will not be a part of this module's :attr:`state_dict`.  Buffers can be accessed as attributes using given names.  Args:     name (str): name of the buffer. The buffer can be accessed         from this module using the given name     tensor (Tensor or None): buffer to be registered. If ``None``, then operations         that run on buffers, such as :attr:`cuda`, are ignored. If ``None``,         the buffer is **not** included in the module's :attr:`state_dict`.     persistent (bool): whether the buffer is part of this module's         :attr:`state_dict`.  Example::      >>> # xdoctest: +SKIP("undefined vars")     >>> self.register_buffer('running_mean', torch.zeros(num_features))
+    This is typically used to register a buffer that should not to be considered a model parameter. For example, BatchNorm's ``running_mean`` is not a parameter, but is part of the module's state. Buffers, by default, are persistent and will be saved alongside parameters. This behavior can be changed by setting :attr:`persistent` to ``False``. The only difference between a persistent buffer and a non-persistent buffer is that the latter will not be a part of this module's :attr:`state_dict`.  Buffers can be accessed as attributes using given names.  Args:     name (str): name of the buffer. The buffer can be accessed         from this module using the given name     tensor (Tensor or None): buffer to be registered. If ``None``, then operations         that run on buffers, such as :attr:`cuda`, are ignored. If ``None``,         the buffer is **not** included in the module's :attr:`state_dict`.     persistent (bool): whether the buffer is part of this module's         :attr:`state_dict`.  Example::      >>> # xdoctest: +SKIP("undefined vars")     >>> self.register_buffer('running_mean', torch.zeros(num_features))
 
     **Parameters**
 
-    - **name**     (*str*)
-    - **tensor**     (*Optional[torch.Tensor]*)
-    - **persistent**     (*bool*)     – defaults to `True`
-
+    - **name**     (*str*)    
+    - **tensor**     (*Optional[torch.Tensor]*)    
+    - **persistent**     (*bool*)     – defaults to `True`    
+    
 ???- note "register_forward_hook"
 
     Register a forward hook on the module.
@@ -437,11 +437,11 @@ Performs linear projection on the token embeddings to a lower dimension.
 
     **Parameters**
 
-    - **hook**     (*Union[Callable[[~T, tuple[Any, ...], Any], Optional[Any]], Callable[[~T, tuple[Any, ...], dict[str, Any], Any], Optional[Any]]]*)
-    - **prepend**     (*bool*)     – defaults to `False`
-    - **with_kwargs**     (*bool*)     – defaults to `False`
-    - **always_call**     (*bool*)     – defaults to `False`
-
+    - **hook**     (*Union[Callable[[~T, tuple[Any, ...], Any], Optional[Any]], Callable[[~T, tuple[Any, ...], dict[str, Any], Any], Optional[Any]]]*)    
+    - **prepend**     (*bool*)     – defaults to `False`    
+    - **with_kwargs**     (*bool*)     – defaults to `False`    
+    - **always_call**     (*bool*)     – defaults to `False`    
+    
 ???- note "register_forward_pre_hook"
 
     Register a forward pre-hook on the module.
@@ -450,21 +450,21 @@ Performs linear projection on the token embeddings to a lower dimension.
 
     **Parameters**
 
-    - **hook**     (*Union[Callable[[~T, tuple[Any, ...]], Optional[Any]], Callable[[~T, tuple[Any, ...], dict[str, Any]], Optional[tuple[Any, dict[str, Any]]]]]*)
-    - **prepend**     (*bool*)     – defaults to `False`
-    - **with_kwargs**     (*bool*)     – defaults to `False`
-
+    - **hook**     (*Union[Callable[[~T, tuple[Any, ...]], Optional[Any]], Callable[[~T, tuple[Any, ...], dict[str, Any]], Optional[tuple[Any, dict[str, Any]]]]]*)    
+    - **prepend**     (*bool*)     – defaults to `False`    
+    - **with_kwargs**     (*bool*)     – defaults to `False`    
+    
 ???- note "register_full_backward_hook"
 
     Register a backward hook on the module.
 
-    The hook will be called every time the gradients with respect to a module are computed, and its firing rules are as follows:      1. Ordinarily, the hook fires when the gradients are computed with respect to the module inputs.     2. If none of the module inputs require gradients, the hook will fire when the gradients are computed        with respect to module outputs.     3. If none of the module outputs require gradients, then the hooks will not fire.  The hook should have the following signature::      hook(module, grad_input, grad_output) -> tuple(Tensor) or None  The :attr:`grad_input` and :attr:`grad_output` are tuples that contain the gradients with respect to the inputs and outputs respectively. The hook should not modify its arguments, but it can optionally return a new gradient with respect to the input that will be used in place of :attr:`grad_input` in subsequent computations. :attr:`grad_input` will only correspond to the inputs given as positional arguments and all kwarg arguments are ignored. Entries in :attr:`grad_input` and :attr:`grad_output` will be ``None`` for all non-Tensor arguments.  For technical reasons, when this hook is applied to a Module, its forward function will receive a view of each Tensor passed to the Module. Similarly the caller will receive a view of each Tensor returned by the Module's forward function.  .. warning ::     Modifying inputs or outputs inplace is not allowed when using backward hooks and     will raise an error.  Args:     hook (Callable): The user-defined hook to be registered.     prepend (bool): If true, the provided ``hook`` will be fired before         all existing ``backward`` hooks on this         :class:`torch.nn.Module`. Otherwise, the provided         ``hook`` will be fired after all existing ``backward`` hooks on         this :class:`torch.nn.Module`. Note that global         ``backward`` hooks registered with         :func:`register_module_full_backward_hook` will fire before         all hooks registered by this method.  Returns:     :class:`torch.utils.hooks.RemovableHandle`:         a handle that can be used to remove the added hook by calling         ``handle.remove()``
+    The hook will be called every time the gradients with respect to a module are computed, i.e. the hook will execute if and only if the gradients with respect to module outputs are computed. The hook should have the following signature::      hook(module, grad_input, grad_output) -> tuple(Tensor) or None  The :attr:`grad_input` and :attr:`grad_output` are tuples that contain the gradients with respect to the inputs and outputs respectively. The hook should not modify its arguments, but it can optionally return a new gradient with respect to the input that will be used in place of :attr:`grad_input` in subsequent computations. :attr:`grad_input` will only correspond to the inputs given as positional arguments and all kwarg arguments are ignored. Entries in :attr:`grad_input` and :attr:`grad_output` will be ``None`` for all non-Tensor arguments.  For technical reasons, when this hook is applied to a Module, its forward function will receive a view of each Tensor passed to the Module. Similarly the caller will receive a view of each Tensor returned by the Module's forward function.  .. warning ::     Modifying inputs or outputs inplace is not allowed when using backward hooks and     will raise an error.  Args:     hook (Callable): The user-defined hook to be registered.     prepend (bool): If true, the provided ``hook`` will be fired before         all existing ``backward`` hooks on this         :class:`torch.nn.Module`. Otherwise, the provided         ``hook`` will be fired after all existing ``backward`` hooks on         this :class:`torch.nn.Module`. Note that global         ``backward`` hooks registered with         :func:`register_module_full_backward_hook` will fire before         all hooks registered by this method.  Returns:     :class:`torch.utils.hooks.RemovableHandle`:         a handle that can be used to remove the added hook by calling         ``handle.remove()``
 
     **Parameters**
 
-    - **hook**     (*Callable[[ForwardRef('Module'), Union[tuple[torch.Tensor, ...], torch.Tensor], Union[tuple[torch.Tensor, ...], torch.Tensor]], Union[NoneType, tuple[torch.Tensor, ...], torch.Tensor]]*)
-    - **prepend**     (*bool*)     – defaults to `False`
-
+    - **hook**     (*Callable[[ForwardRef('Module'), Union[tuple[torch.Tensor, ...], torch.Tensor], Union[tuple[torch.Tensor, ...], torch.Tensor]], Union[NoneType, tuple[torch.Tensor, ...], torch.Tensor]]*)    
+    - **prepend**     (*bool*)     – defaults to `False`    
+    
 ???- note "register_full_backward_pre_hook"
 
     Register a backward pre-hook on the module.
@@ -473,9 +473,9 @@ Performs linear projection on the token embeddings to a lower dimension.
 
     **Parameters**
 
-    - **hook**     (*Callable[[ForwardRef('Module'), Union[tuple[torch.Tensor, ...], torch.Tensor]], Union[NoneType, tuple[torch.Tensor, ...], torch.Tensor]]*)
-    - **prepend**     (*bool*)     – defaults to `False`
-
+    - **hook**     (*Callable[[ForwardRef('Module'), Union[tuple[torch.Tensor, ...], torch.Tensor]], Union[NoneType, tuple[torch.Tensor, ...], torch.Tensor]]*)    
+    - **prepend**     (*bool*)     – defaults to `False`    
+    
 ???- note "register_load_state_dict_post_hook"
 
     Register a post-hook to be run after module's :meth:`~nn.Module.load_state_dict` is called.
@@ -484,8 +484,8 @@ Performs linear projection on the token embeddings to a lower dimension.
 
     **Parameters**
 
-    - **hook**
-
+    - **hook**    
+    
 ???- note "register_load_state_dict_pre_hook"
 
     Register a pre-hook to be run before module's :meth:`~nn.Module.load_state_dict` is called.
@@ -494,17 +494,17 @@ Performs linear projection on the token embeddings to a lower dimension.
 
     **Parameters**
 
-    - **hook**
-
+    - **hook**    
+    
 ???- note "register_module"
 
     Alias for :func:`add_module`.
 
     **Parameters**
 
-    - **name**     (*str*)
-    - **module**     (*Optional[ForwardRef('Module')]*)
-
+    - **name**     (*str*)    
+    - **module**     (*Optional[ForwardRef('Module')]*)    
+    
 ???- note "register_parameter"
 
     Add a parameter to the module.
@@ -513,9 +513,9 @@ Performs linear projection on the token embeddings to a lower dimension.
 
     **Parameters**
 
-    - **name**     (*str*)
-    - **param**     (*Optional[torch.nn.parameter.Parameter]*)
-
+    - **name**     (*str*)    
+    - **param**     (*Optional[torch.nn.parameter.Parameter]*)    
+    
 ???- note "register_state_dict_post_hook"
 
     Register a post-hook for the :meth:`~torch.nn.Module.state_dict` method.
@@ -524,8 +524,8 @@ Performs linear projection on the token embeddings to a lower dimension.
 
     **Parameters**
 
-    - **hook**
-
+    - **hook**    
+    
 ???- note "register_state_dict_pre_hook"
 
     Register a pre-hook for the :meth:`~torch.nn.Module.state_dict` method.
@@ -534,8 +534,8 @@ Performs linear projection on the token embeddings to a lower dimension.
 
     **Parameters**
 
-    - **hook**
-
+    - **hook**    
+    
 ???- note "requires_grad_"
 
     Change if autograd should record operations on parameters in this module.
@@ -544,8 +544,8 @@ Performs linear projection on the token embeddings to a lower dimension.
 
     **Parameters**
 
-    - **requires_grad**     (*bool*)     – defaults to `True`
-
+    - **requires_grad**     (*bool*)     – defaults to `True`    
+    
 ???- note "save"
 
     Save the module to disk. This method should be overridden by subclasses to implement the specific behavior of the module.
@@ -554,11 +554,11 @@ Performs linear projection on the token embeddings to a lower dimension.
 
     **Parameters**
 
-    - **output_path**     (*'str'*)
-    - **args**
-    - **safe_serialization**     (*'bool'*)     – defaults to `True`
-    - **kwargs**
-
+    - **output_path**     (*'str'*)    
+    - **args**    
+    - **safe_serialization**     (*'bool'*)     – defaults to `True`    
+    - **kwargs**    
+    
 ???- note "save_config"
 
     Save the configuration of the module to a JSON file.
@@ -567,9 +567,9 @@ Performs linear projection on the token embeddings to a lower dimension.
 
     **Parameters**
 
-    - **output_path**     (*'str'*)
-    - **filename**     (*'str | None'*)     – defaults to `None`
-
+    - **output_path**     (*'str'*)    
+    - **filename**     (*'str | None'*)     – defaults to `None`    
+    
 ???- note "save_torch_weights"
 
     Save the PyTorch weights of the module to disk.
@@ -578,9 +578,9 @@ Performs linear projection on the token embeddings to a lower dimension.
 
     **Parameters**
 
-    - **output_path**     (*'str'*)
-    - **safe_serialization**     (*'bool'*)     – defaults to `True`
-
+    - **output_path**     (*'str'*)    
+    - **safe_serialization**     (*'bool'*)     – defaults to `True`    
+    
 ???- note "set_extra_state"
 
     Set extra state contained in the loaded `state_dict`.
@@ -589,8 +589,8 @@ Performs linear projection on the token embeddings to a lower dimension.
 
     **Parameters**
 
-    - **state**     (*Any*)
-
+    - **state**     (*Any*)    
+    
 ???- note "set_submodule"
 
     Set the submodule given by ``target`` if it exists, otherwise throw an error.
@@ -599,15 +599,15 @@ Performs linear projection on the token embeddings to a lower dimension.
 
     **Parameters**
 
-    - **target**     (*str*)
-    - **module**     (*'Module'*)
-    - **strict**     (*bool*)     – defaults to `False`
-
+    - **target**     (*str*)    
+    - **module**     (*'Module'*)    
+    - **strict**     (*bool*)     – defaults to `False`    
+    
 ???- note "share_memory"
 
     See :meth:`torch.Tensor.share_memory_`.
 
-
+    
 ???- note "state_dict"
 
     Return a dictionary containing references to the whole state of the module.
@@ -616,11 +616,11 @@ Performs linear projection on the token embeddings to a lower dimension.
 
     **Parameters**
 
-    - **args**
-    - **destination**     – defaults to `None`
-    - **prefix**     – defaults to ``
-    - **keep_vars**     – defaults to `False`
-
+    - **args**    
+    - **destination**     – defaults to `None`    
+    - **prefix**     – defaults to ``    
+    - **keep_vars**     – defaults to `False`    
+    
 ???- note "to"
 
     Move and/or cast the parameters and buffers.
@@ -629,9 +629,9 @@ Performs linear projection on the token embeddings to a lower dimension.
 
     **Parameters**
 
-    - **args**
-    - **kwargs**
-
+    - **args**    
+    - **kwargs**    
+    
 ???- note "to_empty"
 
     Move the parameters and buffers to the specified device without copying storage.
@@ -640,9 +640,9 @@ Performs linear projection on the token embeddings to a lower dimension.
 
     **Parameters**
 
-    - **device**     (*Union[int, str, torch.device, NoneType]*)
-    - **recurse**     (*bool*)     – defaults to `True`
-
+    - **device**     (*Union[int, str, torch.device, NoneType]*)    
+    - **recurse**     (*bool*)     – defaults to `True`    
+    
 ???- note "train"
 
     Set the module in training mode.
@@ -651,8 +651,8 @@ Performs linear projection on the token embeddings to a lower dimension.
 
     **Parameters**
 
-    - **mode**     (*bool*)     – defaults to `True`
-
+    - **mode**     (*bool*)     – defaults to `True`    
+    
 ???- note "type"
 
     Casts all parameters and buffers to :attr:`dst_type`.
@@ -661,8 +661,8 @@ Performs linear projection on the token embeddings to a lower dimension.
 
     **Parameters**
 
-    - **dst_type**     (*Union[torch.dtype, str]*)
-
+    - **dst_type**     (*Union[torch.dtype, str]*)    
+    
 ???- note "xpu"
 
     Move all model parameters and buffers to the XPU.
@@ -671,8 +671,8 @@ Performs linear projection on the token embeddings to a lower dimension.
 
     **Parameters**
 
-    - **device**     (*Union[torch.device, int, NoneType]*)     – defaults to `None`
-
+    - **device**     (*Union[int, torch.device, NoneType]*)     – defaults to `None`    
+    
 ???- note "zero_grad"
 
     Reset gradients of all model parameters.
@@ -681,4 +681,5 @@ Performs linear projection on the token embeddings to a lower dimension.
 
     **Parameters**
 
-    - **set_to_none**     (*bool*)     – defaults to `True`
+    - **set_to_none**     (*bool*)     – defaults to `True`    
+    

@@ -30,7 +30,7 @@ This is a direct extension of the NanoBEIREvaluator from the sentence-transforme
 
 - **main_score_function** (*'str | SimilarityFunction | None'*) – defaults to `None`
 
-- **aggregate_fn** (*'Callable[[list[float]], float]'*) – defaults to `<function mean at 0x10359bf60>`
+- **aggregate_fn** (*'Callable[[list[float]], float]'*) – defaults to `<function mean at 0x7f3c21bfca40>`
 
 - **aggregate_key** (*'str'*) – defaults to `mean`
 
@@ -78,13 +78,13 @@ evaluator(model)
 
     **Parameters**
 
-    - **model**     (*'SentenceTransformer'*)
-    - **output_path**     (*'str | None'*)     – defaults to `None`
-    - **epoch**     (*'int'*)     – defaults to `-1`
-    - **steps**     (*'int'*)     – defaults to `-1`
-    - **args**
-    - **kwargs**
-
+    - **model**     (*'SentenceTransformer'*)    
+    - **output_path**     (*'str | None'*)     – defaults to `None`    
+    - **epoch**     (*'int'*)     – defaults to `-1`    
+    - **steps**     (*'int'*)     – defaults to `-1`    
+    - **args**    
+    - **kwargs**    
+    
 ???- note "embed_inputs"
 
     Call the encoder method of the model pass
@@ -93,15 +93,15 @@ evaluator(model)
 
     **Parameters**
 
-    - **model**     (*'SentenceTransformer'*)
-    - **sentences**     (*'str | list[str] | np.ndarray'*)
-    - **kwargs**
-
+    - **model**     (*'SentenceTransformer'*)    
+    - **sentences**     (*'str | list[str] | np.ndarray'*)    
+    - **kwargs**    
+    
 ???- note "get_config_dict"
 
     Return a dictionary with all meaningful configuration values of the evaluator to store in the model card.
 
-
+    
 ???- note "information_retrieval_class"
 
     This class evaluates an Information Retrieval (IR) setting.
@@ -110,28 +110,28 @@ evaluator(model)
 
     **Parameters**
 
-    - **queries**     (*'dict[str, str]'*)
-    - **corpus**     (*'dict[str, str]'*)
-    - **relevant_docs**     (*'dict[str, set[str]]'*)
-    - **corpus_chunk_size**     (*'int'*)     – defaults to `50000`
-    - **mrr_at_k**     (*'list[int]'*)     – defaults to `[10]`
-    - **ndcg_at_k**     (*'list[int]'*)     – defaults to `[10]`
-    - **accuracy_at_k**     (*'list[int]'*)     – defaults to `[1, 3, 5, 10]`
-    - **precision_recall_at_k**     (*'list[int]'*)     – defaults to `[1, 3, 5, 10]`
-    - **map_at_k**     (*'list[int]'*)     – defaults to `[100]`
-    - **show_progress_bar**     (*'bool'*)     – defaults to `False`
-    - **batch_size**     (*'int'*)     – defaults to `32`
-    - **name**     (*'str'*)     – defaults to ``
-    - **write_csv**     (*'bool'*)     – defaults to `True`
-    - **truncate_dim**     (*'int | None'*)     – defaults to `None`
-    - **score_functions**     (*'dict[str, Callable[[Tensor, Tensor], Tensor]] | None'*)     – defaults to `None`
-    - **main_score_function**     (*'str | SimilarityFunction | None'*)     – defaults to `None`
-    - **query_prompt**     (*'str | None'*)     – defaults to `None`
-    - **query_prompt_name**     (*'str | None'*)     – defaults to `None`
-    - **corpus_prompt**     (*'str | None'*)     – defaults to `None`
-    - **corpus_prompt_name**     (*'str | None'*)     – defaults to `None`
-    - **write_predictions**     (*'bool'*)     – defaults to `False`
-
+    - **queries**     (*'dict[str, str]'*)    
+    - **corpus**     (*'dict[str, str]'*)    
+    - **relevant_docs**     (*'dict[str, set[str]]'*)    
+    - **corpus_chunk_size**     (*'int'*)     – defaults to `50000`    
+    - **mrr_at_k**     (*'list[int]'*)     – defaults to `[10]`    
+    - **ndcg_at_k**     (*'list[int]'*)     – defaults to `[10]`    
+    - **accuracy_at_k**     (*'list[int]'*)     – defaults to `[1, 3, 5, 10]`    
+    - **precision_recall_at_k**     (*'list[int]'*)     – defaults to `[1, 3, 5, 10]`    
+    - **map_at_k**     (*'list[int]'*)     – defaults to `[100]`    
+    - **show_progress_bar**     (*'bool'*)     – defaults to `False`    
+    - **batch_size**     (*'int'*)     – defaults to `32`    
+    - **name**     (*'str'*)     – defaults to ``    
+    - **write_csv**     (*'bool'*)     – defaults to `True`    
+    - **truncate_dim**     (*'int | None'*)     – defaults to `None`    
+    - **score_functions**     (*'dict[str, Callable[[Tensor, Tensor], Tensor]] | None'*)     – defaults to `None`    
+    - **main_score_function**     (*'str | SimilarityFunction | None'*)     – defaults to `None`    
+    - **query_prompt**     (*'str | None'*)     – defaults to `None`    
+    - **query_prompt_name**     (*'str | None'*)     – defaults to `None`    
+    - **corpus_prompt**     (*'str | None'*)     – defaults to `None`    
+    - **corpus_prompt_name**     (*'str | None'*)     – defaults to `None`    
+    - **write_predictions**     (*'bool'*)     – defaults to `False`    
+    
 ???- note "prefix_name_to_metrics"
 
 ???- note "store_metrics_in_model_card_data"
@@ -139,3 +139,4 @@ evaluator(model)
 ## References
 
 - [NanoBEIR](https://huggingface.co/collections/zeta-alpha-ai/nanobeir-66e1a0af21dfd93e620cd9f6)
+

@@ -35,3 +35,4 @@ Load BEIR dataset.
 >>> len(qrels)
 300
 ```
+

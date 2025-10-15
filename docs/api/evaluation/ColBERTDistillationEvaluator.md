@@ -99,11 +99,11 @@ ColBERT Distillation Evaluator. This class is used to monitor the distillation p
 
     **Parameters**
 
-    - **model**     (*"'SentenceTransformer'"*)
-    - **output_path**     (*'str'*)     – defaults to `None`
-    - **epoch**     (*'int'*)     – defaults to `-1`
-    - **steps**     (*'int'*)     – defaults to `-1`
-
+    - **model**     (*"'SentenceTransformer'"*)    
+    - **output_path**     (*'str'*)     – defaults to `None`    
+    - **epoch**     (*'int'*)     – defaults to `-1`    
+    - **steps**     (*'int'*)     – defaults to `-1`    
+    
 ???- note "embed_inputs"
 
     Call the encoder method of the model pass
@@ -112,15 +112,16 @@ ColBERT Distillation Evaluator. This class is used to monitor the distillation p
 
     **Parameters**
 
-    - **model**     (*'SentenceTransformer'*)
-    - **sentences**     (*'str | list[str] | np.ndarray'*)
-    - **kwargs**
-
+    - **model**     (*'SentenceTransformer'*)    
+    - **sentences**     (*'str | list[str] | np.ndarray'*)    
+    - **kwargs**    
+    
 ???- note "get_config_dict"
 
     Return a dictionary with all meaningful configuration values of the evaluator to store in the model card.
 
-
+    
 ???- note "prefix_name_to_metrics"
 
 ???- note "store_metrics_in_model_card_data"
+

@@ -46,3 +46,4 @@ Evaluate candidates matchs.
 ...     metrics=["ndcg@10", "hits@1"],
 ... )
 ```
+

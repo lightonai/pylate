@@ -120,36 +120,37 @@ This class provides a unified interface for PLAID indexing that can use either: 
 
     **Parameters**
 
-    - **queries_embeddings**     (*'np.ndarray | torch.Tensor'*)
-    - **k**     (*'int'*)     – defaults to `10`
-    - **subset**     (*'list[list[str]] | list[str] | None'*)     – defaults to `None`
-
+    - **queries_embeddings**     (*'np.ndarray | torch.Tensor'*)    
+    - **k**     (*'int'*)     – defaults to `10`    
+    - **subset**     (*'list[list[str]] | list[str] | None'*)     – defaults to `None`    
+    
     **Returns**
 
     *list[list[RerankResult]]*:     List of lists containing dictionaries with 'id' and 'score' keys.
-
+    
 ???- note "add_documents"
 
     Add documents to the index.
 
     **Parameters**
 
-    - **documents_ids**     (*'str | list[str]'*)
-    - **documents_embeddings**     (*'list[np.ndarray | torch.Tensor]'*)
-    - **kwargs**
-
+    - **documents_ids**     (*'str | list[str]'*)    
+    - **documents_embeddings**     (*'list[np.ndarray | torch.Tensor]'*)    
+    - **kwargs**    
+    
 ???- note "get_documents_embeddings"
 
     Get document embeddings by their IDs.
 
     **Parameters**
 
-    - **document_ids**     (*'list[list[str]]'*)
-
+    - **document_ids**     (*'list[list[str]]'*)    
+    
 ???- note "remove_documents"
 
     Remove documents from the index.
 
     **Parameters**
 
-    - **documents_ids**     (*'list[str]'*)
+    - **documents_ids**     (*'list[str]'*)    
+    

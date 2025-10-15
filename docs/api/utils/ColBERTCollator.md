@@ -66,4 +66,5 @@ Collator for ColBERT model.
 
     **Parameters**
 
-    - **features**     (*'list[dict]'*)
+    - **features**     (*'list[dict]'*)    
+    
