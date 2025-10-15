@@ -35,3 +35,88 @@ Here is a list of some of the pre-trained ColBERT models available in PyLate alo
 
 ???+ note
     `lightonai/colbertv2.0` is the original [ColBERTv2 model](https://huggingface.co/colbert-ir/colbertv2.0/tree/main) made compatible with PyLate before we supported loading directly model from Stanford-NLP. We thank Omar Khattab for allowing us to share the model on PyLate.
+
+
+# Defining dense layers
+By default, if you use a base model to create a PyLate model, it'll add a dense layer projecting the output dimension of the model to `embedding_size`. If you did not specify any `embedding_size`, it'll default to 128.
+
+```python
+model = models.ColBERT("bert-base-uncased")
+```
+
+If you create a PyLate model from a sentence-transformers model, it'll load the dense layer of this model and only add another one **if you specified an embedding_size and it is not matching the size of the last dense layer of the ST model.
+
+If you do not want to use the dense layers of the ST model (but still want to use its base weights), you should use the modular syntax:
+```python
+
+import torch
+from sentence_transformers.models import Transformer
+from pylate import models
+
+base_model = Transformer("answerdotai/ModernBERT-base")
+
+dense_1 = models.Dense(
+    in_features=768,
+    out_features=512,
+    bias=False,
+    activation_function=torch.nn.GELU(),
+)
+dense_2 = models.Dense(
+    in_features=512,
+    out_features=128,
+    bias=False,
+    activation_function=torch.nn.Identity(),
+)
+
+model = models.ColBERT(
+    modules=[base_model, dense_1, dense_2],
+    document_length=300,
+    query_length=32,
+)
+
+ColBERT(
+  (0): Transformer({'max_seq_length': 8192, 'do_lower_case': False, 'architecture': 'ModernBertModel'})
+  (1): Dense({'in_features': 768, 'out_features': 512, 'bias': False, 'activation_function': 'torch.nn.modules.activation.GELU', 'use_residual': False})
+  (2): Dense({'in_features': 512, 'out_features': 128, 'bias': False, 'activation_function': 'torch.nn.modules.linear.Identity', 'use_residual': False})
+)
+```
+
+It also allows you to define the activation function and use multiple dense.
+Please note that you can also _append_ layers to existing models as well as remove them, so you can really create the modules you want
+```python
+import torch
+from pylate import models
+model = models.ColBERT("google/embeddinggemma-300m")
+ColBERT(
+  (0): Transformer({'max_seq_length': 2048, 'do_lower_case': False, 'architecture': 'Gemma3TextModel'})
+  (1): Dense({'in_features': 768, 'out_features': 3072, 'bias': False, 'activation_function': 'torch.nn.modules.linear.Identity', 'use_residual': False})
+  (2): Dense({'in_features': 3072, 'out_features': 768, 'bias': False, 'activation_function': 'torch.nn.modules.linear.Identity', 'use_residual': False})
+)
+
+dense_1 = models.Dense(
+    in_features=768,
+    out_features=128,
+    bias=False,
+    activation_function=torch.nn.Identity(),
+    use_residual=False,
+)
+
+model.append(dense_1)
+ColBERT(
+  (0): Transformer({'max_seq_length': 2048, 'do_lower_case': False, 'architecture': 'Gemma3TextModel'})
+  (1): Dense({'in_features': 768, 'out_features': 3072, 'bias': False, 'activation_function': 'torch.nn.modules.linear.Identity', 'use_residual': False})
+  (2): Dense({'in_features': 3072, 'out_features': 768, 'bias': False, 'activation_function': 'torch.nn.modules.linear.Identity', 'use_residual': False})
+  (3): Dense({'in_features': 768, 'out_features': 128, 'bias': False, 'activation_function': 'torch.nn.modules.linear.Identity', 'use_residual': False})
+)
+
+del model[3]
+ColBERT(
+  (0): Transformer({'max_seq_length': 2048, 'do_lower_case': False, 'architecture': 'Gemma3TextModel'})
+  (1): Dense({'in_features': 768, 'out_features': 3072, 'bias': False, 'activation_function': 'torch.nn.modules.linear.Identity', 'use_residual': False})
+  (2): Dense({'in_features': 3072, 'out_features': 768, 'bias': False, 'activation_function': 'torch.nn.modules.linear.Identity', 'use_residual': False})
+)
+```
+
+!!! tip
+    [MixedBread study](https://arxiv.org/abs/2510.12327)
+
