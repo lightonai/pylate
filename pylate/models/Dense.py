@@ -70,7 +70,7 @@ class Dense(DenseSentenceTransformer):
         )
         self.use_residual = use_residual
         if use_residual and self.in_features != self.out_features:
-            self.residual = nn.Linear(in_features, self.out_features, bias=False)
+            self.residual = nn.Linear(self.in_features, self.out_features, bias=False)
 
     def forward(self, features: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """Performs linear projection on the token embeddings."""
