@@ -20,6 +20,8 @@ Rerank the documents based on the queries embeddings.
 
 - **device** (*'str'*) – defaults to `None`
 
+    The device to use for the reranking. If None, the device of the queries embeddings will be used.
+
 
 
 ## Examples

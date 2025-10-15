@@ -39,6 +39,13 @@
 
 ## rank
 
+
+**Classes**
+
+- [RerankResult](../rank/RerankResult)
+
+**Functions**
+
 - [rerank](../rank/rerank)
 
 ## retrieve

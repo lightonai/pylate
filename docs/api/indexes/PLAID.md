@@ -58,6 +58,10 @@ This class provides a unified interface for PLAID indexing that can use either: 
 
     Specifies the device(s) to use for computation. If None (default) and CUDA is available, it defaults to "cuda". If CUDA is not available, it defaults to "cpu". Can be a single device string (e.g., "cuda:0" or "cpu"). Can be a list of device strings (e.g., ["cuda:0", "cuda:1"]).
 
+- **use_triton** (*'bool | None'*) – defaults to `None`
+
+    Whether to use triton kernels when computing kmeans using fast-plaid. Triton kernels are faster, but yields some variance due to race condition, set to false to get 100% reproducable results. If unset, will use triton kernels if possible.
+
 - **kwargs**
 
 
@@ -72,7 +76,6 @@ This class provides a unified interface for PLAID indexing that can use either: 
 ...    index_name="plaid_colbert",
 ...    override=True,
 ... )
-✅ Index with FastPlaid backend.
 
 >>> model = models.ColBERT(
 ...    model_name_or_path="lightonai/GTE-ModernColBERT-v1",
@@ -123,7 +126,7 @@ This class provides a unified interface for PLAID indexing that can use either: 
 
     **Returns**
 
-    *list[list[dict[str, str | float]]]*:     List of lists containing dictionaries with 'id' and 'score' keys.
+    *list[list[RerankResult]]*:     List of lists containing dictionaries with 'id' and 'score' keys.
 
 ???- note "add_documents"
 

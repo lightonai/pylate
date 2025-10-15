@@ -46,6 +46,8 @@ This class evaluates an Information Retrieval (IR) setting. This is a direct ext
 
 - **corpus_prompt_name** (*'str | None'*) – defaults to `None`
 
+- **write_predictions** (*'bool'*) – defaults to `False`
+
 
 ## Attributes
 
@@ -66,7 +68,7 @@ This class evaluates an Information Retrieval (IR) setting. This is a direct ext
     **Parameters**
 
     - **model**     (*'SentenceTransformer'*)
-    - **output_path**     (*'str'*)     – defaults to `None`
+    - **output_path**     (*'str | None'*)     – defaults to `None`
     - **epoch**     (*'int'*)     – defaults to `-1`
     - **steps**     (*'int'*)     – defaults to `-1`
     - **args**
@@ -77,6 +79,21 @@ This class evaluates an Information Retrieval (IR) setting. This is a direct ext
 ???- note "compute_metrices"
 
 ???- note "compute_metrics"
+
+???- note "embed_inputs"
+
+    Call the encoder method of the model pass
+
+    Args:     model (SentenceTransformer): Model we are evaluating     sentences (str | list[str] | np.ndarray): Text that we are embedding  Returns:     list[Tensor] | np.ndarray | Tensor | dict[str, Tensor] | list[dict[str, Tensor]]: The associated embedding
+
+    **Parameters**
+
+    - **model**     (*'SentenceTransformer'*)
+    - **sentences**     (*'str | list[str] | np.ndarray'*)
+    - **encode_fn_name**     (*'str | None'*)     – defaults to `None`
+    - **prompt_name**     (*'str | None'*)     – defaults to `None`
+    - **prompt**     (*'str | None'*)     – defaults to `None`
+    - **kwargs**
 
 ???- note "get_config_dict"
 
