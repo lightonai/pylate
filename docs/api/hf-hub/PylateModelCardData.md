@@ -38,6 +38,8 @@ A dataclass for storing data used in the model card.
 
     A list of tags for the model, e.g., ["sentence-transformers", "sentence-similarity", "feature-extraction"].
 
+- **local_files_only** (*'bool'*) – defaults to `False`
+
 - **generate_widget_examples** (*"Literal['deprecated']"*) – defaults to `deprecated`
 
 
@@ -51,6 +53,8 @@ A dataclass for storing data used in the model card.
 
 - **code_carbon_callback**
 
+- **ir_model**
+
 - **license**
 
 - **model**
@@ -60,6 +64,8 @@ A dataclass for storing data used in the model card.
 - **model_name**
 
 - **predict_example**
+
+- **similarities**
 
 - **trainer**
 
@@ -101,6 +107,8 @@ A dataclass for storing data used in the model card.
 
 ???- note "get_codecarbon_data"
 
+???- note "get_default_model_name"
+
 ???- note "get_model_specific_metadata"
 
 ???- note "infer_datasets"
@@ -115,6 +123,8 @@ A dataclass for storing data used in the model card.
     - **default**     (*Any*)     – defaults to `None`
 
 ???- note "register_model"
+
+???- note "run_usage_snippet"
 
 ???- note "set_base_model"
 
@@ -162,3 +172,12 @@ A dataclass for storing data used in the model card.
 ???- note "try_to_set_base_model"
 
 ???- note "validate_datasets"
+
+    Validate (i.e. check if the dataset IDs exist on the Hub) and process a list of dataset dictionaries.
+
+    Args:     dataset_list (list[dict[str, Any]]): List of dataset metadata dictionaries.     infer_languages (bool | None, optional): Whether to infer languages from the dataset information.         If None (default), languages will be inferred only if `self.language` is empty.  Returns:     list[dict[str, Any]]: The validated and possibly updated list of dataset dictionaries.
+
+    **Parameters**
+
+    - **dataset_list**     (*'list[dict[str, Any]]'*)
+    - **infer_languages**     (*'bool | None'*)     – defaults to `None`

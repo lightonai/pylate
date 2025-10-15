@@ -8,7 +8,7 @@ Performs linear projection on the token embeddings to a lower dimension.
 
 - **in_features** (*'int'*)
 
-    Size of the embeddings in output of the tansformer.
+    Size of the embeddings in output of the transformer.
 
 - **out_features** (*'int'*)
 
@@ -27,6 +27,10 @@ Performs linear projection on the token embeddings to a lower dimension.
 - **init_bias** (*'torch.Tensor'*) – defaults to `None`
 
     Initial value for the bias of the linear layer.
+
+- **use_residual** (*'bool'*) – defaults to `False`
+
+    Whether to use residual for the linear layer.
 
 
 
@@ -201,6 +205,11 @@ Performs linear projection on the token embeddings to a lower dimension.
 
 ???- note "get_config_dict"
 
+    Returns a dictionary of the configuration parameters of the module.
+
+    These parameters are used to save the module's configuration when saving the model to disk, and again used to initialize the module when loading it from a pre-trained model. The keys used in the dictionary are defined in the ``config_keys`` class variable.  Returns:     dict[str, Any]: A dictionary of the configuration parameters of the module.
+
+
 ???- note "get_extra_state"
 
     Return any extra state to include in the module's state_dict.
@@ -253,6 +262,53 @@ Performs linear projection on the token embeddings to a lower dimension.
 
     - **input_path**
 
+???- note "load_config"
+
+    Load the configuration of the module from a model checkpoint. The checkpoint can be either a local directory or a model id on Hugging Face. The configuration is loaded from a JSON file, which contains the parameters used to initialize the module.
+
+    Args:     model_name_or_path (str): The path to the model directory or the name of the model on Hugging Face.     subfolder (str, optional): The subfolder within the model directory to load from, e.g. ``"1_Pooling"``.         Defaults to ``""``.     config_filename (str | None, optional): The name of the configuration file to load.         If None, uses the default configuration file name defined in the ``config_file_name`` class variable.         Defaults to None.     token (bool | str | None, optional): The token to use for authentication when loading from Hugging Face.         If None, tries to use a token saved using ``huggingface-cli login`` or the ``HF_TOKEN`` environment variable.         Defaults to None.     cache_folder (str | None, optional): The folder to use for caching the model files.         If None, uses the default cache folder for Hugging Face, ``~/.cache/huggingface``. Defaults to None.     revision (str | None, optional): The revision of the model to load.         If None, uses the latest revision. Defaults to None.     local_files_only (bool, optional): Whether to only load local files. Defaults to False.  Returns:     dict[str, Any]: A dictionary of the configuration parameters of the module.
+
+    **Parameters**
+
+    - **model_name_or_path**     (*'str'*)
+    - **subfolder**     (*'str'*)     – defaults to ``
+    - **config_filename**     (*'str | None'*)     – defaults to `None`
+    - **token**     (*'bool | str | None'*)     – defaults to `None`
+    - **cache_folder**     (*'str | None'*)     – defaults to `None`
+    - **revision**     (*'str | None'*)     – defaults to `None`
+    - **local_files_only**     (*'bool'*)     – defaults to `False`
+
+???- note "load_dir_path"
+
+    A utility function to load a directory from a model checkpoint. The checkpoint can be either a local directory or a model id on Hugging Face.
+
+    Args:     model_name_or_path (str): The path to the model directory or the name of the model on Hugging Face.     subfolder (str, optional): The subfolder within the model directory to load from, e.g. ``"1_Pooling"``.         Defaults to ``""``.     token (bool | str | None, optional): The token to use for authentication when loading from Hugging Face.         If None, tries to use a token saved using ``huggingface-cli login`` or the ``HF_TOKEN`` environment variable.         Defaults to None.     cache_folder (str | None, optional): The folder to use for caching the model files.         If None, uses the default cache folder for Hugging Face, ``~/.cache/huggingface``. Defaults to None.     revision (str | None, optional): The revision of the model to load.         If None, uses the latest revision. Defaults to None.     local_files_only (bool, optional): Whether to only load local files. Defaults to False.  Returns:     str: The path to the loaded directory.
+
+    **Parameters**
+
+    - **model_name_or_path**     (*'str'*)
+    - **subfolder**     (*'str'*)     – defaults to ``
+    - **token**     (*'bool | str | None'*)     – defaults to `None`
+    - **cache_folder**     (*'str | None'*)     – defaults to `None`
+    - **revision**     (*'str | None'*)     – defaults to `None`
+    - **local_files_only**     (*'bool'*)     – defaults to `False`
+
+???- note "load_file_path"
+
+    A utility function to load a file from a model checkpoint. The checkpoint can be either a local directory or a model id on Hugging Face. The file is loaded from the specified subfolder within the model directory.
+
+    Args:     model_name_or_path (str): The path to the model directory or the name of the model on Hugging Face.     filename (str): The name of the file to load.     subfolder (str, optional): The subfolder within the model directory to load from, e.g. ``"1_Pooling"``.         Defaults to ``""``.     token (bool | str | None, optional): The token to use for authentication when loading from Hugging Face.         If None, tries to use a token saved using ``huggingface-cli login`` or the ``HF_TOKEN`` environment variable.         Defaults to None.     cache_folder (str | None, optional): The folder to use for caching the model files.         If None, uses the default cache folder for Hugging Face, ``~/.cache/huggingface``. Defaults to None.     revision (str | None, optional): The revision of the model to load.         If None, uses the latest revision. Defaults to None.     local_files_only (bool, optional): Whether to only load local files. Defaults to False.  Returns:     str | None: The path to the loaded file, or None if the file was not found.
+
+    **Parameters**
+
+    - **model_name_or_path**     (*'str'*)
+    - **filename**     (*'str'*)
+    - **subfolder**     (*'str'*)     – defaults to ``
+    - **token**     (*'bool | str | None'*)     – defaults to `None`
+    - **cache_folder**     (*'str | None'*)     – defaults to `None`
+    - **revision**     (*'str | None'*)     – defaults to `None`
+    - **local_files_only**     (*'bool'*)     – defaults to `False`
+
 ???- note "load_state_dict"
 
     Copy parameters and buffers from :attr:`state_dict` into this module and its descendants.
@@ -264,6 +320,22 @@ Performs linear projection on the token embeddings to a lower dimension.
     - **state_dict**     (*collections.abc.Mapping[str, typing.Any]*)
     - **strict**     (*bool*)     – defaults to `True`
     - **assign**     (*bool*)     – defaults to `False`
+
+???- note "load_torch_weights"
+
+    A utility function to load the PyTorch weights of a model from a checkpoint. The checkpoint can be either a local directory or a model id on Hugging Face. The weights are loaded from either a ``model.safetensors`` file or a ``pytorch_model.bin`` file, depending on which one is available. This method either loads the weights into the model or returns the weights as a state dictionary.
+
+    Args:     model_name_or_path (str): The path to the model directory or the name of the model on Hugging Face.     subfolder (str, optional): The subfolder within the model directory to load from, e.g. ``"2_Dense"``.         Defaults to ``""``.     token (bool | str | None, optional): The token to use for authentication when loading from Hugging Face.         If None, tries to use a token saved using ``huggingface-cli login`` or the ``HF_TOKEN`` environment variable.         Defaults to None.     cache_folder (str | None, optional): The folder to use for caching the model files.         If None, uses the default cache folder for Hugging Face, ``~/.cache/huggingface``. Defaults to None.     revision (str | None, optional): The revision of the model to load.         If None, uses the latest revision. Defaults to None.     local_files_only (bool, optional): Whether to only load local files. Defaults to False.     model (Self | None, optional): The model to load the weights into. If None, returns the weights as a state         dictionary. Defaults to None.  Raises:     ValueError: If neither a ``model.safetensors`` file nor a ``pytorch_model.bin`` file is found in the model         checkpoint in the ``subfolder``.  Returns:     Self | dict[str, torch.Tensor]: The model with the loaded weights or the weights as a state dictionary,         depending on the value of the ``model`` argument.
+
+    **Parameters**
+
+    - **model_name_or_path**     (*'str'*)
+    - **subfolder**     (*'str'*)     – defaults to ``
+    - **token**     (*'bool | str | None'*)     – defaults to `None`
+    - **cache_folder**     (*'str | None'*)     – defaults to `None`
+    - **revision**     (*'str | None'*)     – defaults to `None`
+    - **local_files_only**     (*'bool'*)     – defaults to `False`
+    - **model**     (*'Self | None'*)     – defaults to `None`
 
 ???- note "modules"
 
@@ -475,6 +547,39 @@ Performs linear projection on the token embeddings to a lower dimension.
     - **requires_grad**     (*bool*)     – defaults to `True`
 
 ???- note "save"
+
+    Save the module to disk. This method should be overridden by subclasses to implement the specific behavior of the module.
+
+    Args:     output_path (str): The path to the directory where the module should be saved.     *args: Additional arguments that can be used to pass additional information to the save method.     safe_serialization (bool, optional): Whether to use the safetensors format for saving the model weights.         Defaults to True.     **kwargs: Additional keyword arguments that can be used to pass additional information to the save method.
+
+    **Parameters**
+
+    - **output_path**     (*'str'*)
+    - **args**
+    - **safe_serialization**     (*'bool'*)     – defaults to `True`
+    - **kwargs**
+
+???- note "save_config"
+
+    Save the configuration of the module to a JSON file.
+
+    Args:     output_path (str): The path to the directory where the configuration file should be saved.     filename (str | None, optional): The name of the configuration file. If None, uses the default configuration         file name defined in the ``config_file_name`` class variable. Defaults to None.  Returns:     None
+
+    **Parameters**
+
+    - **output_path**     (*'str'*)
+    - **filename**     (*'str | None'*)     – defaults to `None`
+
+???- note "save_torch_weights"
+
+    Save the PyTorch weights of the module to disk.
+
+    Args:     output_path (str): The path to the directory where the weights should be saved.     safe_serialization (bool, optional): Whether to use the safetensors format for saving the model weights.         Defaults to True.  Returns:     None
+
+    **Parameters**
+
+    - **output_path**     (*'str'*)
+    - **safe_serialization**     (*'bool'*)     – defaults to `True`
 
 ???- note "set_extra_state"
 

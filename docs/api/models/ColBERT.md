@@ -123,6 +123,8 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     Get torch.device from module, assuming that the whole module has one device. In case there are no PyTorch parameters, fall back to CPU.
 
+- **dtype**
+
 - **max_seq_length**
 
     Returns the maximal input sequence length for the model. Longer inputs will be truncated.  Returns:     int: The maximal input sequence length.  Example:     ::          from sentence_transformers import SentenceTransformer          model = SentenceTransformer("all-mpnet-base-v2")         print(model.max_seq_length)         # => 384
@@ -142,6 +144,10 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 - **tokenizer**
 
     Property to get the tokenizer that is used by this model
+
+- **transformers_model**
+
+    Property to get the underlying transformers PreTrainedModel instance, if it exists. Note that it's possible for a model to have multiple underlying transformers models, but this property will return the first one it finds in the module hierarchy.  Returns:     PreTrainedModel or None: The underlying transformers model or None if not found.  Example:     ::          from sentence_transformers import SentenceTransformer          model = SentenceTransformer("all-mpnet-base-v2")          # You can now access the underlying transformers model         transformers_model = model.transformers_model         print(type(transformers_model))         # => <class 'transformers.models.mpnet.modeling_mpnet.MPNetModel'>
 
 
 ## Examples
@@ -217,7 +223,7 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     Adds a fresh new adapter to the current model for training purposes. If no adapter name is passed, a default name is assigned to the adapter to follow the convention of PEFT library (in PEFT we use "default" as the default adapter name).
 
-    Requires peft as a backend to load the adapter weights and the underlying model to be compatible with PEFT.  Args:     *args:         Positional arguments to pass to the underlying AutoModel `add_adapter` function. More information can be found in the transformers documentation         https://huggingface.co/docs/transformers/main/en/peft#transformers.integrations.PeftAdapterMixin.add_adapter     **kwargs:         Keyword arguments to pass to the underlying AutoModel `add_adapter` function. More information can be found in the transformers documentation         https://huggingface.co/docs/transformers/main/en/peft#transformers.integrations.PeftAdapterMixin.add_adapter
+    Requires peft as a backend to load the adapter weights and the underlying model to be compatible with PEFT.  Args:     *args:         Positional arguments to pass to the underlying AutoModel `add_adapter` function. More information can be found in the transformers documentation         https://huggingface.co/docs/transformers/main/en/main_classes/peft#transformers.integrations.PeftAdapterMixin.add_adapter     **kwargs:         Keyword arguments to pass to the underlying AutoModel `add_adapter` function. More information can be found in the transformers documentation         https://huggingface.co/docs/transformers/main/en/main_classes/peft#transformers.integrations.PeftAdapterMixin.add_adapter
 
     **Parameters**
 
@@ -310,6 +316,17 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
     - **device**     (*Union[torch.device, int, NoneType]*)     – defaults to `None`
         Device (like "cuda", "cpu", "mps", "npu") that should be used for computation. If None, checks if a GPU can be used.
 
+???- note "delete_adapter"
+
+    If you are not familiar with adapters and PEFT methods, we invite you to read more about them on the PEFT official documentation: https://huggingface.co/docs/peft
+
+    Delete an adapter's LoRA layers from the underlying model.  Args:     *args:         Positional arguments to pass to the underlying AutoModel `delete_adapter` function. More information can be found in the transformers documentation         https://huggingface.co/docs/transformers/main/en/main_classes/peft#transformers.integrations.PeftAdapterMixin.delete_adapter     **kwargs:         Keyword arguments to pass to the underlying AutoModel `delete_adapter` function. More information can be found in the transformers documentation         https://huggingface.co/docs/transformers/main/en/main_classes/peft#transformers.integrations.PeftAdapterMixin.delete_adapter
+
+    **Parameters**
+
+    - **args**
+    - **kwargs**
+
 ???- note "disable_adapters"
 
     Disable all adapters that are attached to the model. This leads to inferring with the base model only.
@@ -349,6 +366,32 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
     - **pool_factor**     (*'int'*)     – defaults to `1`
     - **protected_tokens**     (*'int'*)     – defaults to `1`
 
+???- note "encode_document"
+
+    Computes sentence embeddings specifically optimized for document/passage representation.
+
+    This method is a specialized version of :meth:`encode` that differs in exactly two ways:  1. If no ``prompt_name`` or ``prompt`` is provided, it uses a predefined "document" prompt,    if available in the model's ``prompts`` dictionary. 2. It sets the ``task`` to "document". If the model has a :class:`~sentence_transformers.models.Router`    module, it will use the "document" task type to route the input through the appropriate submodules.  .. tip::      If you are unsure whether you should use :meth:`encode`, :meth:`encode_query`, or :meth:`encode_document`,     your best bet is to use :meth:`encode_query` and :meth:`encode_document` for Information Retrieval tasks     with clear query and document/passage distinction, and use :meth:`encode` for all other tasks.      Note that :meth:`encode` is the most general method and can be used for any task, including Information     Retrieval, and that if the model was not trained with predefined prompts and/or task types, then all three     methods will return identical embeddings.  Args:     sentences (Union[str, List[str]]): The sentences to embed.     prompt_name (Optional[str], optional): The name of the prompt to use for encoding. Must be a key in the `prompts` dictionary,         which is either set in the constructor or loaded from the model configuration. For example if         ``prompt_name`` is "query" and the ``prompts`` is {"query": "query: ", ...}, then the sentence "What         is the capital of France?" will be encoded as "query: What is the capital of France?" because the sentence         is appended to the prompt. If ``prompt`` is also set, this argument is ignored. Defaults to None.     prompt (Optional[str], optional): The prompt to use for encoding. For example, if the prompt is "query: ", then the         sentence "What is the capital of France?" will be encoded as "query: What is the capital of France?"         because the sentence is appended to the prompt. If ``prompt`` is set, ``prompt_name`` is ignored. Defaults to None.     batch_size (int, optional): The batch size used for the computation. Defaults to 32.     show_progress_bar (bool, optional): Whether to output a progress bar when encode sentences. Defaults to None.     output_value (Optional[Literal["sentence_embedding", "token_embeddings"]], optional): The type of embeddings to return:         "sentence_embedding" to get sentence embeddings, "token_embeddings" to get wordpiece token embeddings, and `None`,         to get all output values. Defaults to "sentence_embedding".     precision (Literal["float32", "int8", "uint8", "binary", "ubinary"], optional): The precision to use for the embeddings.         Can be "float32", "int8", "uint8", "binary", or "ubinary". All non-float32 precisions are quantized embeddings.         Quantized embeddings are smaller in size and faster to compute, but may have a lower accuracy. They are useful for         reducing the size of the embeddings of a corpus for semantic search, among other tasks. Defaults to "float32".     convert_to_numpy (bool, optional): Whether the output should be a list of numpy vectors. If False, it is a list of PyTorch tensors.         Defaults to True.     convert_to_tensor (bool, optional): Whether the output should be one large tensor. Overwrites `convert_to_numpy`.         Defaults to False.     device (Union[str, List[str], None], optional): Device(s) to use for computation. Can be:          - A single device string (e.g., "cuda:0", "cpu") for single-process encoding         - A list of device strings (e.g., ["cuda:0", "cuda:1"], ["cpu", "cpu", "cpu", "cpu"]) to distribute           encoding across multiple processes         - None to auto-detect available device for single-process encoding         If a list is provided, multi-process encoding will be used. Defaults to None.     normalize_embeddings (bool, optional): Whether to normalize returned vectors to have length 1. In that case,         the faster dot-product (util.dot_score) instead of cosine similarity can be used. Defaults to False.     truncate_dim (int, optional): The dimension to truncate sentence embeddings to.         Truncation is especially interesting for `Matryoshka models <https://sbert.net/examples/sentence_transformer/training/matryoshka/README.html>`_,         i.e. models that are trained to still produce useful embeddings even if the embedding dimension is reduced.         Truncated embeddings require less memory and are faster to perform retrieval with, but note that inference         is just as fast, and the embedding performance is worse than the full embeddings. If None, the ``truncate_dim``         from the model initialization is used. Defaults to None.     pool (Dict[Literal["input", "output", "processes"], Any], optional): A pool created by `start_multi_process_pool()`         for multi-process encoding. If provided, the encoding will be distributed across multiple processes.         This is recommended for large datasets and when multiple GPUs are available. Defaults to None.     chunk_size (int, optional): Size of chunks for multi-process encoding. Only used with multiprocessing, i.e. when         ``pool`` is not None or ``device`` is a list. If None, a sensible default is calculated. Defaults to None.  Returns:     Union[List[Tensor], ndarray, Tensor]: By default, a 2d numpy array with shape [num_inputs, output_dimension] is returned.     If only one string input is provided, then the output is a 1d array with shape [output_dimension]. If ``convert_to_tensor``,     a torch Tensor is returned instead. If ``self.truncate_dim <= output_dimension`` then output_dimension is ``self.truncate_dim``.  Example:     ::          from sentence_transformers import SentenceTransformer          # Load a pre-trained SentenceTransformer model         model = SentenceTransformer("mixedbread-ai/mxbai-embed-large-v1")          # Encode some documents         documents = [             "This research paper discusses the effects of climate change on marine life.",             "The article explores the history of artificial intelligence development.",             "This document contains technical specifications for the new product line.",         ]          # Using document-specific encoding         embeddings = model.encode_document(documents)         print(embeddings.shape)         # (3, 768)
+
+    **Parameters**
+
+    - **sentences**     (*'str | list[str] | np.ndarray'*)
+    - **prompt_name**     (*'str | None'*)     – defaults to `None`
+    - **prompt**     (*'str | None'*)     – defaults to `None`
+    - **batch_size**     (*'int'*)     – defaults to `32`
+    - **show_progress_bar**     (*'bool | None'*)     – defaults to `None`
+    - **output_value**     (*"Literal['sentence_embedding', 'token_embeddings'] | None"*)     – defaults to `sentence_embedding`
+    - **precision**     (*"Literal['float32', 'int8', 'uint8', 'binary', 'ubinary']"*)     – defaults to `float32`
+    - **convert_to_numpy**     (*'bool'*)     – defaults to `True`
+    - **convert_to_tensor**     (*'bool'*)     – defaults to `False`
+    - **device**     (*'str | list[str | torch.device] | None'*)     – defaults to `None`
+        Device (like "cuda", "cpu", "mps", "npu") that should be used for computation. If None, checks if a GPU can be used.
+    - **normalize_embeddings**     (*'bool'*)     – defaults to `False`
+    - **truncate_dim**     (*'int | None'*)     – defaults to `None`
+        The dimension to truncate sentence embeddings to. `None` does no truncation. Truncation is only applicable during inference when :meth:`SentenceTransformer.encode` is called.
+    - **pool**     (*"dict[Literal['input', 'output', 'processes'], Any] | None"*)     – defaults to `None`
+    - **chunk_size**     (*'int | None'*)     – defaults to `None`
+    - **kwargs**
+
 ???- note "encode_multi_process"
 
     Encodes a list of sentences using multiple processes and GPUs via :meth:`SentenceTransformer.encode <sentence_transformers.SentenceTransformer.encode>`. The sentences are chunked into smaller packages and sent to individual processes, which encode them on different GPUs or CPUs. This method is only suitable for encoding large sets of sentences.
@@ -368,6 +411,32 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
     - **pool_factor**     (*'int'*)     – defaults to `1`
     - **protected_tokens**     (*'int'*)     – defaults to `1`
 
+???- note "encode_query"
+
+    Computes sentence embeddings specifically optimized for query representation.
+
+    This method is a specialized version of :meth:`encode` that differs in exactly two ways:  1. If no ``prompt_name`` or ``prompt`` is provided, it uses a predefined "query" prompt,    if available in the model's ``prompts`` dictionary. 2. It sets the ``task`` to "query". If the model has a :class:`~sentence_transformers.models.Router`    module, it will use the "query" task type to route the input through the appropriate submodules.  .. tip::      If you are unsure whether you should use :meth:`encode`, :meth:`encode_query`, or :meth:`encode_document`,     your best bet is to use :meth:`encode_query` and :meth:`encode_document` for Information Retrieval tasks     with clear query and document/passage distinction, and use :meth:`encode` for all other tasks.      Note that :meth:`encode` is the most general method and can be used for any task, including Information     Retrieval, and that if the model was not trained with predefined prompts and/or task types, then all three     methods will return identical embeddings.  Args:     sentences (Union[str, List[str]]): The sentences to embed.     prompt_name (Optional[str], optional): The name of the prompt to use for encoding. Must be a key in the `prompts` dictionary,         which is either set in the constructor or loaded from the model configuration. For example if         ``prompt_name`` is "query" and the ``prompts`` is {"query": "query: ", ...}, then the sentence "What         is the capital of France?" will be encoded as "query: What is the capital of France?" because the sentence         is appended to the prompt. If ``prompt`` is also set, this argument is ignored. Defaults to None.     prompt (Optional[str], optional): The prompt to use for encoding. For example, if the prompt is "query: ", then the         sentence "What is the capital of France?" will be encoded as "query: What is the capital of France?"         because the sentence is appended to the prompt. If ``prompt`` is set, ``prompt_name`` is ignored. Defaults to None.     batch_size (int, optional): The batch size used for the computation. Defaults to 32.     show_progress_bar (bool, optional): Whether to output a progress bar when encode sentences. Defaults to None.     output_value (Optional[Literal["sentence_embedding", "token_embeddings"]], optional): The type of embeddings to return:         "sentence_embedding" to get sentence embeddings, "token_embeddings" to get wordpiece token embeddings, and `None`,         to get all output values. Defaults to "sentence_embedding".     precision (Literal["float32", "int8", "uint8", "binary", "ubinary"], optional): The precision to use for the embeddings.         Can be "float32", "int8", "uint8", "binary", or "ubinary". All non-float32 precisions are quantized embeddings.         Quantized embeddings are smaller in size and faster to compute, but may have a lower accuracy. They are useful for         reducing the size of the embeddings of a corpus for semantic search, among other tasks. Defaults to "float32".     convert_to_numpy (bool, optional): Whether the output should be a list of numpy vectors. If False, it is a list of PyTorch tensors.         Defaults to True.     convert_to_tensor (bool, optional): Whether the output should be one large tensor. Overwrites `convert_to_numpy`.         Defaults to False.     device (Union[str, List[str], None], optional): Device(s) to use for computation. Can be:          - A single device string (e.g., "cuda:0", "cpu") for single-process encoding         - A list of device strings (e.g., ["cuda:0", "cuda:1"], ["cpu", "cpu", "cpu", "cpu"]) to distribute           encoding across multiple processes         - None to auto-detect available device for single-process encoding         If a list is provided, multi-process encoding will be used. Defaults to None.     normalize_embeddings (bool, optional): Whether to normalize returned vectors to have length 1. In that case,         the faster dot-product (util.dot_score) instead of cosine similarity can be used. Defaults to False.     truncate_dim (int, optional): The dimension to truncate sentence embeddings to.         Truncation is especially interesting for `Matryoshka models <https://sbert.net/examples/sentence_transformer/training/matryoshka/README.html>`_,         i.e. models that are trained to still produce useful embeddings even if the embedding dimension is reduced.         Truncated embeddings require less memory and are faster to perform retrieval with, but note that inference         is just as fast, and the embedding performance is worse than the full embeddings. If None, the ``truncate_dim``         from the model initialization is used. Defaults to None.     pool (Dict[Literal["input", "output", "processes"], Any], optional): A pool created by `start_multi_process_pool()`         for multi-process encoding. If provided, the encoding will be distributed across multiple processes.         This is recommended for large datasets and when multiple GPUs are available. Defaults to None.     chunk_size (int, optional): Size of chunks for multi-process encoding. Only used with multiprocessing, i.e. when         ``pool`` is not None or ``device`` is a list. If None, a sensible default is calculated. Defaults to None.  Returns:     Union[List[Tensor], ndarray, Tensor]: By default, a 2d numpy array with shape [num_inputs, output_dimension] is returned.     If only one string input is provided, then the output is a 1d array with shape [output_dimension]. If ``convert_to_tensor``,     a torch Tensor is returned instead. If ``self.truncate_dim <= output_dimension`` then output_dimension is ``self.truncate_dim``.  Example:     ::          from sentence_transformers import SentenceTransformer          # Load a pre-trained SentenceTransformer model         model = SentenceTransformer("mixedbread-ai/mxbai-embed-large-v1")          # Encode some queries         queries = [             "What are the effects of climate change?",             "History of artificial intelligence",             "Technical specifications product XYZ",         ]          # Using query-specific encoding         embeddings = model.encode_query(queries)         print(embeddings.shape)         # (3, 768)
+
+    **Parameters**
+
+    - **sentences**     (*'str | list[str] | np.ndarray'*)
+    - **prompt_name**     (*'str | None'*)     – defaults to `None`
+    - **prompt**     (*'str | None'*)     – defaults to `None`
+    - **batch_size**     (*'int'*)     – defaults to `32`
+    - **show_progress_bar**     (*'bool | None'*)     – defaults to `None`
+    - **output_value**     (*"Literal['sentence_embedding', 'token_embeddings'] | None"*)     – defaults to `sentence_embedding`
+    - **precision**     (*"Literal['float32', 'int8', 'uint8', 'binary', 'ubinary']"*)     – defaults to `float32`
+    - **convert_to_numpy**     (*'bool'*)     – defaults to `True`
+    - **convert_to_tensor**     (*'bool'*)     – defaults to `False`
+    - **device**     (*'str | list[str | torch.device] | None'*)     – defaults to `None`
+        Device (like "cuda", "cpu", "mps", "npu") that should be used for computation. If None, checks if a GPU can be used.
+    - **normalize_embeddings**     (*'bool'*)     – defaults to `False`
+    - **truncate_dim**     (*'int | None'*)     – defaults to `None`
+        The dimension to truncate sentence embeddings to. `None` does no truncation. Truncation is only applicable during inference when :meth:`SentenceTransformer.encode` is called.
+    - **pool**     (*"dict[Literal['input', 'output', 'processes'], Any] | None"*)     – defaults to `None`
+    - **chunk_size**     (*'int | None'*)     – defaults to `None`
+    - **kwargs**
+
 ???- note "eval"
 
     Set the module in evaluation mode.
@@ -384,7 +453,7 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
     **Parameters**
 
     - **evaluator**     (*'SentenceEvaluator'*)
-    - **output_path**     (*'str'*)     – defaults to `None`
+    - **output_path**     (*'str | None'*)     – defaults to `None`
 
 ???- note "extend"
 
@@ -412,7 +481,7 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
     **Parameters**
 
     - **train_objectives**     (*'Iterable[tuple[DataLoader, nn.Module]]'*)
-    - **evaluator**     (*'SentenceEvaluator'*)     – defaults to `None`
+    - **evaluator**     (*'SentenceEvaluator | None'*)     – defaults to `None`
     - **epochs**     (*'int'*)     – defaults to `1`
     - **steps_per_epoch**     – defaults to `None`
     - **scheduler**     (*'str'*)     – defaults to `WarmupLinear`
@@ -421,13 +490,13 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
     - **optimizer_params**     (*'dict[str, object]'*)     – defaults to `{'lr': 2e-05}`
     - **weight_decay**     (*'float'*)     – defaults to `0.01`
     - **evaluation_steps**     (*'int'*)     – defaults to `0`
-    - **output_path**     (*'str'*)     – defaults to `None`
+    - **output_path**     (*'str | None'*)     – defaults to `None`
     - **save_best_model**     (*'bool'*)     – defaults to `True`
     - **max_grad_norm**     (*'float'*)     – defaults to `1`
     - **use_amp**     (*'bool'*)     – defaults to `False`
     - **callback**     (*'Callable[[float, int, int], None]'*)     – defaults to `None`
     - **show_progress_bar**     (*'bool'*)     – defaults to `True`
-    - **checkpoint_path**     (*'str'*)     – defaults to `None`
+    - **checkpoint_path**     (*'str | None'*)     – defaults to `None`
     - **checkpoint_save_steps**     (*'int'*)     – defaults to `500`
     - **checkpoint_save_total_limit**     (*'int'*)     – defaults to `0`
     - **resume_from_checkpoint**     (*'bool'*)     – defaults to `False`
@@ -454,7 +523,7 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     If you are not familiar with adapters and PEFT methods, we invite you to read more about them on the PEFT official documentation: https://huggingface.co/docs/peft
 
-    Gets the adapter state dict that should only contain the weights tensors of the specified adapter_name adapter. If no adapter_name is passed, the active adapter is used.  Args:     *args:         Positional arguments to pass to the underlying AutoModel `get_adapter_state_dict` function. More information can be found in the transformers documentation         https://huggingface.co/docs/transformers/main/en/peft#transformers.integrations.PeftAdapterMixin.get_adapter_state_dict     **kwargs:         Keyword arguments to pass to the underlying AutoModel `get_adapter_state_dict` function. More information can be found in the transformers documentation         https://huggingface.co/docs/transformers/main/en/peft#transformers.integrations.PeftAdapterMixin.get_adapter_state_dict
+    Gets the adapter state dict that should only contain the weights tensors of the specified adapter_name adapter. If no adapter_name is passed, the active adapter is used.  Args:     *args:         Positional arguments to pass to the underlying AutoModel `get_adapter_state_dict` function. More information can be found in the transformers documentation         https://huggingface.co/docs/transformers/main/en/main_classes/peft#transformers.integrations.PeftAdapterMixin.get_adapter_state_dict     **kwargs:         Keyword arguments to pass to the underlying AutoModel `get_adapter_state_dict` function. More information can be found in the transformers documentation         https://huggingface.co/docs/transformers/main/en/main_classes/peft#transformers.integrations.PeftAdapterMixin.get_adapter_state_dict
 
     **Parameters**
 
@@ -490,6 +559,13 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
     Returns the maximal sequence length that the model accepts. Longer inputs will be truncated.
 
     Returns:     Optional[int]: The maximal sequence length that the model accepts, or None if it is not defined.
+
+
+???- note "get_model_kwargs"
+
+    Get the keyword arguments specific to this model for the `encode`, `encode_query`, or `encode_document` methods.
+
+    Example:      >>> from sentence_transformers import SentenceTransformer, SparseEncoder     >>> SentenceTransformer("all-MiniLM-L6-v2").get_model_kwargs()     []     >>> SentenceTransformer("jinaai/jina-embeddings-v4", trust_remote_code=True).get_model_kwargs()     ['task', 'truncate_dim']     >>> SparseEncoder("opensearch-project/opensearch-neural-sparse-encoding-doc-v3-distill").get_model_kwargs()     ['task']  Returns:     list[str]: A list of keyword arguments for the forward pass.
 
 
 ???- note "get_parameter"
@@ -569,7 +645,7 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     Load adapter weights from file or remote Hub folder." If you are not familiar with adapters and PEFT methods, we invite you to read more about them on PEFT official documentation: https://huggingface.co/docs/peft
 
-    Requires peft as a backend to load the adapter weights and the underlying model to be compatible with PEFT.  Args:     *args:         Positional arguments to pass to the underlying AutoModel `load_adapter` function. More information can be found in the transformers documentation         https://huggingface.co/docs/transformers/main/en/peft#transformers.integrations.PeftAdapterMixin.load_adapter     **kwargs:         Keyword arguments to pass to the underlying AutoModel `load_adapter` function. More information can be found in the transformers documentation         https://huggingface.co/docs/transformers/main/en/peft#transformers.integrations.PeftAdapterMixin.load_adapter
+    Requires peft as a backend to load the adapter weights and the underlying model to be compatible with PEFT.  Args:     *args:         Positional arguments to pass to the underlying AutoModel `load_adapter` function. More information can be found in the transformers documentation         https://huggingface.co/docs/transformers/main/en/main_classes/peft#transformers.integrations.PeftAdapterMixin.load_adapter     **kwargs:         Keyword arguments to pass to the underlying AutoModel `load_adapter` function. More information can be found in the transformers documentation         https://huggingface.co/docs/transformers/main/en/main_classes/peft#transformers.integrations.PeftAdapterMixin.load_adapter
 
     **Parameters**
 
@@ -587,6 +663,26 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
     - **state_dict**     (*collections.abc.Mapping[str, typing.Any]*)
     - **strict**     (*bool*)     – defaults to `True`
     - **assign**     (*bool*)     – defaults to `False`
+
+???- note "model_card_data_class"
+
+    A dataclass storing data used in the model card.
+
+    Args:     language (`Optional[Union[str, List[str]]]`): The model language, either a string or a list,         e.g. "en" or ["en", "de", "nl"]     license (`Optional[str]`): The license of the model, e.g. "apache-2.0", "mit",         or "cc-by-nc-sa-4.0"     model_name (`Optional[str]`): The pretty name of the model, e.g. "SentenceTransformer based on microsoft/mpnet-base".     model_id (`Optional[str]`): The model ID when pushing the model to the Hub,         e.g. "tomaarsen/sbert-mpnet-base-allnli".     train_datasets (`List[Dict[str, str]]`): A list of the names and/or Hugging Face dataset IDs of the training datasets.         e.g. [{"name": "SNLI", "id": "stanfordnlp/snli"}, {"name": "MultiNLI", "id": "nyu-mll/multi_nli"}, {"name": "STSB"}]     eval_datasets (`List[Dict[str, str]]`): A list of the names and/or Hugging Face dataset IDs of the evaluation datasets.         e.g. [{"name": "SNLI", "id": "stanfordnlp/snli"}, {"id": "mteb/stsbenchmark-sts"}]     task_name (`str`): The human-readable task the model is trained on,         e.g. "semantic textual similarity, semantic search, paraphrase mining, text classification, clustering, and more".     tags (`Optional[List[str]]`): A list of tags for the model,         e.g. ["sentence-transformers", "sentence-similarity", "feature-extraction"].     local_files_only (`bool`): If True, don't attempt to find dataset or base model information on the Hub.         Defaults to False.     generate_widget_examples (`bool`): If True, generate widget examples from the evaluation or training dataset,         and compute their similarities. Defaults to True.  .. tip::      Install `codecarbon <https://github.com/mlco2/codecarbon>`_ to automatically track carbon emission usage and     include it in your model cards.  Example::      >>> model = SentenceTransformer(     ...     "microsoft/mpnet-base",     ...     model_card_data=SentenceTransformerModelCardData(     ...         model_id="tomaarsen/sbert-mpnet-base-allnli",     ...         train_datasets=[{"name": "SNLI", "id": "stanfordnlp/snli"}, {"name": "MultiNLI", "id": "nyu-mll/multi_nli"}],     ...         eval_datasets=[{"name": "SNLI", "id": "stanfordnlp/snli"}, {"name": "MultiNLI", "id": "nyu-mll/multi_nli"}],     ...         license="apache-2.0",     ...         language="en",     ...     ),     ... )
+
+    **Parameters**
+
+    - **language**     (*'str | list[str] | None'*)     – defaults to `<factory>`
+    - **license**     (*'str | None'*)     – defaults to `None`
+    - **model_name**     (*'str | None'*)     – defaults to `None`
+    - **model_id**     (*'str | None'*)     – defaults to `None`
+    - **train_datasets**     (*'list[dict[str, str]]'*)     – defaults to `<factory>`
+    - **eval_datasets**     (*'list[dict[str, str]]'*)     – defaults to `<factory>`
+    - **task_name**     (*'str'*)     – defaults to `semantic textual similarity, semantic search, paraphrase mining, text classification, clustering, and more`
+    - **tags**     (*'list[str] | None'*)     – defaults to `<factory>`
+    - **local_files_only**     (*'bool'*)     – defaults to `False`
+        Whether or not to only look at local files (i.e., do not try to download the model).
+    - **generate_widget_examples**     (*'bool'*)     – defaults to `True`
 
 ???- note "modules"
 
@@ -653,12 +749,12 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     Deprecated training method from before Sentence Transformers v3.0, it is recommended to use :class:`sentence_transformers.trainer.SentenceTransformerTrainer` instead. This method should only be used if you encounter issues with your existing training scripts after upgrading to v3.0+.
 
-    This training approach uses a list of DataLoaders and Loss functions to train the model. Each DataLoader is sampled in turn for one batch. We sample only as many batches from each DataLoader as there are in the smallest one to make sure of equal training with each dataset, i.e. round robin sampling.  Args:     train_objectives: Tuples of (DataLoader, LossFunction). Pass         more than one for multi-task learning     evaluator: An evaluator (sentence_transformers.evaluation)         evaluates the model performance during training on held-         out dev data. It is used to determine the best model         that is saved to disc.     epochs: Number of epochs for training     steps_per_epoch: Number of training steps per epoch. If set         to None (default), one epoch is equal the DataLoader         size from train_objectives.     scheduler: Learning rate scheduler. Available schedulers:         constantlr, warmupconstant, warmuplinear, warmupcosine,         warmupcosinewithhardrestarts     warmup_steps: Behavior depends on the scheduler. For         WarmupLinear (default), the learning rate is increased         from o up to the maximal learning rate. After these many         training steps, the learning rate is decreased linearly         back to zero.     optimizer_class: Optimizer     optimizer_params: Optimizer parameters     weight_decay: Weight decay for model parameters     evaluation_steps: If > 0, evaluate the model using evaluator         after each number of training steps     output_path: Storage path for the model and evaluation files     save_best_model: If true, the best model (according to         evaluator) is stored at output_path     max_grad_norm: Used for gradient normalization.     use_amp: Use Automatic Mixed Precision (AMP). Only for         Pytorch >= 1.6.0     callback: Callback function that is invoked after each         evaluation. It must accept the following three         parameters in this order: `score`, `epoch`, `steps`     show_progress_bar: If True, output a tqdm progress bar     checkpoint_path: Folder to save checkpoints during training     checkpoint_save_steps: Will save a checkpoint after so many         steps     checkpoint_save_total_limit: Total number of checkpoints to         store
+    This training approach uses a list of DataLoaders and Loss functions to train the model. Each DataLoader is sampled in turn for one batch. We sample only as many batches from each DataLoader as there are in the smallest one to make sure of equal training with each dataset, i.e. round robin sampling.  Args:     train_objectives: Tuples of (DataLoader, LossFunction). Pass         more than one for multi-task learning     evaluator: An evaluator (sentence_transformers.evaluation)         evaluates the model performance during training on held-         out dev data. It is used to determine the best model         that is saved to disk.     epochs: Number of epochs for training     steps_per_epoch: Number of training steps per epoch. If set         to None (default), one epoch is equal the DataLoader         size from train_objectives.     scheduler: Learning rate scheduler. Available schedulers:         constantlr, warmupconstant, warmuplinear, warmupcosine,         warmupcosinewithhardrestarts     warmup_steps: Behavior depends on the scheduler. For         WarmupLinear (default), the learning rate is increased         from o up to the maximal learning rate. After these many         training steps, the learning rate is decreased linearly         back to zero.     optimizer_class: Optimizer     optimizer_params: Optimizer parameters     weight_decay: Weight decay for model parameters     evaluation_steps: If > 0, evaluate the model using evaluator         after each number of training steps     output_path: Storage path for the model and evaluation files     save_best_model: If true, the best model (according to         evaluator) is stored at output_path     max_grad_norm: Used for gradient normalization.     use_amp: Use Automatic Mixed Precision (AMP). Only for         Pytorch >= 1.6.0     callback: Callback function that is invoked after each         evaluation. It must accept the following three         parameters in this order: `score`, `epoch`, `steps`     show_progress_bar: If True, output a tqdm progress bar     checkpoint_path: Folder to save checkpoints during training     checkpoint_save_steps: Will save a checkpoint after so many         steps     checkpoint_save_total_limit: Total number of checkpoints to         store
 
     **Parameters**
 
     - **train_objectives**     (*'Iterable[tuple[DataLoader, nn.Module]]'*)
-    - **evaluator**     (*'SentenceEvaluator'*)     – defaults to `None`
+    - **evaluator**     (*'SentenceEvaluator | None'*)     – defaults to `None`
     - **epochs**     (*'int'*)     – defaults to `1`
     - **steps_per_epoch**     – defaults to `None`
     - **scheduler**     (*'str'*)     – defaults to `WarmupLinear`
@@ -667,13 +763,13 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
     - **optimizer_params**     (*'dict[str, object]'*)     – defaults to `{'lr': 2e-05}`
     - **weight_decay**     (*'float'*)     – defaults to `0.01`
     - **evaluation_steps**     (*'int'*)     – defaults to `0`
-    - **output_path**     (*'str'*)     – defaults to `None`
+    - **output_path**     (*'str | None'*)     – defaults to `None`
     - **save_best_model**     (*'bool'*)     – defaults to `True`
     - **max_grad_norm**     (*'float'*)     – defaults to `1`
     - **use_amp**     (*'bool'*)     – defaults to `False`
     - **callback**     (*'Callable[[float, int, int], None]'*)     – defaults to `None`
     - **show_progress_bar**     (*'bool'*)     – defaults to `True`
-    - **checkpoint_path**     (*'str'*)     – defaults to `None`
+    - **checkpoint_path**     (*'str | None'*)     – defaults to `None`
     - **checkpoint_save_steps**     (*'int'*)     – defaults to `500`
     - **checkpoint_save_total_limit**     (*'int'*)     – defaults to `0`
 
@@ -882,7 +978,7 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     Saves a model and its configuration files to a directory, so that it can be loaded with ``SentenceTransformer(path)`` again.
 
-    Args:     path (str): Path on disc where the model will be saved.     model_name (str, optional): Optional model name.     create_model_card (bool, optional): If True, create a README.md with basic information about this model.     train_datasets (List[str], optional): Optional list with the names of the datasets used to train the model.     safe_serialization (bool, optional): If True, save the model using safetensors. If False, save the model         the traditional (but unsafe) PyTorch way.
+    Args:     path (str): Path on disk where the model will be saved.     model_name (str, optional): Optional model name.     create_model_card (bool, optional): If True, create a README.md with basic information about this model.     train_datasets (List[str], optional): Optional list with the names of the datasets used to train the model.     safe_serialization (bool, optional): If True, save the model using safetensors. If False, save the model         the traditional (but unsafe) PyTorch way.
 
     **Parameters**
 
@@ -916,7 +1012,7 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     Sets a specific adapter by forcing the model to use a that adapter and disable the other adapters.
 
-    Args:     *args:         Positional arguments to pass to the underlying AutoModel `set_adapter` function. More information can be found in the transformers documentation         https://huggingface.co/docs/transformers/main/en/peft#transformers.integrations.PeftAdapterMixin.set_adapter     **kwargs:         Keyword arguments to pass to the underlying AutoModel `set_adapter` function. More information can be found in the transformers documentation         https://huggingface.co/docs/transformers/main/en/peft#transformers.integrations.PeftAdapterMixin.set_adapter
+    Args:     *args:         Positional arguments to pass to the underlying AutoModel `set_adapter` function. More information can be found in the transformers documentation         https://huggingface.co/docs/transformers/main/en/main_classes/peft#transformers.integrations.PeftAdapterMixin.set_adapter     **kwargs:         Keyword arguments to pass to the underlying AutoModel `set_adapter` function. More information can be found in the transformers documentation         https://huggingface.co/docs/transformers/main/en/main_classes/peft#transformers.integrations.PeftAdapterMixin.set_adapter
 
     **Parameters**
 

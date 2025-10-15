@@ -104,6 +104,18 @@ Evaluate a model based on a set of triples. The evaluation will compare the scor
     - **epoch**     (*'int'*)     – defaults to `-1`
     - **steps**     (*'int'*)     – defaults to `-1`
 
+???- note "embed_inputs"
+
+    Call the encoder method of the model pass
+
+    Args:     model (SentenceTransformer): Model we are evaluating     sentences (str | list[str] | np.ndarray): Text that we are embedding  Returns:     list[Tensor] | np.ndarray | Tensor | dict[str, Tensor] | list[dict[str, Tensor]]: The associated embedding
+
+    **Parameters**
+
+    - **model**     (*'SentenceTransformer'*)
+    - **sentences**     (*'str | list[str] | np.ndarray'*)
+    - **kwargs**
+
 ???- note "from_input_examples"
 
 ???- note "get_config_dict"

@@ -84,7 +84,10 @@ def inherit_docstring(c, meth):
 
 def inherit_signature(c, method_name):
     m = getattr(c, method_name)
-    sig = inspect.signature(m)
+    try:
+        sig = inspect.signature(m)
+    except ValueError:
+        return inspect.Signature()
 
     params = []
 
