@@ -30,7 +30,7 @@ This is a direct extension of the NanoBEIREvaluator from the sentence-transforme
 
 - **main_score_function** (*'str | SimilarityFunction | None'*) – defaults to `None`
 
-- **aggregate_fn** (*'Callable[[list[float]], float]'*) – defaults to `<function mean at 0x7f3c21bfca40>`
+- **aggregate_fn** (*'Callable[[list[float]], float]'*) – defaults to `<function mean at 0x7f4a8fbfc9a0>`
 
 - **aggregate_key** (*'str'*) – defaults to `mean`
 

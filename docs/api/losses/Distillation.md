@@ -10,7 +10,7 @@ Distillation loss for ColBERT model. The loss is computed with respect to the fo
 
     SentenceTransformer model.
 
-- **score_metric** (*'Callable'*) – defaults to `<function colbert_kd_scores at 0x7f3847b16e80>`
+- **score_metric** (*'Callable'*) – defaults to `<function colbert_kd_scores at 0x7f48f92b2fc0>`
 
     Function that returns a score between two sequences of embeddings.
 

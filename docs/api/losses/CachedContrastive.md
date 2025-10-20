@@ -10,7 +10,7 @@ A cached, in-batch negatives contrastive loss for PyLate, analogous to SentenceT
 
     A PyLate ColBERT model
 
-- **score_metric** (*'Callable'*) – defaults to `<function colbert_scores at 0x7f3847b2fba0>`
+- **score_metric** (*'Callable'*) – defaults to `<function colbert_scores at 0x7f48f92cbc40>`
 
     ColBERT scoring function. Defaults to colbert_scores.
 

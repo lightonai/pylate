@@ -117,6 +117,33 @@ ColBERT(
 )
 ```
 
+
 !!! tip
-    [MixedBread study](https://arxiv.org/abs/2510.12327)
+    [MixedBread study](https://arxiv.org/abs/2510.12327) showed that it is beneficial to use MLPs to do the projection rather than a simple dense layer. The study explore different depths, activation functions and the use of residual layers. Please check the paper for a more thorough analysis.
+    ```python
+    import torch
+    from sentence_transformers.models import Transformer
+    from pylate import models
+
+    base_model = Transformer("jhu-clsp/ettin-encoder-32m")
+
+    dense_1 = models.Dense(
+        in_features=384,
+        out_features=768,
+        bias=False,
+        activation_function=torch.nn.Identity(),,
+        use_residual=True,
+    )
+    dense_2 = models.Dense(
+        in_features=768,
+        out_features=384,
+        bias=False,
+        activation_function=torch.nn.Identity(),
+        use_residual=True,
+    )
+
+    model = models.ColBERT(
+        modules=[base_model, dense_1, dense_2],
+    )
+    ```
 
