@@ -27,19 +27,19 @@ queries_embeddings = model.encode(
     is_query=True,
 )
 
-matchs = index(queries_embeddings, k=30)
+matches = index(queries_embeddings, k=30)
 
-assert isinstance(matchs, list)
-assert len(matchs) == 2
-assert matchs[0][0].keys() == {"id", "score"}
+assert isinstance(matches, list)
+assert len(matches) == 2
+assert matches[0][0].keys() == {"id", "score"}
 
 queries_embeddings = model.encode(
     "fruits are healthy.",
     is_query=True,
 )
 
-matchs = index(queries_embeddings, k=30)
+matches = index(queries_embeddings, k=30)
 
-assert isinstance(matchs, list)
-assert len(matchs) == 1
-assert matchs[0][0].keys() == {"id", "score"}
+assert isinstance(matches, list)
+assert len(matches) == 1
+assert matches[0][0].keys() == {"id", "score"}

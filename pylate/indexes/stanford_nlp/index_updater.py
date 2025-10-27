@@ -56,7 +56,7 @@ class IndexUpdater:
         Return: None
 
         Removes a list of pids from the searcher,
-        these pids will no longer apppear in future searches with this searcher
+        these pids will no longer appear in future searches with this searcher
         to erase passage data from index, call persist_to_disk() after calling remove()
         """
         invalid_pids = self._check_pids(pids)

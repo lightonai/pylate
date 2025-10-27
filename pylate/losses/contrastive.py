@@ -82,7 +82,7 @@ class Contrastive(nn.Module):
     size_average
         Average by the size of the mini-batch.
     gather_across_devices
-        Whether to gather the embeddings across devices to have more in batch negatives. We recommand making sure the sampling across GPUs use the same dataset in case of multi-dataset training to make sure the negatives are plausible.
+        Whether to gather the embeddings across devices to have more in batch negatives. We recommend making sure the sampling across GPUs use the same dataset in case of multi-dataset training to make sure the negatives are plausible.
 
     Examples
     --------

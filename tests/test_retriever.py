@@ -59,14 +59,14 @@ def test_voyager_index(**kwargs) -> None:
             is_query=True,
         )
 
-        matchs = index(queries_embeddings, k=5)
+        matches = index(queries_embeddings, k=5)
 
-        assert isinstance(matchs, dict)
-        assert "documents_ids" in matchs
-        assert "distances" in matchs
+        assert isinstance(matches, dict)
+        assert "documents_ids" in matches
+        assert "distances" in matches
 
         assert (
-            matchs["distances"].shape[0] == len(configuration["sentences"])
+            matches["distances"].shape[0] == len(configuration["sentences"])
             if isinstance(configuration["sentences"], list)
             else 1
         )
