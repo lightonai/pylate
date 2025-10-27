@@ -35,24 +35,24 @@ def test_plaid():
         is_query=True,
     )
 
-    matchs = index(queries_embeddings, k=30)
+    matches = index(queries_embeddings, k=30)
 
-    assert isinstance(matchs, list)
-    assert len(matchs) == 2
-    assert len(matchs[0]) == 2
-    assert matchs[0][0].keys() == {"id", "score"}
+    assert isinstance(matches, list)
+    assert len(matches) == 2
+    assert len(matches[0]) == 2
+    assert matches[0][0].keys() == {"id", "score"}
 
     queries_embeddings = model.encode(
         "fruits are healthy.",
         is_query=True,
     )
 
-    matchs = index(queries_embeddings, k=30)
+    matches = index(queries_embeddings, k=30)
 
-    assert isinstance(matchs, list)
-    assert len(matchs) == 1
-    assert len(matchs[0]) == 2
-    assert matchs[0][0].keys() == {"id", "score"}
+    assert isinstance(matches, list)
+    assert len(matches) == 1
+    assert len(matches[0]) == 2
+    assert matches[0][0].keys() == {"id", "score"}
 
     # Test loading
     index = indexes.PLAID(
@@ -61,22 +61,22 @@ def test_plaid():
         override=False,
     )
 
-    matchs = index(queries_embeddings, k=30)
-    assert isinstance(matchs, list)
-    assert len(matchs) == 1
-    assert len(matchs[0]) == 2
-    assert matchs[0][0].keys() == {"id", "score"}
+    matches = index(queries_embeddings, k=30)
+    assert isinstance(matches, list)
+    assert len(matches) == 1
+    assert len(matches[0]) == 2
+    assert matches[0][0].keys() == {"id", "score"}
 
     # Test removing documents
     index.remove_documents(
         documents_ids=["1"],
     )
 
-    matchs = index(queries_embeddings, k=30)
-    assert isinstance(matchs, list)
-    assert len(matchs) == 1
-    assert len(matchs[0]) == 1
-    assert matchs[0][0].keys() == {"id", "score"}
+    matches = index(queries_embeddings, k=30)
+    assert isinstance(matches, list)
+    assert len(matches) == 1
+    assert len(matches[0]) == 1
+    assert matches[0][0].keys() == {"id", "score"}
 
     # Test second insertion after init of the index
     index.add_documents(
@@ -84,10 +84,10 @@ def test_plaid():
         documents_embeddings=documents_embeddings[0],
     )
 
-    matchs = index(queries_embeddings, k=30)
-    assert isinstance(matchs, list)
-    assert len(matchs) == 1
-    assert len(matchs[0]) == 2
-    assert matchs[0][0].keys() == {"id", "score"}
+    matches = index(queries_embeddings, k=30)
+    assert isinstance(matches, list)
+    assert len(matches) == 1
+    assert len(matches[0]) == 2
+    assert matches[0][0].keys() == {"id", "score"}
 
     shutil.rmtree(f"test_indexes_{random_hash}")

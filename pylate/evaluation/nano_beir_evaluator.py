@@ -71,7 +71,7 @@ class NanoBEIREvaluator(NanoBEIREvaluatorST):
     PyLateInformationRetrievalEvaluator class. The collection is a set of datasets
     based on the BEIR collection, but with a significantly smaller size, so it
     can be used for quickly evaluating the retrieval performance of a
-    model before commiting to a full evaluation.
+    model before committing to a full evaluation.
     The Evaluator will return the same metrics as the InformationRetrievalEvaluator
     (i.e., MRR, nDCG, Recall@k), for each dataset and on average.
 

@@ -1,6 +1,6 @@
 # PyLateInformationRetrievalEvaluator
 
-This class evaluates an Information Retrieval (IR) setting. This is a direct extension of the InformationRetrievalEvaluator from the sentence-transformers library, only override the compute_metrices method to be compilatible with PyLate models (define assymetric encoding using is_query params and add padding).
+This class evaluates an Information Retrieval (IR) setting. This is a direct extension of the InformationRetrievalEvaluator from the sentence-transformers library, only override the compute_metrices method to be compilatible with PyLate models (define asymmetric encoding using is_query params and add padding).
 
 
 

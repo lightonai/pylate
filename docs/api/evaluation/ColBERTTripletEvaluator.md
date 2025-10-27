@@ -32,7 +32,7 @@ Evaluate a model based on a set of triples. The evaluation will compare the scor
 
 - **write_csv** (*'bool'*) – defaults to `True`
 
-    Wether or not to write results to a CSV file.
+    Whether or not to write results to a CSV file.
 
 - **truncate_dim** (*'int | None'*) – defaults to `None`
 

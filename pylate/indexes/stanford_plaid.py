@@ -58,7 +58,7 @@ class StanfordPLAID(Base):
     search_batch_size
         The batch size to use when searching.
     use_triton
-        Whether to use triton kernels when computing kmeans using fast-plaid. Triton kernels are faster, but yields some variance due to race condition, set to false to get 100% reproducable results. If unset, will use triton kernels if possible.
+        Whether to use triton kernels when computing kmeans using fast-plaid. Triton kernels are faster, but yields some variance due to race condition, set to false to get 100% reproducible results. If unset, will use triton kernels if possible.
 
     Examples:
     --------

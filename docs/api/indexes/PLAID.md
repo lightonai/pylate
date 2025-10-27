@@ -60,7 +60,7 @@ This class provides a unified interface for PLAID indexing that can use either: 
 
 - **use_triton** (*'bool | None'*) – defaults to `None`
 
-    Whether to use triton kernels when computing kmeans using fast-plaid. Triton kernels are faster, but yields some variance due to race condition, set to false to get 100% reproducable results. If unset, will use triton kernels if possible.
+    Whether to use triton kernels when computing kmeans using fast-plaid. Triton kernels are faster, but yields some variance due to race condition, set to false to get 100% reproducible results. If unset, will use triton kernels if possible.
 
 - **kwargs**
 
