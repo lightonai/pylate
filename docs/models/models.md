@@ -44,7 +44,7 @@ By default, if you use a base model to create a PyLate model, it'll add a dense 
 model = models.ColBERT("bert-base-uncased")
 ```
 
-If you create a PyLate model from a sentence-transformers model, it'll load the dense layer of this model and only add another one **if you specified an embedding_size and it is not matching the size of the last dense layer of the ST model.
+If you create a PyLate model from a sentence-transformers model, it'll load the dense layer of this model and only add another one **if you specified an embedding_size and it is not matching the size of the last dense layer of the ST model.**
 
 If you do not want to use the dense layers of the ST model (but still want to use its base weights), you should use the modular syntax:
 ```python
