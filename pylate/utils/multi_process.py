@@ -21,6 +21,8 @@ def _start_multi_process_pool(model, target_devices: list[str] = None) -> dict:
 
     Parameters
     ----------
+    model
+        Model to use for encoding.
     target_devices
         PyTorch target devices, e.g. ["cuda:0", "cuda:1", ...], ["npu:0", "npu:1", ...], or ["cpu", "cpu", "cpu", "cpu"]. If target_devices is None and CUDA/NPU
         is available, then all available CUDA/NPU devices will be used. If target_devices is None and

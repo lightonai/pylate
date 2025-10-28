@@ -97,14 +97,12 @@ def get_beir_triples(
 
     Parameters
     ----------
-    key
-        Key.
-    on
-        Fields to use.
     documents
         Documents.
     queries
         Queries.
+    qrels:
+        Dict with relevante documents for each query.
 
     Examples
     --------
@@ -129,7 +127,7 @@ def get_beir_triples(
     mapping_documents = {document["id"]: document["text"] for document in documents}
 
     X = []
-    for query, (_, query_documents) in zip(queries, qrels.items()):
+    for query, query_documents in zip(queries, qrels.values()):
         for query_document in list(query_documents.keys()):
             # Building triples, query, positive document, random negative document
             X.append(
@@ -152,14 +150,12 @@ def evaluate(
 
     Parameters
     ----------
-    matchs
-        Matchs.
+    scores
+        Scores of the retrieval model.
     qrels
         Qrels.
     queries
         index of queries of qrels.
-    k
-        Number of documents to retrieve.
     metrics
         Metrics to compute.
 

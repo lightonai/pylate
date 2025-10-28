@@ -110,22 +110,24 @@ class Dense(DenseSentenceTransformer):
 
         Parameters
         ----------
-        model_name_or_path (`str` or `os.PathLike`):
+        model_name_or_path
             This can be either:
             - a string, the *model id* of a model repo on huggingface.co.
             - a path to a *directory* potentially containing the file.
-        cache_folder (`str` or `os.PathLike`, *optional*):
+        cache_folder
             Path to a directory in which a downloaded pretrained model configuration should be cached if the standard
             cache should not be used.
-        token (`str` or *bool*, *optional*):
+        token
             The token to use as HTTP bearer authorization for remote files. If `True`, will use the token generated
             when running `huggingface-cli login` (stored in `~/.huggingface`).
-        revision (`str`, *optional*, defaults to `"main"`):
+        revision
             The specific model version to use. It can be a branch name, a tag name, or a commit id, since we use a
             git-based system for storing models and other artifacts on huggingface.co, so `revision` can be any
             identifier allowed by git.
-        local_files_only (`bool`, *optional*, defaults to `False`):
+        local_files_only
             If `True`, will only try to load the tokenizer configuration from local files.
+        use_auth_token
+            Deprecated, use `token` instead.
         """
         # Check if the model is locally available
         if not (os.path.exists(os.path.join(model_name_or_path))):
