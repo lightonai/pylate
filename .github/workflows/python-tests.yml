@@ -1,4 +1,4 @@
-name: Tests Python 3.9 and 3.12, Ubuntu
+name: "PyLate"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -7,10 +7,13 @@ concurrency:
 on:
   push:
     branches:
-      - "**"
+      - "main"
+  pull_request:
+    branches:
+      - "main"
 
 jobs:
-  test-:
+  tests:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: true
@@ -35,4 +38,4 @@ jobs:
         run: uv run --extra dev pytest tests -m "model_loading" --durations=5
 
       - name: Run other tests
-        run: uv run --extra dev pytest ${{ matrix.test-target }} -m "not model_loading" -n auto --durations=5
+        run: uv run --extra dev --extra voyager pytest ${{ matrix.test-target }} -m "not model_loading" -n auto --durations=5

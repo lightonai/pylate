@@ -6,7 +6,6 @@ import os
 import numpy as np
 import torch
 from sqlitedict import SqliteDict
-from voyager import Index, Space
 
 from ..utils import iter_batch
 from .base import Base
@@ -32,6 +31,18 @@ def reshape_embeddings(
 class Voyager(Base):
     """Voyager index. The Voyager index is a fast and efficient index for approximate nearest neighbor search.
 
+    To use this index, you need to install the `voyager` extra:
+
+    ```bash
+    pip install "pylate[voyager]"
+    ```
+
+    or install voyager directly:
+
+    ```bash
+    pip install voyager
+    ```
+
     Parameters
     ----------
     override
@@ -47,35 +58,35 @@ class Voyager(Base):
 
     Examples
     --------
-    from pylate import indexes, models
+    >>> from pylate import indexes, models
 
-    index = indexes.Voyager(
-        index_folder="test_indexes",
-        index_name="colbert",
-        override=True,
-        embedding_size=128,
-    )
+    >>> index = indexes.Voyager(
+    ...    index_folder="test_indexes",
+    ...    index_name="colbert",
+    ...    override=True,
+    ...    embedding_size=128,
+    ... )
 
-    model = models.ColBERT(
-        model_name_or_path="sentence-transformers/all-MiniLM-L6-v2",
-    )
+    >>> model = models.ColBERT(
+    ...    model_name_or_path="sentence-transformers/all-MiniLM-L6-v2",
+    ... )
 
-    documents_embeddings = model.encode(
-        ["fruits are healthy.", "fruits are good for health.", "fruits are bad for health."],
-        is_query=False,
-    )
+    >>> documents_embeddings = model.encode(
+    ...    ["fruits are healthy.", "fruits are good for health.", "fruits are bad for health."],
+    ...    is_query=False,
+    ... )
 
-    index = index.add_documents(
-        documents_ids=["1", "2", "3"],
-        documents_embeddings=documents_embeddings,
-    )
+    >>> index = index.add_documents(
+    ...    documents_ids=["1", "2", "3"],
+    ...    documents_embeddings=documents_embeddings,
+    ... )
 
-    queries_embeddings = model.encode(
-         ["fruits are healthy.", "fruits are good for health and fun."],
-         is_query=True,
-    )
+    >>> queries_embeddings = model.encode(
+    ...     ["fruits are healthy.", "fruits are good for health and fun."],
+    ...     is_query=True,
+    ... )
 
-    matches = index(queries_embeddings, k=30)
+    >>> matches = index(queries_embeddings, k=30)
 
     """
 
@@ -144,6 +155,13 @@ class Voyager(Base):
             Whether to override the collection if it already exists.
 
         """
+        try:
+            from voyager import Index, Space
+        except ImportError:
+            raise ImportError(
+                'Voyager is not installed. Please install it with: `pip install "pylate[voyager]"`.'
+            )
+
         if os.path.exists(path=index_path) and not override:
             with open(index_path, "rb") as f:
                 return Index.load(f)
