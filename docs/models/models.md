@@ -131,7 +131,7 @@ ColBERT(
         in_features=384,
         out_features=768,
         bias=False,
-        activation_function=torch.nn.Identity(),,
+        activation_function=torch.nn.Identity(),
         use_residual=True,
     )
     dense_2 = models.Dense(
@@ -139,7 +139,7 @@ ColBERT(
         out_features=384,
         bias=False,
         activation_function=torch.nn.Identity(),
-        use_residual=True,
+        use_residual=False,
     )
 
     model = models.ColBERT(
