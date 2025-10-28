@@ -81,7 +81,7 @@ ColBERT(
 )
 ```
 
-It also allows you to define the activation function and use multiple dense.
+It also allows you to define the activation function and use multiple dense layers.
 Please note that you can also _append_ layers to existing models as well as remove them, so you can really create the modules you want
 ```python
 import torch
