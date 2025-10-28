@@ -102,7 +102,7 @@ def get_beir_triples(
     queries
         Queries.
     qrels:
-        Dict with relevante documents for each query.
+        Dict with relevant documents for each query.
 
     Examples
     --------
