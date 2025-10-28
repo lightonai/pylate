@@ -207,9 +207,9 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **args**    
-    - **kwargs**    
-    
+    - **args**
+    - **kwargs**
+
 ???- note "active_adapter"
 
 ???- note "active_adapters"
@@ -218,7 +218,7 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     Gets the current active adapters of the model. In case of multi-adapter inference (combining multiple adapters for inference) returns the list of all active adapters so that users can deal with them accordingly.  For previous PEFT versions (that does not support multi-adapter inference), `module.active_adapter` will return a single string.
 
-    
+
 ???- note "add_adapter"
 
     Adds a fresh new adapter to the current model for training purposes. If no adapter name is passed, a default name is assigned to the adapter to follow the convention of PEFT library (in PEFT we use "default" as the default adapter name).
@@ -227,9 +227,9 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **args**    
-    - **kwargs**    
-    
+    - **args**
+    - **kwargs**
+
 ???- note "add_module"
 
     Add a child module to the current module.
@@ -238,9 +238,9 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **name**     (*str*)    
-    - **module**     (*Optional[ForwardRef('Module')]*)    
-    
+    - **name**     (*str*)
+    - **module**     (*Optional[ForwardRef('Module')]*)
+
 ???- note "append"
 
     Append a given module to the end.
@@ -249,8 +249,8 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **module**     (*torch.nn.modules.module.Module*)    
-    
+    - **module**     (*torch.nn.modules.module.Module*)
+
 ???- note "apply"
 
     Apply ``fn`` recursively to every submodule (as returned by ``.children()``) as well as self.
@@ -259,15 +259,15 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **fn**     (*Callable[[ForwardRef('Module')], NoneType]*)    
-    
+    - **fn**     (*Callable[[ForwardRef('Module')], NoneType]*)
+
 ???- note "bfloat16"
 
     Casts all floating point parameters and buffers to ``bfloat16`` datatype.
 
     .. note::     This method modifies the module in-place.  Returns:     Module: self
 
-    
+
 ???- note "buffers"
 
     Return an iterator over module buffers.
@@ -276,8 +276,8 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **recurse**     (*bool*)     – defaults to `True`    
-    
+    - **recurse**     (*bool*)     – defaults to `True`
+
 ???- note "check_peft_compatible_model"
 
 ???- note "children"
@@ -286,7 +286,7 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     Yields:     Module: a child module
 
-    
+
 ???- note "compile"
 
     Compile this Module's forward using :func:`torch.compile`.
@@ -295,16 +295,16 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **args**    
-    - **kwargs**    
-    
+    - **args**
+    - **kwargs**
+
 ???- note "cpu"
 
     Move all model parameters and buffers to the CPU.
 
     .. note::     This method modifies the module in-place.  Returns:     Module: self
 
-    
+
 ???- note "cuda"
 
     Move all model parameters and buffers to the GPU.
@@ -313,9 +313,9 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **device**     (*Union[int, torch.device, NoneType]*)     – defaults to `None`    
+    - **device**     (*Union[int, torch.device, NoneType]*)     – defaults to `None`
         Device (like "cuda", "cpu", "mps", "npu") that should be used for computation. If None, checks if a GPU can be used.
-    
+
 ???- note "delete_adapter"
 
     If you are not familiar with adapters and PEFT methods, we invite you to read more about them on the PEFT official documentation: https://huggingface.co/docs/peft
@@ -324,48 +324,48 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **args**    
-    - **kwargs**    
-    
+    - **args**
+    - **kwargs**
+
 ???- note "disable_adapters"
 
     Disable all adapters that are attached to the model. This leads to inferring with the base model only.
 
-    
+
 ???- note "double"
 
     Casts all floating point parameters and buffers to ``double`` datatype.
 
     .. note::     This method modifies the module in-place.  Returns:     Module: self
 
-    
+
 ???- note "enable_adapters"
 
     Enable adapters that are attached to the model. The model will use `self.active_adapter()`
 
-    
+
 ???- note "encode"
 
     Computes sentence embeddings.
 
     **Parameters**
 
-    - **sentences**     (*'str | list[str]'*)    
-    - **prompt_name**     (*'str | None'*)     – defaults to `None`    
-    - **prompt**     (*'str | None'*)     – defaults to `None`    
-    - **batch_size**     (*'int'*)     – defaults to `32`    
-    - **show_progress_bar**     (*'bool'*)     – defaults to `None`    
-    - **precision**     (*"Literal['float32', 'int8', 'uint8', 'binary', 'ubinary']"*)     – defaults to `float32`    
-    - **convert_to_numpy**     (*'bool'*)     – defaults to `True`    
-    - **convert_to_tensor**     (*'bool'*)     – defaults to `False`    
-    - **padding**     (*'bool'*)     – defaults to `False`    
-    - **device**     (*'str'*)     – defaults to `None`    
+    - **sentences**     (*'str | list[str]'*)
+    - **prompt_name**     (*'str | None'*)     – defaults to `None`
+    - **prompt**     (*'str | None'*)     – defaults to `None`
+    - **batch_size**     (*'int'*)     – defaults to `32`
+    - **show_progress_bar**     (*'bool'*)     – defaults to `None`
+    - **precision**     (*"Literal['float32', 'int8', 'uint8', 'binary', 'ubinary']"*)     – defaults to `float32`
+    - **convert_to_numpy**     (*'bool'*)     – defaults to `True`
+    - **convert_to_tensor**     (*'bool'*)     – defaults to `False`
+    - **padding**     (*'bool'*)     – defaults to `False`
+    - **device**     (*'str'*)     – defaults to `None`
         Device (like "cuda", "cpu", "mps", "npu") that should be used for computation. If None, checks if a GPU can be used.
-    - **normalize_embeddings**     (*'bool'*)     – defaults to `True`    
-    - **is_query**     (*'bool'*)     – defaults to `True`    
-    - **pool_factor**     (*'int'*)     – defaults to `1`    
-    - **protected_tokens**     (*'int'*)     – defaults to `1`    
-    
+    - **normalize_embeddings**     (*'bool'*)     – defaults to `True`
+    - **is_query**     (*'bool'*)     – defaults to `True`
+    - **pool_factor**     (*'int'*)     – defaults to `1`
+    - **protected_tokens**     (*'int'*)     – defaults to `1`
+
 ???- note "encode_document"
 
     Computes sentence embeddings specifically optimized for document/passage representation.
@@ -374,43 +374,43 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **sentences**     (*'str | list[str] | np.ndarray'*)    
-    - **prompt_name**     (*'str | None'*)     – defaults to `None`    
-    - **prompt**     (*'str | None'*)     – defaults to `None`    
-    - **batch_size**     (*'int'*)     – defaults to `32`    
-    - **show_progress_bar**     (*'bool | None'*)     – defaults to `None`    
-    - **output_value**     (*"Literal['sentence_embedding', 'token_embeddings'] | None"*)     – defaults to `sentence_embedding`    
-    - **precision**     (*"Literal['float32', 'int8', 'uint8', 'binary', 'ubinary']"*)     – defaults to `float32`    
-    - **convert_to_numpy**     (*'bool'*)     – defaults to `True`    
-    - **convert_to_tensor**     (*'bool'*)     – defaults to `False`    
-    - **device**     (*'str | list[str | torch.device] | None'*)     – defaults to `None`    
+    - **sentences**     (*'str | list[str] | np.ndarray'*)
+    - **prompt_name**     (*'str | None'*)     – defaults to `None`
+    - **prompt**     (*'str | None'*)     – defaults to `None`
+    - **batch_size**     (*'int'*)     – defaults to `32`
+    - **show_progress_bar**     (*'bool | None'*)     – defaults to `None`
+    - **output_value**     (*"Literal['sentence_embedding', 'token_embeddings'] | None"*)     – defaults to `sentence_embedding`
+    - **precision**     (*"Literal['float32', 'int8', 'uint8', 'binary', 'ubinary']"*)     – defaults to `float32`
+    - **convert_to_numpy**     (*'bool'*)     – defaults to `True`
+    - **convert_to_tensor**     (*'bool'*)     – defaults to `False`
+    - **device**     (*'str | list[str | torch.device] | None'*)     – defaults to `None`
         Device (like "cuda", "cpu", "mps", "npu") that should be used for computation. If None, checks if a GPU can be used.
-    - **normalize_embeddings**     (*'bool'*)     – defaults to `False`    
-    - **truncate_dim**     (*'int | None'*)     – defaults to `None`    
+    - **normalize_embeddings**     (*'bool'*)     – defaults to `False`
+    - **truncate_dim**     (*'int | None'*)     – defaults to `None`
         The dimension to truncate sentence embeddings to. `None` does no truncation. Truncation is only applicable during inference when :meth:`SentenceTransformer.encode` is called.
-    - **pool**     (*"dict[Literal['input', 'output', 'processes'], Any] | None"*)     – defaults to `None`    
-    - **chunk_size**     (*'int | None'*)     – defaults to `None`    
-    - **kwargs**    
-    
+    - **pool**     (*"dict[Literal['input', 'output', 'processes'], Any] | None"*)     – defaults to `None`
+    - **chunk_size**     (*'int | None'*)     – defaults to `None`
+    - **kwargs**
+
 ???- note "encode_multi_process"
 
     Encodes a list of sentences using multiple processes and GPUs via :meth:`SentenceTransformer.encode <sentence_transformers.SentenceTransformer.encode>`. The sentences are chunked into smaller packages and sent to individual processes, which encode them on different GPUs or CPUs. This method is only suitable for encoding large sets of sentences.
 
     **Parameters**
 
-    - **sentences**     (*'list[str]'*)    
-    - **pool**     (*'dict[str, object]'*)    
-    - **prompt_name**     (*'str | None'*)     – defaults to `None`    
-    - **prompt**     (*'str | None'*)     – defaults to `None`    
-    - **batch_size**     (*'int'*)     – defaults to `32`    
-    - **chunk_size**     (*'int'*)     – defaults to `None`    
-    - **precision**     (*"Literal['float32', 'int8', 'uint8', 'binary', 'ubinary']"*)     – defaults to `float32`    
-    - **normalize_embeddings**     (*'bool'*)     – defaults to `True`    
-    - **padding**     (*'bool'*)     – defaults to `False`    
-    - **is_query**     (*'bool'*)     – defaults to `True`    
-    - **pool_factor**     (*'int'*)     – defaults to `1`    
-    - **protected_tokens**     (*'int'*)     – defaults to `1`    
-    
+    - **sentences**     (*'list[str]'*)
+    - **pool**     (*'dict[str, object]'*)
+    - **prompt_name**     (*'str | None'*)     – defaults to `None`
+    - **prompt**     (*'str | None'*)     – defaults to `None`
+    - **batch_size**     (*'int'*)     – defaults to `32`
+    - **chunk_size**     (*'int'*)     – defaults to `None`
+    - **precision**     (*"Literal['float32', 'int8', 'uint8', 'binary', 'ubinary']"*)     – defaults to `float32`
+    - **normalize_embeddings**     (*'bool'*)     – defaults to `True`
+    - **padding**     (*'bool'*)     – defaults to `False`
+    - **is_query**     (*'bool'*)     – defaults to `True`
+    - **pool_factor**     (*'int'*)     – defaults to `1`
+    - **protected_tokens**     (*'int'*)     – defaults to `1`
+
 ???- note "encode_query"
 
     Computes sentence embeddings specifically optimized for query representation.
@@ -419,31 +419,31 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **sentences**     (*'str | list[str] | np.ndarray'*)    
-    - **prompt_name**     (*'str | None'*)     – defaults to `None`    
-    - **prompt**     (*'str | None'*)     – defaults to `None`    
-    - **batch_size**     (*'int'*)     – defaults to `32`    
-    - **show_progress_bar**     (*'bool | None'*)     – defaults to `None`    
-    - **output_value**     (*"Literal['sentence_embedding', 'token_embeddings'] | None"*)     – defaults to `sentence_embedding`    
-    - **precision**     (*"Literal['float32', 'int8', 'uint8', 'binary', 'ubinary']"*)     – defaults to `float32`    
-    - **convert_to_numpy**     (*'bool'*)     – defaults to `True`    
-    - **convert_to_tensor**     (*'bool'*)     – defaults to `False`    
-    - **device**     (*'str | list[str | torch.device] | None'*)     – defaults to `None`    
+    - **sentences**     (*'str | list[str] | np.ndarray'*)
+    - **prompt_name**     (*'str | None'*)     – defaults to `None`
+    - **prompt**     (*'str | None'*)     – defaults to `None`
+    - **batch_size**     (*'int'*)     – defaults to `32`
+    - **show_progress_bar**     (*'bool | None'*)     – defaults to `None`
+    - **output_value**     (*"Literal['sentence_embedding', 'token_embeddings'] | None"*)     – defaults to `sentence_embedding`
+    - **precision**     (*"Literal['float32', 'int8', 'uint8', 'binary', 'ubinary']"*)     – defaults to `float32`
+    - **convert_to_numpy**     (*'bool'*)     – defaults to `True`
+    - **convert_to_tensor**     (*'bool'*)     – defaults to `False`
+    - **device**     (*'str | list[str | torch.device] | None'*)     – defaults to `None`
         Device (like "cuda", "cpu", "mps", "npu") that should be used for computation. If None, checks if a GPU can be used.
-    - **normalize_embeddings**     (*'bool'*)     – defaults to `False`    
-    - **truncate_dim**     (*'int | None'*)     – defaults to `None`    
+    - **normalize_embeddings**     (*'bool'*)     – defaults to `False`
+    - **truncate_dim**     (*'int | None'*)     – defaults to `None`
         The dimension to truncate sentence embeddings to. `None` does no truncation. Truncation is only applicable during inference when :meth:`SentenceTransformer.encode` is called.
-    - **pool**     (*"dict[Literal['input', 'output', 'processes'], Any] | None"*)     – defaults to `None`    
-    - **chunk_size**     (*'int | None'*)     – defaults to `None`    
-    - **kwargs**    
-    
+    - **pool**     (*"dict[Literal['input', 'output', 'processes'], Any] | None"*)     – defaults to `None`
+    - **chunk_size**     (*'int | None'*)     – defaults to `None`
+    - **kwargs**
+
 ???- note "eval"
 
     Set the module in evaluation mode.
 
     This has an effect only on certain modules. See the documentation of particular modules for details of their behaviors in training/evaluation mode, i.e. whether they are affected, e.g. :class:`Dropout`, :class:`BatchNorm`, etc.  This is equivalent with :meth:`self.train(False) <torch.nn.Module.train>`.  See :ref:`locally-disable-grad-doc` for a comparison between `.eval()` and several similar mechanisms that may be confused with it.  Returns:     Module: self
 
-    
+
 ???- note "evaluate"
 
     Evaluate the model based on an evaluator
@@ -452,9 +452,9 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **evaluator**     (*'SentenceEvaluator'*)    
-    - **output_path**     (*'str | None'*)     – defaults to `None`    
-    
+    - **evaluator**     (*'SentenceEvaluator'*)
+    - **output_path**     (*'str | None'*)     – defaults to `None`
+
 ???- note "extend"
 
 ???- note "extra_repr"
@@ -463,7 +463,7 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     To print customized extra information, you should re-implement this method in your own modules. Both single-line and multi-line strings are acceptable.
 
-    
+
 ???- note "fit"
 
     Deprecated training method from before Sentence Transformers v3.0, it is recommended to use :class:`~sentence_transformers.trainer.SentenceTransformerTrainer` instead. This method uses :class:`~sentence_transformers.trainer.SentenceTransformerTrainer` behind the scenes, but does not provide as much flexibility as the Trainer itself.
@@ -472,34 +472,34 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **train_objectives**     (*'Iterable[tuple[DataLoader, nn.Module]]'*)    
-    - **evaluator**     (*'SentenceEvaluator | None'*)     – defaults to `None`    
-    - **epochs**     (*'int'*)     – defaults to `1`    
-    - **steps_per_epoch**     – defaults to `None`    
-    - **scheduler**     (*'str'*)     – defaults to `WarmupLinear`    
-    - **warmup_steps**     (*'int'*)     – defaults to `10000`    
-    - **optimizer_class**     (*'type[Optimizer]'*)     – defaults to `<class 'torch.optim.adamw.AdamW'>`    
-    - **optimizer_params**     (*'dict[str, object]'*)     – defaults to `{'lr': 2e-05}`    
-    - **weight_decay**     (*'float'*)     – defaults to `0.01`    
-    - **evaluation_steps**     (*'int'*)     – defaults to `0`    
-    - **output_path**     (*'str | None'*)     – defaults to `None`    
-    - **save_best_model**     (*'bool'*)     – defaults to `True`    
-    - **max_grad_norm**     (*'float'*)     – defaults to `1`    
-    - **use_amp**     (*'bool'*)     – defaults to `False`    
-    - **callback**     (*'Callable[[float, int, int], None]'*)     – defaults to `None`    
-    - **show_progress_bar**     (*'bool'*)     – defaults to `True`    
-    - **checkpoint_path**     (*'str | None'*)     – defaults to `None`    
-    - **checkpoint_save_steps**     (*'int'*)     – defaults to `500`    
-    - **checkpoint_save_total_limit**     (*'int'*)     – defaults to `0`    
-    - **resume_from_checkpoint**     (*'bool'*)     – defaults to `False`    
-    
+    - **train_objectives**     (*'Iterable[tuple[DataLoader, nn.Module]]'*)
+    - **evaluator**     (*'SentenceEvaluator | None'*)     – defaults to `None`
+    - **epochs**     (*'int'*)     – defaults to `1`
+    - **steps_per_epoch**     – defaults to `None`
+    - **scheduler**     (*'str'*)     – defaults to `WarmupLinear`
+    - **warmup_steps**     (*'int'*)     – defaults to `10000`
+    - **optimizer_class**     (*'type[Optimizer]'*)     – defaults to `<class 'torch.optim.adamw.AdamW'>`
+    - **optimizer_params**     (*'dict[str, object]'*)     – defaults to `{'lr': 2e-05}`
+    - **weight_decay**     (*'float'*)     – defaults to `0.01`
+    - **evaluation_steps**     (*'int'*)     – defaults to `0`
+    - **output_path**     (*'str | None'*)     – defaults to `None`
+    - **save_best_model**     (*'bool'*)     – defaults to `True`
+    - **max_grad_norm**     (*'float'*)     – defaults to `1`
+    - **use_amp**     (*'bool'*)     – defaults to `False`
+    - **callback**     (*'Callable[[float, int, int], None]'*)     – defaults to `None`
+    - **show_progress_bar**     (*'bool'*)     – defaults to `True`
+    - **checkpoint_path**     (*'str | None'*)     – defaults to `None`
+    - **checkpoint_save_steps**     (*'int'*)     – defaults to `500`
+    - **checkpoint_save_total_limit**     (*'int'*)     – defaults to `0`
+    - **resume_from_checkpoint**     (*'bool'*)     – defaults to `False`
+
 ???- note "float"
 
     Casts all floating point parameters and buffers to ``float`` datatype.
 
     .. note::     This method modifies the module in-place.  Returns:     Module: self
 
-    
+
 ???- note "forward"
 
     Define the computation performed at every call.
@@ -508,9 +508,9 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **input**     (*'dict[str, Tensor]'*)    
-    - **kwargs**    
-    
+    - **input**     (*'dict[str, Tensor]'*)
+    - **kwargs**
+
 ???- note "get_adapter_state_dict"
 
     If you are not familiar with adapters and PEFT methods, we invite you to read more about them on the PEFT official documentation: https://huggingface.co/docs/peft
@@ -519,16 +519,16 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **args**    
-    - **kwargs**    
-    
+    - **args**
+    - **kwargs**
+
 ???- note "get_backend"
 
     Return the backend used for inference, which can be one of "torch", "onnx", or "openvino".
 
     Returns:     str: The backend used for inference.
 
-    
+
 ???- note "get_buffer"
 
     Return the buffer given by ``target`` if it exists, otherwise throw an error.
@@ -537,29 +537,29 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **target**     (*str*)    
-    
+    - **target**     (*str*)
+
 ???- note "get_extra_state"
 
     Return any extra state to include in the module's state_dict.
 
     Implement this and a corresponding :func:`set_extra_state` for your module if you need to store extra state. This function is called when building the module's `state_dict()`.  Note that extra state should be picklable to ensure working serialization of the state_dict. We only provide backwards compatibility guarantees for serializing Tensors; other objects may break backwards compatibility if their serialized pickled form changes.  Returns:     object: Any extra state to store in the module's state_dict
 
-    
+
 ???- note "get_max_seq_length"
 
     Returns the maximal sequence length that the model accepts. Longer inputs will be truncated.
 
     Returns:     Optional[int]: The maximal sequence length that the model accepts, or None if it is not defined.
 
-    
+
 ???- note "get_model_kwargs"
 
     Get the keyword arguments specific to this model for the `encode`, `encode_query`, or `encode_document` methods.
 
     Example:      >>> from sentence_transformers import SentenceTransformer, SparseEncoder     >>> SentenceTransformer("all-MiniLM-L6-v2").get_model_kwargs()     []     >>> SentenceTransformer("jinaai/jina-embeddings-v4", trust_remote_code=True).get_model_kwargs()     ['task', 'truncate_dim']     >>> SparseEncoder("opensearch-project/opensearch-neural-sparse-encoding-doc-v3-distill").get_model_kwargs()     ['task']  Returns:     list[str]: A list of keyword arguments for the forward pass.
 
-    
+
 ???- note "get_parameter"
 
     Return the parameter given by ``target`` if it exists, otherwise throw an error.
@@ -568,15 +568,15 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **target**     (*str*)    
-    
+    - **target**     (*str*)
+
 ???- note "get_sentence_embedding_dimension"
 
     Returns the number of dimensions in the output of :meth:`SentenceTransformer.encode <sentence_transformers.SentenceTransformer.encode>`.
 
     Returns:     Optional[int]: The number of dimensions in the output of `encode`. If it's not known, it's `None`.
 
-    
+
 ???- note "get_sentence_features"
 
 ???- note "get_submodule"
@@ -587,8 +587,8 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **target**     (*str*)    
-    
+    - **target**     (*str*)
+
 ???- note "gradient_checkpointing_enable"
 
 ???- note "half"
@@ -597,7 +597,7 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     .. note::     This method modifies the module in-place.  Returns:     Module: self
 
-    
+
 ???- note "has_peft_compatible_model"
 
 ???- note "insert"
@@ -608,9 +608,9 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **input_ids**     (*'torch.Tensor'*)    
-    - **prefix_id**     (*'int'*)    
-    
+    - **input_ids**     (*'torch.Tensor'*)
+    - **prefix_id**     (*'int'*)
+
 ???- note "ipu"
 
     Move all model parameters and buffers to the IPU.
@@ -619,9 +619,9 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **device**     (*Union[int, torch.device, NoneType]*)     – defaults to `None`    
+    - **device**     (*Union[int, torch.device, NoneType]*)     – defaults to `None`
         Device (like "cuda", "cpu", "mps", "npu") that should be used for computation. If None, checks if a GPU can be used.
-    
+
 ???- note "load"
 
 ???- note "load_adapter"
@@ -632,9 +632,9 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **args**    
-    - **kwargs**    
-    
+    - **args**
+    - **kwargs**
+
 ???- note "load_state_dict"
 
     Copy parameters and buffers from :attr:`state_dict` into this module and its descendants.
@@ -643,10 +643,10 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **state_dict**     (*collections.abc.Mapping[str, typing.Any]*)    
-    - **strict**     (*bool*)     – defaults to `True`    
-    - **assign**     (*bool*)     – defaults to `False`    
-    
+    - **state_dict**     (*collections.abc.Mapping[str, typing.Any]*)
+    - **strict**     (*bool*)     – defaults to `True`
+    - **assign**     (*bool*)     – defaults to `False`
+
 ???- note "model_card_data_class"
 
     A dataclass storing data used in the model card.
@@ -655,25 +655,25 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **language**     (*'str | list[str] | None'*)     – defaults to `<factory>`    
-    - **license**     (*'str | None'*)     – defaults to `None`    
-    - **model_name**     (*'str | None'*)     – defaults to `None`    
-    - **model_id**     (*'str | None'*)     – defaults to `None`    
-    - **train_datasets**     (*'list[dict[str, str]]'*)     – defaults to `<factory>`    
-    - **eval_datasets**     (*'list[dict[str, str]]'*)     – defaults to `<factory>`    
-    - **task_name**     (*'str'*)     – defaults to `semantic textual similarity, semantic search, paraphrase mining, text classification, clustering, and more`    
-    - **tags**     (*'list[str] | None'*)     – defaults to `<factory>`    
-    - **local_files_only**     (*'bool'*)     – defaults to `False`    
+    - **language**     (*'str | list[str] | None'*)     – defaults to `<factory>`
+    - **license**     (*'str | None'*)     – defaults to `None`
+    - **model_name**     (*'str | None'*)     – defaults to `None`
+    - **model_id**     (*'str | None'*)     – defaults to `None`
+    - **train_datasets**     (*'list[dict[str, str]]'*)     – defaults to `<factory>`
+    - **eval_datasets**     (*'list[dict[str, str]]'*)     – defaults to `<factory>`
+    - **task_name**     (*'str'*)     – defaults to `semantic textual similarity, semantic search, paraphrase mining, text classification, clustering, and more`
+    - **tags**     (*'list[str] | None'*)     – defaults to `<factory>`
+    - **local_files_only**     (*'bool'*)     – defaults to `False`
         Whether or not to only look at local files (i.e., do not try to download the model).
-    - **generate_widget_examples**     (*'bool'*)     – defaults to `True`    
-    
+    - **generate_widget_examples**     (*'bool'*)     – defaults to `True`
+
 ???- note "modules"
 
     Return an iterator over all modules in the network.
 
     Yields:     Module: a module in the network  Note:     Duplicate modules are returned only once. In the following     example, ``l`` will be returned only once.  Example::      >>> l = nn.Linear(2, 2)     >>> net = nn.Sequential(l, l)     >>> for idx, m in enumerate(net.modules()):     ...     print(idx, '->', m)      0 -> Sequential(       (0): Linear(in_features=2, out_features=2, bias=True)       (1): Linear(in_features=2, out_features=2, bias=True)     )     1 -> Linear(in_features=2, out_features=2, bias=True)
 
-    
+
 ???- note "mtia"
 
     Move all model parameters and buffers to the MTIA.
@@ -682,9 +682,9 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **device**     (*Union[int, torch.device, NoneType]*)     – defaults to `None`    
+    - **device**     (*Union[int, torch.device, NoneType]*)     – defaults to `None`
         Device (like "cuda", "cpu", "mps", "npu") that should be used for computation. If None, checks if a GPU can be used.
-    
+
 ???- note "named_buffers"
 
     Return an iterator over module buffers, yielding both the name of the buffer as well as the buffer itself.
@@ -693,17 +693,17 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **prefix**     (*str*)     – defaults to ``    
-    - **recurse**     (*bool*)     – defaults to `True`    
-    - **remove_duplicate**     (*bool*)     – defaults to `True`    
-    
+    - **prefix**     (*str*)     – defaults to ``
+    - **recurse**     (*bool*)     – defaults to `True`
+    - **remove_duplicate**     (*bool*)     – defaults to `True`
+
 ???- note "named_children"
 
     Return an iterator over immediate children modules, yielding both the name of the module as well as the module itself.
 
     Yields:     (str, Module): Tuple containing a name and child module  Example::      >>> # xdoctest: +SKIP("undefined vars")     >>> for name, module in model.named_children():     >>>     if name in ['conv4', 'conv5']:     >>>         print(module)
 
-    
+
 ???- note "named_modules"
 
     Return an iterator over all modules in the network, yielding both the name of the module as well as the module itself.
@@ -712,10 +712,10 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **memo**     (*Optional[set['Module']]*)     – defaults to `None`    
-    - **prefix**     (*str*)     – defaults to ``    
-    - **remove_duplicate**     (*bool*)     – defaults to `True`    
-    
+    - **memo**     (*Optional[set['Module']]*)     – defaults to `None`
+    - **prefix**     (*str*)     – defaults to ``
+    - **remove_duplicate**     (*bool*)     – defaults to `True`
+
 ???- note "named_parameters"
 
     Return an iterator over module parameters, yielding both the name of the parameter as well as the parameter itself.
@@ -724,10 +724,10 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **prefix**     (*str*)     – defaults to ``    
-    - **recurse**     (*bool*)     – defaults to `True`    
-    - **remove_duplicate**     (*bool*)     – defaults to `True`    
-    
+    - **prefix**     (*str*)     – defaults to ``
+    - **recurse**     (*bool*)     – defaults to `True`
+    - **remove_duplicate**     (*bool*)     – defaults to `True`
+
 ???- note "old_fit"
 
     Deprecated training method from before Sentence Transformers v3.0, it is recommended to use :class:`sentence_transformers.trainer.SentenceTransformerTrainer` instead. This method should only be used if you encounter issues with your existing training scripts after upgrading to v3.0+.
@@ -736,26 +736,26 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **train_objectives**     (*'Iterable[tuple[DataLoader, nn.Module]]'*)    
-    - **evaluator**     (*'SentenceEvaluator | None'*)     – defaults to `None`    
-    - **epochs**     (*'int'*)     – defaults to `1`    
-    - **steps_per_epoch**     – defaults to `None`    
-    - **scheduler**     (*'str'*)     – defaults to `WarmupLinear`    
-    - **warmup_steps**     (*'int'*)     – defaults to `10000`    
-    - **optimizer_class**     (*'type[Optimizer]'*)     – defaults to `<class 'torch.optim.adamw.AdamW'>`    
-    - **optimizer_params**     (*'dict[str, object]'*)     – defaults to `{'lr': 2e-05}`    
-    - **weight_decay**     (*'float'*)     – defaults to `0.01`    
-    - **evaluation_steps**     (*'int'*)     – defaults to `0`    
-    - **output_path**     (*'str | None'*)     – defaults to `None`    
-    - **save_best_model**     (*'bool'*)     – defaults to `True`    
-    - **max_grad_norm**     (*'float'*)     – defaults to `1`    
-    - **use_amp**     (*'bool'*)     – defaults to `False`    
-    - **callback**     (*'Callable[[float, int, int], None]'*)     – defaults to `None`    
-    - **show_progress_bar**     (*'bool'*)     – defaults to `True`    
-    - **checkpoint_path**     (*'str | None'*)     – defaults to `None`    
-    - **checkpoint_save_steps**     (*'int'*)     – defaults to `500`    
-    - **checkpoint_save_total_limit**     (*'int'*)     – defaults to `0`    
-    
+    - **train_objectives**     (*'Iterable[tuple[DataLoader, nn.Module]]'*)
+    - **evaluator**     (*'SentenceEvaluator | None'*)     – defaults to `None`
+    - **epochs**     (*'int'*)     – defaults to `1`
+    - **steps_per_epoch**     – defaults to `None`
+    - **scheduler**     (*'str'*)     – defaults to `WarmupLinear`
+    - **warmup_steps**     (*'int'*)     – defaults to `10000`
+    - **optimizer_class**     (*'type[Optimizer]'*)     – defaults to `<class 'torch.optim.adamw.AdamW'>`
+    - **optimizer_params**     (*'dict[str, object]'*)     – defaults to `{'lr': 2e-05}`
+    - **weight_decay**     (*'float'*)     – defaults to `0.01`
+    - **evaluation_steps**     (*'int'*)     – defaults to `0`
+    - **output_path**     (*'str | None'*)     – defaults to `None`
+    - **save_best_model**     (*'bool'*)     – defaults to `True`
+    - **max_grad_norm**     (*'float'*)     – defaults to `1`
+    - **use_amp**     (*'bool'*)     – defaults to `False`
+    - **callback**     (*'Callable[[float, int, int], None]'*)     – defaults to `None`
+    - **show_progress_bar**     (*'bool'*)     – defaults to `True`
+    - **checkpoint_path**     (*'str | None'*)     – defaults to `None`
+    - **checkpoint_save_steps**     (*'int'*)     – defaults to `500`
+    - **checkpoint_save_total_limit**     (*'int'*)     – defaults to `0`
+
 ???- note "parameters"
 
     Return an iterator over module parameters.
@@ -764,22 +764,22 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **recurse**     (*bool*)     – defaults to `True`    
-    
+    - **recurse**     (*bool*)     – defaults to `True`
+
 ???- note "pool_embeddings_hierarchical"
 
     Pools the embeddings hierarchically by clustering and averaging them.
 
     **Parameters**
 
-    - **documents_embeddings**     (*'list[torch.Tensor]'*)    
-    - **pool_factor**     (*'int'*)     – defaults to `1`    
-    - **protected_tokens**     (*'int'*)     – defaults to `1`    
-    
+    - **documents_embeddings**     (*'list[torch.Tensor]'*)
+    - **pool_factor**     (*'int'*)     – defaults to `1`
+    - **protected_tokens**     (*'int'*)     – defaults to `1`
+
     **Returns**
 
     *list[torch.Tensor]*:     A list of pooled embeddings for each document.
-    
+
 ???- note "pop"
 
 ???- note "push_to_hub"
@@ -790,20 +790,20 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **repo_id**     (*'str'*)    
-    - **token**     (*'str | None'*)     – defaults to `None`    
+    - **repo_id**     (*'str'*)
+    - **token**     (*'str | None'*)     – defaults to `None`
         Hugging Face authentication token to download private models.
-    - **private**     (*'bool | None'*)     – defaults to `None`    
-    - **safe_serialization**     (*'bool'*)     – defaults to `True`    
-    - **commit_message**     (*'str | None'*)     – defaults to `None`    
-    - **local_model_path**     (*'str | None'*)     – defaults to `None`    
-    - **exist_ok**     (*'bool'*)     – defaults to `False`    
-    - **replace_model_card**     (*'bool'*)     – defaults to `False`    
-    - **train_datasets**     (*'list[str] | None'*)     – defaults to `None`    
-    - **revision**     (*'str | None'*)     – defaults to `None`    
+    - **private**     (*'bool | None'*)     – defaults to `None`
+    - **safe_serialization**     (*'bool'*)     – defaults to `True`
+    - **commit_message**     (*'str | None'*)     – defaults to `None`
+    - **local_model_path**     (*'str | None'*)     – defaults to `None`
+    - **exist_ok**     (*'bool'*)     – defaults to `False`
+    - **replace_model_card**     (*'bool'*)     – defaults to `False`
+    - **train_datasets**     (*'list[str] | None'*)     – defaults to `None`
+    - **revision**     (*'str | None'*)     – defaults to `None`
         The specific model version to use. It can be a branch name, a tag name, or a commit id, for a stored model on Hugging Face.
-    - **create_pr**     (*'bool'*)     – defaults to `False`    
-    
+    - **create_pr**     (*'bool'*)     – defaults to `False`
+
 ???- note "register_backward_hook"
 
     Register a backward hook on the module.
@@ -812,8 +812,8 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **hook**     (*Callable[[ForwardRef('Module'), Union[tuple[torch.Tensor, ...], torch.Tensor], Union[tuple[torch.Tensor, ...], torch.Tensor]], Union[NoneType, tuple[torch.Tensor, ...], torch.Tensor]]*)    
-    
+    - **hook**     (*Callable[[ForwardRef('Module'), Union[tuple[torch.Tensor, ...], torch.Tensor], Union[tuple[torch.Tensor, ...], torch.Tensor]], Union[NoneType, tuple[torch.Tensor, ...], torch.Tensor]]*)
+
 ???- note "register_buffer"
 
     Add a buffer to the module.
@@ -822,10 +822,10 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **name**     (*str*)    
-    - **tensor**     (*Optional[torch.Tensor]*)    
-    - **persistent**     (*bool*)     – defaults to `True`    
-    
+    - **name**     (*str*)
+    - **tensor**     (*Optional[torch.Tensor]*)
+    - **persistent**     (*bool*)     – defaults to `True`
+
 ???- note "register_forward_hook"
 
     Register a forward hook on the module.
@@ -834,11 +834,11 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **hook**     (*Union[Callable[[~T, tuple[Any, ...], Any], Optional[Any]], Callable[[~T, tuple[Any, ...], dict[str, Any], Any], Optional[Any]]]*)    
-    - **prepend**     (*bool*)     – defaults to `False`    
-    - **with_kwargs**     (*bool*)     – defaults to `False`    
-    - **always_call**     (*bool*)     – defaults to `False`    
-    
+    - **hook**     (*Union[Callable[[~T, tuple[Any, ...], Any], Optional[Any]], Callable[[~T, tuple[Any, ...], dict[str, Any], Any], Optional[Any]]]*)
+    - **prepend**     (*bool*)     – defaults to `False`
+    - **with_kwargs**     (*bool*)     – defaults to `False`
+    - **always_call**     (*bool*)     – defaults to `False`
+
 ???- note "register_forward_pre_hook"
 
     Register a forward pre-hook on the module.
@@ -847,10 +847,10 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **hook**     (*Union[Callable[[~T, tuple[Any, ...]], Optional[Any]], Callable[[~T, tuple[Any, ...], dict[str, Any]], Optional[tuple[Any, dict[str, Any]]]]]*)    
-    - **prepend**     (*bool*)     – defaults to `False`    
-    - **with_kwargs**     (*bool*)     – defaults to `False`    
-    
+    - **hook**     (*Union[Callable[[~T, tuple[Any, ...]], Optional[Any]], Callable[[~T, tuple[Any, ...], dict[str, Any]], Optional[tuple[Any, dict[str, Any]]]]]*)
+    - **prepend**     (*bool*)     – defaults to `False`
+    - **with_kwargs**     (*bool*)     – defaults to `False`
+
 ???- note "register_full_backward_hook"
 
     Register a backward hook on the module.
@@ -859,9 +859,9 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **hook**     (*Callable[[ForwardRef('Module'), Union[tuple[torch.Tensor, ...], torch.Tensor], Union[tuple[torch.Tensor, ...], torch.Tensor]], Union[NoneType, tuple[torch.Tensor, ...], torch.Tensor]]*)    
-    - **prepend**     (*bool*)     – defaults to `False`    
-    
+    - **hook**     (*Callable[[ForwardRef('Module'), Union[tuple[torch.Tensor, ...], torch.Tensor], Union[tuple[torch.Tensor, ...], torch.Tensor]], Union[NoneType, tuple[torch.Tensor, ...], torch.Tensor]]*)
+    - **prepend**     (*bool*)     – defaults to `False`
+
 ???- note "register_full_backward_pre_hook"
 
     Register a backward pre-hook on the module.
@@ -870,9 +870,9 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **hook**     (*Callable[[ForwardRef('Module'), Union[tuple[torch.Tensor, ...], torch.Tensor]], Union[NoneType, tuple[torch.Tensor, ...], torch.Tensor]]*)    
-    - **prepend**     (*bool*)     – defaults to `False`    
-    
+    - **hook**     (*Callable[[ForwardRef('Module'), Union[tuple[torch.Tensor, ...], torch.Tensor]], Union[NoneType, tuple[torch.Tensor, ...], torch.Tensor]]*)
+    - **prepend**     (*bool*)     – defaults to `False`
+
 ???- note "register_load_state_dict_post_hook"
 
     Register a post-hook to be run after module's :meth:`~nn.Module.load_state_dict` is called.
@@ -881,8 +881,8 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **hook**    
-    
+    - **hook**
+
 ???- note "register_load_state_dict_pre_hook"
 
     Register a pre-hook to be run before module's :meth:`~nn.Module.load_state_dict` is called.
@@ -891,17 +891,17 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **hook**    
-    
+    - **hook**
+
 ???- note "register_module"
 
     Alias for :func:`add_module`.
 
     **Parameters**
 
-    - **name**     (*str*)    
-    - **module**     (*Optional[ForwardRef('Module')]*)    
-    
+    - **name**     (*str*)
+    - **module**     (*Optional[ForwardRef('Module')]*)
+
 ???- note "register_parameter"
 
     Add a parameter to the module.
@@ -910,9 +910,9 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **name**     (*str*)    
-    - **param**     (*Optional[torch.nn.parameter.Parameter]*)    
-    
+    - **name**     (*str*)
+    - **param**     (*Optional[torch.nn.parameter.Parameter]*)
+
 ???- note "register_state_dict_post_hook"
 
     Register a post-hook for the :meth:`~torch.nn.Module.state_dict` method.
@@ -921,8 +921,8 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **hook**    
-    
+    - **hook**
+
 ???- note "register_state_dict_pre_hook"
 
     Register a pre-hook for the :meth:`~torch.nn.Module.state_dict` method.
@@ -931,8 +931,8 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **hook**    
-    
+    - **hook**
+
 ???- note "requires_grad_"
 
     Change if autograd should record operations on parameters in this module.
@@ -941,8 +941,8 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **requires_grad**     (*bool*)     – defaults to `True`    
-    
+    - **requires_grad**     (*bool*)     – defaults to `True`
+
 ???- note "save"
 
     Saves a model and its configuration files to a directory, so that it can be loaded with ``SentenceTransformer(path)`` again.
@@ -951,12 +951,12 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **path**     (*'str'*)    
-    - **model_name**     (*'str | None'*)     – defaults to `None`    
-    - **create_model_card**     (*'bool'*)     – defaults to `True`    
-    - **train_datasets**     (*'list[str] | None'*)     – defaults to `None`    
-    - **safe_serialization**     (*'bool'*)     – defaults to `True`    
-    
+    - **path**     (*'str'*)
+    - **model_name**     (*'str | None'*)     – defaults to `None`
+    - **create_model_card**     (*'bool'*)     – defaults to `True`
+    - **train_datasets**     (*'list[str] | None'*)     – defaults to `None`
+    - **safe_serialization**     (*'bool'*)     – defaults to `True`
+
 ???- note "save_pretrained"
 
     Saves a model and its configuration files to a directory, so that it can be loaded with ``SentenceTransformer(path)`` again.
@@ -965,12 +965,12 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **path**     (*'str'*)    
-    - **model_name**     (*'str | None'*)     – defaults to `None`    
-    - **create_model_card**     (*'bool'*)     – defaults to `True`    
-    - **train_datasets**     (*'list[str] | None'*)     – defaults to `None`    
-    - **safe_serialization**     (*'bool'*)     – defaults to `True`    
-    
+    - **path**     (*'str'*)
+    - **model_name**     (*'str | None'*)     – defaults to `None`
+    - **create_model_card**     (*'bool'*)     – defaults to `True`
+    - **train_datasets**     (*'list[str] | None'*)     – defaults to `None`
+    - **safe_serialization**     (*'bool'*)     – defaults to `True`
+
 ???- note "save_to_hub"
 
     DEPRECATED, use `push_to_hub` instead.
@@ -979,18 +979,18 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **repo_id**     (*'str'*)    
-    - **organization**     (*'str | None'*)     – defaults to `None`    
-    - **token**     (*'str | None'*)     – defaults to `None`    
+    - **repo_id**     (*'str'*)
+    - **organization**     (*'str | None'*)     – defaults to `None`
+    - **token**     (*'str | None'*)     – defaults to `None`
         Hugging Face authentication token to download private models.
-    - **private**     (*'bool | None'*)     – defaults to `None`    
-    - **safe_serialization**     (*'bool'*)     – defaults to `True`    
-    - **commit_message**     (*'str'*)     – defaults to `Add new SentenceTransformer model.`    
-    - **local_model_path**     (*'str | None'*)     – defaults to `None`    
-    - **exist_ok**     (*'bool'*)     – defaults to `False`    
-    - **replace_model_card**     (*'bool'*)     – defaults to `False`    
-    - **train_datasets**     (*'list[str] | None'*)     – defaults to `None`    
-    
+    - **private**     (*'bool | None'*)     – defaults to `None`
+    - **safe_serialization**     (*'bool'*)     – defaults to `True`
+    - **commit_message**     (*'str'*)     – defaults to `Add new SentenceTransformer model.`
+    - **local_model_path**     (*'str | None'*)     – defaults to `None`
+    - **exist_ok**     (*'bool'*)     – defaults to `False`
+    - **replace_model_card**     (*'bool'*)     – defaults to `False`
+    - **train_datasets**     (*'list[str] | None'*)     – defaults to `None`
+
 ???- note "set_adapter"
 
     Sets a specific adapter by forcing the model to use a that adapter and disable the other adapters.
@@ -999,9 +999,9 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **args**    
-    - **kwargs**    
-    
+    - **args**
+    - **kwargs**
+
 ???- note "set_extra_state"
 
     Set extra state contained in the loaded `state_dict`.
@@ -1010,8 +1010,8 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **state**     (*Any*)    
-    
+    - **state**     (*Any*)
+
 ???- note "set_pooling_include_prompt"
 
     Sets the `include_prompt` attribute in the pooling layer in the model, if there is one.
@@ -1020,8 +1020,8 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **include_prompt**     (*'bool'*)    
-    
+    - **include_prompt**     (*'bool'*)
+
 ???- note "set_submodule"
 
     Set the submodule given by ``target`` if it exists, otherwise throw an error.
@@ -1030,24 +1030,24 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **target**     (*str*)    
-    - **module**     (*'Module'*)    
-    - **strict**     (*bool*)     – defaults to `False`    
-    
+    - **target**     (*str*)
+    - **module**     (*'Module'*)
+    - **strict**     (*bool*)     – defaults to `False`
+
 ???- note "share_memory"
 
     See :meth:`torch.Tensor.share_memory_`.
 
-    
+
 ???- note "skiplist_mask"
 
     Create a mask for the set of input_ids that are in the skiplist.
 
     **Parameters**
 
-    - **input_ids**     (*'torch.Tensor'*)    
-    - **skiplist**     (*'list[int]'*)    
-    
+    - **input_ids**     (*'torch.Tensor'*)
+    - **skiplist**     (*'list[int]'*)
+
 ???- note "smart_batching_collate"
 
     Transforms a batch from a SmartBatchingDataset to a batch of tensors for the model Here, batch is a list of InputExample instances: [InputExample(...), ...]
@@ -1056,20 +1056,20 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **batch**     (*'list[InputExample]'*)    
-    
+    - **batch**     (*'list[InputExample]'*)
+
 ???- note "start_multi_process_pool"
 
     Starts a multi-process pool to process the encoding with several independent processes. This method is recommended if you want to encode on multiple GPUs or CPUs. It is advised to start only one process per GPU. This method works together with encode_multi_process and stop_multi_process_pool.
 
     **Parameters**
 
-    - **target_devices**     (*'list[str]'*)     – defaults to `None`    
-    
+    - **target_devices**     (*'list[str]'*)     – defaults to `None`
+
     **Returns**
 
     *dict*:     A dictionary with the target processes, an input queue, and an output queue.
-    
+
 ???- note "state_dict"
 
     Return a dictionary containing references to the whole state of the module.
@@ -1078,19 +1078,19 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **args**    
-    - **destination**     – defaults to `None`    
-    - **prefix**     – defaults to ``    
-    - **keep_vars**     – defaults to `False`    
-    
+    - **args**
+    - **destination**     – defaults to `None`
+    - **prefix**     – defaults to ``
+    - **keep_vars**     – defaults to `False`
+
 ???- note "stop_multi_process_pool"
 
     Stops all processes started with start_multi_process_pool.
 
     Args:     pool (Dict[str, object]): A dictionary containing the input queue, output queue, and process list.  Returns:     None
 
-    - **pool**     (*"dict[Literal['input', 'output', 'processes'], Any]"*)    
-    
+    - **pool**     (*"dict[Literal['input', 'output', 'processes'], Any]"*)
+
 ???- note "to"
 
     Move and/or cast the parameters and buffers.
@@ -1099,9 +1099,9 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **args**    
-    - **kwargs**    
-    
+    - **args**
+    - **kwargs**
+
 ???- note "to_empty"
 
     Move the parameters and buffers to the specified device without copying storage.
@@ -1110,10 +1110,10 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **device**     (*Union[int, str, torch.device, NoneType]*)    
+    - **device**     (*Union[int, str, torch.device, NoneType]*)
         Device (like "cuda", "cpu", "mps", "npu") that should be used for computation. If None, checks if a GPU can be used.
-    - **recurse**     (*bool*)     – defaults to `True`    
-    
+    - **recurse**     (*bool*)     – defaults to `True`
+
 ???- note "tokenize"
 
     Tokenizes the input texts.
@@ -1122,10 +1122,10 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **texts**     (*'list[str] | list[dict] | list[tuple[str, str]]'*)    
-    - **is_query**     (*'bool'*)     – defaults to `True`    
-    - **pad**     (*'bool'*)     – defaults to `False`    
-    
+    - **texts**     (*'list[str] | list[dict] | list[tuple[str, str]]'*)
+    - **is_query**     (*'bool'*)     – defaults to `True`
+    - **pad**     (*'bool'*)     – defaults to `False`
+
 ???- note "train"
 
     Set the module in training mode.
@@ -1134,8 +1134,8 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **mode**     (*bool*)     – defaults to `True`    
-    
+    - **mode**     (*bool*)     – defaults to `True`
+
 ???- note "truncate_sentence_embeddings"
 
     In this context, :meth:`SentenceTransformer.encode <sentence_transformers.SentenceTransformer.encode>` outputs sentence embeddings truncated at dimension ``truncate_dim``.
@@ -1144,9 +1144,9 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **truncate_dim**     (*'int | None'*)    
+    - **truncate_dim**     (*'int | None'*)
         The dimension to truncate sentence embeddings to. `None` does no truncation. Truncation is only applicable during inference when :meth:`SentenceTransformer.encode` is called.
-    
+
 ???- note "type"
 
     Casts all parameters and buffers to :attr:`dst_type`.
@@ -1155,8 +1155,8 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **dst_type**     (*Union[torch.dtype, str]*)    
-    
+    - **dst_type**     (*Union[torch.dtype, str]*)
+
 ???- note "xpu"
 
     Move all model parameters and buffers to the XPU.
@@ -1165,9 +1165,9 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **device**     (*Union[int, torch.device, NoneType]*)     – defaults to `None`    
+    - **device**     (*Union[int, torch.device, NoneType]*)     – defaults to `None`
         Device (like "cuda", "cpu", "mps", "npu") that should be used for computation. If None, checks if a GPU can be used.
-    
+
 ???- note "zero_grad"
 
     Reset gradients of all model parameters.
@@ -1176,5 +1176,4 @@ Loads or creates a ColBERT model that can be used to map sentences / text to mul
 
     **Parameters**
 
-    - **set_to_none**     (*bool*)     – defaults to `True`    
-    
+    - **set_to_none**     (*bool*)     – defaults to `True`

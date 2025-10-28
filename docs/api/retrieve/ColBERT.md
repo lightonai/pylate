@@ -88,10 +88,9 @@ ColBERT retriever.
 
     **Parameters**
 
-    - **queries_embeddings**     (*'list[list | np.ndarray | torch.Tensor]'*)    
-    - **k**     (*'int'*)     – defaults to `10`    
-    - **k_token**     (*'int'*)     – defaults to `100`    
-    - **device**     (*'str | None'*)     – defaults to `None`    
-    - **batch_size**     (*'int'*)     – defaults to `50`    
-    - **subset**     (*'list[list[str]] | list[str] | None'*)     – defaults to `None`    
-    
+    - **queries_embeddings**     (*'list[list | np.ndarray | torch.Tensor]'*)
+    - **k**     (*'int'*)     – defaults to `10`
+    - **k_token**     (*'int'*)     – defaults to `100`
+    - **device**     (*'str | None'*)     – defaults to `None`
+    - **batch_size**     (*'int'*)     – defaults to `50`
+    - **subset**     (*'list[list[str]] | list[str] | None'*)     – defaults to `None`

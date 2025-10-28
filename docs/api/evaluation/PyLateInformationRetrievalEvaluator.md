@@ -67,13 +67,13 @@ This class evaluates an Information Retrieval (IR) setting. This is a direct ext
 
     **Parameters**
 
-    - **model**     (*'SentenceTransformer'*)    
-    - **output_path**     (*'str | None'*)     – defaults to `None`    
-    - **epoch**     (*'int'*)     – defaults to `-1`    
-    - **steps**     (*'int'*)     – defaults to `-1`    
-    - **args**    
-    - **kwargs**    
-    
+    - **model**     (*'SentenceTransformer'*)
+    - **output_path**     (*'str | None'*)     – defaults to `None`
+    - **epoch**     (*'int'*)     – defaults to `-1`
+    - **steps**     (*'int'*)     – defaults to `-1`
+    - **args**
+    - **kwargs**
+
 ???- note "compute_dcg_at_k"
 
 ???- note "compute_metrices"
@@ -88,18 +88,18 @@ This class evaluates an Information Retrieval (IR) setting. This is a direct ext
 
     **Parameters**
 
-    - **model**     (*'SentenceTransformer'*)    
-    - **sentences**     (*'str | list[str] | np.ndarray'*)    
-    - **encode_fn_name**     (*'str | None'*)     – defaults to `None`    
-    - **prompt_name**     (*'str | None'*)     – defaults to `None`    
-    - **prompt**     (*'str | None'*)     – defaults to `None`    
-    - **kwargs**    
-    
+    - **model**     (*'SentenceTransformer'*)
+    - **sentences**     (*'str | list[str] | np.ndarray'*)
+    - **encode_fn_name**     (*'str | None'*)     – defaults to `None`
+    - **prompt_name**     (*'str | None'*)     – defaults to `None`
+    - **prompt**     (*'str | None'*)     – defaults to `None`
+    - **kwargs**
+
 ???- note "get_config_dict"
 
     Return a dictionary with all meaningful configuration values of the evaluator to store in the model card.
 
-    
+
 ???- note "output_scores"
 
 ???- note "prefix_name_to_metrics"

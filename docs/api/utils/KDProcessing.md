@@ -68,13 +68,12 @@ Dataset processing class for knowledge distillation training.
 
     **Parameters**
 
-    - **example**     (*'dict'*)    
-    
+    - **example**     (*'dict'*)
+
 ???- note "transform"
 
     Update the input dataset with the queries and documents.
 
     **Parameters**
 
-    - **examples**     (*'dict'*)    
-    
+    - **examples**     (*'dict'*)
