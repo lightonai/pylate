@@ -75,4 +75,3 @@ Rerank the documents based on the queries embeddings.
 >>> assert "id" in reranked_documents[0][0]
 >>> assert "score" in reranked_documents[0][0]
 ```
-

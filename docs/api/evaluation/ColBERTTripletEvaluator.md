@@ -126,4 +126,3 @@ Evaluate a model based on a set of triples. The evaluation will compare the scor
 ???- note "prefix_name_to_metrics"
 
 ???- note "store_metrics_in_model_card_data"
-

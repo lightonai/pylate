@@ -36,4 +36,3 @@ Iterate over a list of elements by batch.
 >>> n_samples
 5
 ```
-

@@ -41,4 +41,3 @@ Computes the ColBERT score for each query-document pair. The score is computed a
 >>> scores
 tensor([  10.,  200., 3000.])
 ```
-

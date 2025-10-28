@@ -9,7 +9,3 @@ Gathers a tensor from each distributed rank into a list. All the tensors will re
 ## Parameters
 
 - **tensor** (*'torch.Tensor'*)
-
-
-
-

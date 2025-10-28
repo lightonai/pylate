@@ -124,4 +124,3 @@ ColBERT Distillation Evaluator. This class is used to monitor the distillation p
 ???- note "prefix_name_to_metrics"
 
 ???- note "store_metrics_in_model_card_data"
-

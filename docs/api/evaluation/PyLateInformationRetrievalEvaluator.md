@@ -105,4 +105,3 @@ This class evaluates an Information Retrieval (IR) setting. This is a direct ext
 ???- note "prefix_name_to_metrics"
 
 ???- note "store_metrics_in_model_card_data"
-

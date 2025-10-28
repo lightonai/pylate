@@ -146,4 +146,3 @@ ColBERT(
         modules=[base_model, dense_1, dense_2],
     )
     ```
-

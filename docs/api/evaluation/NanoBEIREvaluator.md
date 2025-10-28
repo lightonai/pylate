@@ -139,4 +139,3 @@ evaluator(model)
 ## References
 
 - [NanoBEIR](https://huggingface.co/collections/zeta-alpha-ai/nanobeir-66e1a0af21dfd93e620cd9f6)
-
