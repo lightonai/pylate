@@ -92,7 +92,7 @@ class CachedContrastive(nn.Module):
     size_average
         Whether to average or sum the cross-entropy loss across the mini-batch.
     gather_across_devices
-        Whether to gather the embeddings across devices to have more in batch negatives. We recommand making sure the sampling across GPUs use the same dataset in case of multi-dataset training to make sure the negatives are plausible.
+        Whether to gather the embeddings across devices to have more in batch negatives. We recommend making sure the sampling across GPUs use the same dataset in case of multi-dataset training to make sure the negatives are plausible.
     show_progress_bar
         Whether to show a TQDM progress bar for the embedding steps.
 
@@ -232,7 +232,7 @@ class CachedContrastive(nn.Module):
         reps :
             A list of list of mini-batch chunk embeddings. The first list are the anchors, the second are the positives and the remaining are negatives.
         masks
-            Tensors containing the skiplist masks assocaited with each sentence feature (anchor, positives, negatives).
+            Tensors containing the skiplist masks associated with each sentence feature (anchor, positives, negatives).
         with_backward
             Whether to compute the backward pass or not.
         """

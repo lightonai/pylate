@@ -24,7 +24,7 @@ A cached, in-batch negatives contrastive loss for PyLate, analogous to SentenceT
 
 - **gather_across_devices** (*'bool'*) – defaults to `False`
 
-    Whether to gather the embeddings across devices to have more in batch negatives. We recommand making sure the sampling across GPUs use the same dataset in case of multi-dataset training to make sure the negatives are plausible.
+    Whether to gather the embeddings across devices to have more in batch negatives. We recommend making sure the sampling across GPUs use the same dataset in case of multi-dataset training to make sure the negatives are plausible.
 
 - **show_progress_bar** (*'bool'*) – defaults to `False`
 

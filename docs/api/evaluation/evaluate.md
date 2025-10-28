@@ -1,6 +1,6 @@
 # evaluate
 
-Evaluate candidates matchs.
+Evaluate candidates matches.
 
 
 

@@ -62,7 +62,7 @@ queries_embeddings = model.encode(
      is_query=True,
 )
 
-matchs = index(queries_embeddings, k=30)
+matches = index(queries_embeddings, k=30)
 
 ## Methods
 
