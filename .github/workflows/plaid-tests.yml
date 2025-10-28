@@ -1,4 +1,4 @@
-name: Tests PLAID windows and MacOS, Python 3.12
+name: "Indexes"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -7,7 +7,10 @@ concurrency:
 on:
   push:
     branches:
-      - "**"
+      - "main"
+  pull_request:
+    branches:
+      - "main"
 
 jobs:
   tests:
