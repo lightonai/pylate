@@ -136,7 +136,7 @@ Performs linear projection on the token embeddings to a lower dimension.
 
     **Parameters**
 
-    - **device**     (*Union[torch.device, int, NoneType]*)     – defaults to `None`
+    - **device**     (*Union[int, torch.device, NoneType]*)     – defaults to `None`
 
 ???- note "double"
 
@@ -254,7 +254,7 @@ Performs linear projection on the token embeddings to a lower dimension.
 
     **Parameters**
 
-    - **device**     (*Union[torch.device, int, NoneType]*)     – defaults to `None`
+    - **device**     (*Union[int, torch.device, NoneType]*)     – defaults to `None`
 
 ???- note "load"
 
@@ -313,7 +313,7 @@ Performs linear projection on the token embeddings to a lower dimension.
 
     Copy parameters and buffers from :attr:`state_dict` into this module and its descendants.
 
-    If :attr:`strict` is ``True``, then the keys of :attr:`state_dict` must exactly match the keys returned by this module's :meth:`~torch.nn.Module.state_dict` function.  .. warning::     If :attr:`assign` is ``True`` the optimizer must be created after     the call to :attr:`load_state_dict` unless     :func:`~torch.__future__.get_swap_module_params_on_conversion` is ``True``.  Args:     state_dict (dict): a dict containing parameters and         persistent buffers.     strict (bool, optional): whether to strictly enforce that the keys         in :attr:`state_dict` match the keys returned by this module's         :meth:`~torch.nn.Module.state_dict` function. Default: ``True``     assign (bool, optional): When set to ``False``, the properties of the tensors         in the current module are preserved whereas setting it to ``True`` preserves         properties of the Tensors in the state dict. The only         exception is the ``requires_grad`` field of :class:`~torch.nn.Parameter`         for which the value from the module is preserved. Default: ``False``  Returns:     ``NamedTuple`` with ``missing_keys`` and ``unexpected_keys`` fields:         * ``missing_keys`` is a list of str containing any keys that are expected             by this module but missing from the provided ``state_dict``.         * ``unexpected_keys`` is a list of str containing the keys that are not             expected by this module but present in the provided ``state_dict``.  Note:     If a parameter or buffer is registered as ``None`` and its corresponding key     exists in :attr:`state_dict`, :meth:`load_state_dict` will raise a     ``RuntimeError``.
+    If :attr:`strict` is ``True``, then the keys of :attr:`state_dict` must exactly match the keys returned by this module's :meth:`~torch.nn.Module.state_dict` function.  .. warning::     If :attr:`assign` is ``True`` the optimizer must be created after     the call to :attr:`load_state_dict` unless     :func:`~torch.__future__.get_swap_module_params_on_conversion` is ``True``.  Args:     state_dict (dict): a dict containing parameters and         persistent buffers.     strict (bool, optional): whether to strictly enforce that the keys         in :attr:`state_dict` match the keys returned by this module's         :meth:`~torch.nn.Module.state_dict` function. Default: ``True``     assign (bool, optional): When set to ``False``, the properties of the tensors         in the current module are preserved whereas setting it to ``True`` preserves         properties of the Tensors in the state dict. The only         exception is the ``requires_grad`` field of :class:`~torch.nn.Parameter`s         for which the value from the module is preserved.         Default: ``False``  Returns:     ``NamedTuple`` with ``missing_keys`` and ``unexpected_keys`` fields:         * **missing_keys** is a list of str containing any keys that are expected             by this module but missing from the provided ``state_dict``.         * **unexpected_keys** is a list of str containing the keys that are not             expected by this module but present in the provided ``state_dict``.  Note:     If a parameter or buffer is registered as ``None`` and its corresponding key     exists in :attr:`state_dict`, :meth:`load_state_dict` will raise a     ``RuntimeError``.
 
     **Parameters**
 
@@ -352,7 +352,7 @@ Performs linear projection on the token embeddings to a lower dimension.
 
     **Parameters**
 
-    - **device**     (*Union[torch.device, int, NoneType]*)     – defaults to `None`
+    - **device**     (*Union[int, torch.device, NoneType]*)     – defaults to `None`
 
 ???- note "named_buffers"
 
@@ -421,7 +421,7 @@ Performs linear projection on the token embeddings to a lower dimension.
 
     Add a buffer to the module.
 
-    This is typically used to register a buffer that should not be considered a model parameter. For example, BatchNorm's ``running_mean`` is not a parameter, but is part of the module's state. Buffers, by default, are persistent and will be saved alongside parameters. This behavior can be changed by setting :attr:`persistent` to ``False``. The only difference between a persistent buffer and a non-persistent buffer is that the latter will not be a part of this module's :attr:`state_dict`.  Buffers can be accessed as attributes using given names.  Args:     name (str): name of the buffer. The buffer can be accessed         from this module using the given name     tensor (Tensor or None): buffer to be registered. If ``None``, then operations         that run on buffers, such as :attr:`cuda`, are ignored. If ``None``,         the buffer is **not** included in the module's :attr:`state_dict`.     persistent (bool): whether the buffer is part of this module's         :attr:`state_dict`.  Example::      >>> # xdoctest: +SKIP("undefined vars")     >>> self.register_buffer('running_mean', torch.zeros(num_features))
+    This is typically used to register a buffer that should not to be considered a model parameter. For example, BatchNorm's ``running_mean`` is not a parameter, but is part of the module's state. Buffers, by default, are persistent and will be saved alongside parameters. This behavior can be changed by setting :attr:`persistent` to ``False``. The only difference between a persistent buffer and a non-persistent buffer is that the latter will not be a part of this module's :attr:`state_dict`.  Buffers can be accessed as attributes using given names.  Args:     name (str): name of the buffer. The buffer can be accessed         from this module using the given name     tensor (Tensor or None): buffer to be registered. If ``None``, then operations         that run on buffers, such as :attr:`cuda`, are ignored. If ``None``,         the buffer is **not** included in the module's :attr:`state_dict`.     persistent (bool): whether the buffer is part of this module's         :attr:`state_dict`.  Example::      >>> # xdoctest: +SKIP("undefined vars")     >>> self.register_buffer('running_mean', torch.zeros(num_features))
 
     **Parameters**
 
@@ -458,7 +458,7 @@ Performs linear projection on the token embeddings to a lower dimension.
 
     Register a backward hook on the module.
 
-    The hook will be called every time the gradients with respect to a module are computed, and its firing rules are as follows:      1. Ordinarily, the hook fires when the gradients are computed with respect to the module inputs.     2. If none of the module inputs require gradients, the hook will fire when the gradients are computed        with respect to module outputs.     3. If none of the module outputs require gradients, then the hooks will not fire.  The hook should have the following signature::      hook(module, grad_input, grad_output) -> tuple(Tensor) or None  The :attr:`grad_input` and :attr:`grad_output` are tuples that contain the gradients with respect to the inputs and outputs respectively. The hook should not modify its arguments, but it can optionally return a new gradient with respect to the input that will be used in place of :attr:`grad_input` in subsequent computations. :attr:`grad_input` will only correspond to the inputs given as positional arguments and all kwarg arguments are ignored. Entries in :attr:`grad_input` and :attr:`grad_output` will be ``None`` for all non-Tensor arguments.  For technical reasons, when this hook is applied to a Module, its forward function will receive a view of each Tensor passed to the Module. Similarly the caller will receive a view of each Tensor returned by the Module's forward function.  .. warning ::     Modifying inputs or outputs inplace is not allowed when using backward hooks and     will raise an error.  Args:     hook (Callable): The user-defined hook to be registered.     prepend (bool): If true, the provided ``hook`` will be fired before         all existing ``backward`` hooks on this         :class:`torch.nn.Module`. Otherwise, the provided         ``hook`` will be fired after all existing ``backward`` hooks on         this :class:`torch.nn.Module`. Note that global         ``backward`` hooks registered with         :func:`register_module_full_backward_hook` will fire before         all hooks registered by this method.  Returns:     :class:`torch.utils.hooks.RemovableHandle`:         a handle that can be used to remove the added hook by calling         ``handle.remove()``
+    The hook will be called every time the gradients with respect to a module are computed, i.e. the hook will execute if and only if the gradients with respect to module outputs are computed. The hook should have the following signature::      hook(module, grad_input, grad_output) -> tuple(Tensor) or None  The :attr:`grad_input` and :attr:`grad_output` are tuples that contain the gradients with respect to the inputs and outputs respectively. The hook should not modify its arguments, but it can optionally return a new gradient with respect to the input that will be used in place of :attr:`grad_input` in subsequent computations. :attr:`grad_input` will only correspond to the inputs given as positional arguments and all kwarg arguments are ignored. Entries in :attr:`grad_input` and :attr:`grad_output` will be ``None`` for all non-Tensor arguments.  For technical reasons, when this hook is applied to a Module, its forward function will receive a view of each Tensor passed to the Module. Similarly the caller will receive a view of each Tensor returned by the Module's forward function.  .. warning ::     Modifying inputs or outputs inplace is not allowed when using backward hooks and     will raise an error.  Args:     hook (Callable): The user-defined hook to be registered.     prepend (bool): If true, the provided ``hook`` will be fired before         all existing ``backward`` hooks on this         :class:`torch.nn.Module`. Otherwise, the provided         ``hook`` will be fired after all existing ``backward`` hooks on         this :class:`torch.nn.Module`. Note that global         ``backward`` hooks registered with         :func:`register_module_full_backward_hook` will fire before         all hooks registered by this method.  Returns:     :class:`torch.utils.hooks.RemovableHandle`:         a handle that can be used to remove the added hook by calling         ``handle.remove()``
 
     **Parameters**
 
@@ -671,7 +671,7 @@ Performs linear projection on the token embeddings to a lower dimension.
 
     **Parameters**
 
-    - **device**     (*Union[torch.device, int, NoneType]*)     – defaults to `None`
+    - **device**     (*Union[int, torch.device, NoneType]*)     – defaults to `None`
 
 ???- note "zero_grad"
 
