@@ -6,7 +6,6 @@ import os
 import numpy as np
 import torch
 from sqlitedict import SqliteDict
-from voyager import Index, Space
 
 from ..utils import iter_batch
 from .base import Base
@@ -144,6 +143,9 @@ class Voyager(Base):
             Whether to override the collection if it already exists.
 
         """
+        # We import voyager here because it is now an optional dependency
+        from voyager import Index, Space
+
         if os.path.exists(path=index_path) and not override:
             with open(index_path, "rb") as f:
                 return Index.load(f)
