@@ -384,7 +384,7 @@ class CollectionIndexer:
 
         return bucket_cutoffs, bucket_weights, avg_residual.mean()
 
-        # EVENTAULLY: Compare the above with non-heldout sample. If too different, we can do better!
+        # EVENTUALLY: Compare the above with non-heldout sample. If too different, we can do better!
         # sample = sample[subsample_idxs]
         # sample_reconstruct = get_centroids_for(centroids, sample)
         # sample_avg_residual = (sample - sample_reconstruct).mean(dim=0)

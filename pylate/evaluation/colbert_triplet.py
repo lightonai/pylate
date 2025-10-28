@@ -100,7 +100,7 @@ class ColBERTTripletEvaluator(TripletEvaluator):
     show_progress_bar
         If true, prints a progress bar.
     write_csv
-        Wether or not to write results to a CSV file.
+        Whether or not to write results to a CSV file.
     truncate_dim
         The dimension to truncate sentence embeddings to. If None, do not truncate.
 

@@ -532,7 +532,7 @@ class ColBERT(SentenceTransformer):
                 embeddings = []
 
                 for batch in sentences:
-                    batch_embedings = self.encode(
+                    batch_embeddings = self.encode(
                         sentences=batch,
                         prompt_name=prompt_name,
                         prompt=prompt,
@@ -549,13 +549,13 @@ class ColBERT(SentenceTransformer):
                         protected_tokens=protected_tokens,
                     )
 
-                    batch_embedings = (
-                        torch.stack(batch_embedings)
+                    batch_embeddings = (
+                        torch.stack(batch_embeddings)
                         if convert_to_tensor
-                        else batch_embedings
+                        else batch_embeddings
                     )
 
-                    embeddings.append(batch_embedings)
+                    embeddings.append(batch_embeddings)
 
                 return embeddings
 

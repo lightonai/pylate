@@ -2,7 +2,7 @@
 
 Evaluate the performance of a PyLate Model on the NanoBEIR collection.
 
-This is a direct extension of the NanoBEIREvaluator from the sentence-transformers library, leveraging the PyLateInformationRetrievalEvaluator class. The collection is a set of datasets based on the BEIR collection, but with a significantly smaller size, so it can be used for quickly evaluating the retrieval performance of a model before commiting to a full evaluation. The Evaluator will return the same metrics as the InformationRetrievalEvaluator (i.e., MRR, nDCG, Recall@k), for each dataset and on average.
+This is a direct extension of the NanoBEIREvaluator from the sentence-transformers library, leveraging the PyLateInformationRetrievalEvaluator class. The collection is a set of datasets based on the BEIR collection, but with a significantly smaller size, so it can be used for quickly evaluating the retrieval performance of a model before committing to a full evaluation. The Evaluator will return the same metrics as the InformationRetrievalEvaluator (i.e., MRR, nDCG, Recall@k), for each dataset and on average.
 
 ## Parameters
 
@@ -30,7 +30,7 @@ This is a direct extension of the NanoBEIREvaluator from the sentence-transforme
 
 - **main_score_function** (*'str | SimilarityFunction | None'*) – defaults to `None`
 
-- **aggregate_fn** (*'Callable[[list[float]], float]'*) – defaults to `<function mean at 0x10359bf60>`
+- **aggregate_fn** (*'Callable[[list[float]], float]'*) – defaults to `<function mean at 0x7ffba7dec9a0>`
 
 - **aggregate_key** (*'str'*) – defaults to `mean`
 

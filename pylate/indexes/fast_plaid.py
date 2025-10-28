@@ -84,7 +84,7 @@ class FastPlaid(Base):
         Can be a single device string (e.g., "cuda:0" or "cpu").
         Can be a list of device strings (e.g., ["cuda:0", "cuda:1"]).
     use_triton
-        Whether to use triton kernels when computing kmeans using fast-plaid. Triton kernels are faster, but yields some variance due to race condition, set to false to get 100% reproducable results. If unset, will use triton kernels if possible.
+        Whether to use triton kernels when computing kmeans using fast-plaid. Triton kernels are faster, but yields some variance due to race condition, set to false to get 100% reproducible results. If unset, will use triton kernels if possible.
 
     """
 

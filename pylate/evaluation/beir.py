@@ -146,7 +146,7 @@ def evaluate(
     queries: list[str],
     metrics: list | None = None,
 ) -> dict[str, float]:
-    """Evaluate candidates matchs.
+    """Evaluate candidates matches.
 
     Parameters
     ----------
@@ -193,9 +193,9 @@ def evaluate(
     run_dict = {
         query: {
             match["id"]: match["score"]
-            for rank, match in enumerate(iterable=query_matchs)
+            for rank, match in enumerate(iterable=query_matches)
         }
-        for query, query_matchs in zip(queries, scores)
+        for query, query_matches in zip(queries, scores)
     }
 
     run = Run(run=run_dict)

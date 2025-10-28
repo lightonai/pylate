@@ -46,7 +46,7 @@ This class provides a unified interface for PLAID indexing that can use either: 
 
     The number of samples to use for K-means clustering. If None, it defaults to a value based on the number of documents. This parameter can be adjusted to balance between speed, memory usage and clustering quality.
 
-- **batch_size** (*'int'*) – defaults to `262144`
+- **batch_size** (*'int'*) – defaults to `32768`
 
     The internal batch size used for processing queries. A larger batch size might improve throughput on powerful GPUs but can consume more memory.
 
@@ -60,7 +60,7 @@ This class provides a unified interface for PLAID indexing that can use either: 
 
 - **use_triton** (*'bool | None'*) – defaults to `None`
 
-    Whether to use triton kernels when computing kmeans using fast-plaid. Triton kernels are faster, but yields some variance due to race condition, set to false to get 100% reproducable results. If unset, will use triton kernels if possible.
+    Whether to use triton kernels when computing kmeans using fast-plaid. Triton kernels are faster, but yields some variance due to race condition, set to false to get 100% reproducible results. If unset, will use triton kernels if possible.
 
 - **kwargs**
 

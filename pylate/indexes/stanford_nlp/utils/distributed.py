@@ -2,7 +2,7 @@ import os
 
 import torch
 
-ALREADY_INITALIZED = False
+ALREADY_INITIALIZED = False
 
 # TODO: Consider torch.distributed.is_initialized() instead
 
@@ -12,11 +12,11 @@ def init(rank):
     nranks = max(1, nranks)
     is_distributed = (nranks > 1) or ("WORLD_SIZE" in os.environ)
 
-    global ALREADY_INITALIZED
-    if ALREADY_INITALIZED:
+    global ALREADY_INITIALIZED
+    if ALREADY_INITIALIZED:
         return nranks, is_distributed
 
-    ALREADY_INITALIZED = True
+    ALREADY_INITIALIZED = True
 
     if is_distributed and torch.cuda.is_available():
         num_gpus = torch.cuda.device_count()
