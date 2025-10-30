@@ -1,9 +1,7 @@
-import os, sys
+import os
 
-import torch
 from datasets import load_dataset
 
-DATA_PATH = os.environ.get("DATA_PATH")
 
 import argparse
 
@@ -14,7 +12,7 @@ from sentence_transformers import (
 
 from pylate import losses, models, utils, evaluation
 
-def load_train_datasets(**kwargs):
+def load_train_datasets():
     """Load the dataset for the distillation task."""
     cache_dir = "./distillation/hf_cache"
     os.makedirs(cache_dir, exist_ok=True)
