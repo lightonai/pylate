@@ -21,9 +21,14 @@ repos:
       - id: check-toml
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-
     rev: v0.9.10
     hooks:
       - id: ruff
         args: [--fix]
       - id: ruff-format
+
+  - repo: https://github.com/crate-ci/typos
+    rev: v1.38.1
+    hooks:
+    - id: typos
+      args: ["--diff"]

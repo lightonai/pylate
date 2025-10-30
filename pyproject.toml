@@ -56,6 +56,7 @@ dev = [
     "uvicorn >= 0.30.6",
     "batched >= 0.1.2",
     "voyager >= 2.0.9",
+    "typos >= 0.11.0",
 ]
 eval = ["ranx >= 0.3.16", "beir >= 2.0.0"]
 api = ["fastapi >= 0.114.1", "uvicorn >= 0.30.6", "batched >= 0.1.2"]
@@ -100,3 +101,15 @@ addopts = "--doctest-modules --verbose -ra --cov-config=.coveragerc -m \"not web
 doctest_optionflags = "NORMALIZE_WHITESPACE NUMBER"
 norecursedirs = ["build", "docs", "node_modules", "pylate/server"]
 markers = ["model_loading: marks tests that download large models"]
+
+[tool.typos.default]
+binary = false
+locale = "en"
+extend-ignore-words-re = [
+    "arange",
+]
+extend-ignore-re = [
+    "xlm-mlm-ende-1024",
+    "xlm-clm-ende-1024",
+    "compute_metrices",
+]
