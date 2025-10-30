@@ -18,7 +18,6 @@ dependencies = [
     "sentence-transformers == 5.1.1",
     "datasets >= 2.20.0",
     "accelerate >= 0.31.0",
-    "voyager >= 2.0.9",
     "sqlitedict >= 2.1.0",
     "pandas >= 2.2.1",
     "transformers >= 4.41.0, <= 4.56.2",
@@ -56,9 +55,11 @@ dev = [
     "fastapi >= 0.114.1",
     "uvicorn >= 0.30.6",
     "batched >= 0.1.2",
+    "voyager >= 2.0.9",
 ]
 eval = ["ranx >= 0.3.16", "beir >= 2.0.0"]
 api = ["fastapi >= 0.114.1", "uvicorn >= 0.30.6", "batched >= 0.1.2"]
+voyager = ["voyager >= 2.0.9"]
 
 [tool.setuptools]
 packages = ["pylate"]
