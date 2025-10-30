@@ -5,9 +5,11 @@ test:
 lint:
 	pre-commit run --all-files
 
-livedoc:
+builddoc:
 	python docs/parse
 	mkdocs build --clean
+
+livedoc: builddoc
 	mkdocs serve --dirtyreload
 
 deploydoc:
