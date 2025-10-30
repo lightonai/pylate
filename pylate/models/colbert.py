@@ -499,9 +499,6 @@ class ColBERT(SentenceTransformer):
             The batch size used for the computation. Defaults to 32.
         show_progress_bar
             Whether to output a progress bar when encoding sentences. Defaults to None.
-        output_value
-            The type of embeddings to return: "sentence_embedding" to get sentence embeddings, "token_embeddings" to get
-            wordpiece token embeddings, and `None` to get all output values. Defaults to "sentence_embedding".
         precision
             The precision to use for the embeddings. Can be "float32", "int8", "uint8", "binary", or "ubinary". All
             non-float32 precisions are quantized embeddings. Quantized embeddings are smaller in size and faster to compute,
@@ -511,6 +508,9 @@ class ColBERT(SentenceTransformer):
             Whether the output should be a list of numpy vectors. If False, it is a list of PyTorch tensors. Defaults to True.
         convert_to_tensor
             Whether the output should be one large tensor. Overwrites `convert_to_numpy`. Defaults to False.
+        padding
+            Padding strategy to use. If True, pads all sequences to the maximum length in the batch. If False, no padding is
+            applied. Defaults to False.
         device
             Which :class:`torch.device` to use for the computation. Defaults to None.
         normalize_embeddings
@@ -783,7 +783,7 @@ class ColBERT(SentenceTransformer):
 
         Parameters
         ----------
-        document_embeddings
+        documents_embeddings
             A list of embeddings for each document.
         pool_factor
             Factor to determine the number of clusters. Defaults to 1.
@@ -957,6 +957,14 @@ class ColBERT(SentenceTransformer):
         normalize_embeddings
             Whether to normalize returned vectors to have length 1. In that case,
             the faster dot-product (util.dot_score) instead of cosine similarity can be used. Defaults to True.
+        padding
+            Padding strategy to use. If True, pads all sequences to the maximum length in the batch.
+        is_query
+            Whether the input sentences are queries. If True, the query prefix is added to the input sentences
+        pool_factor
+            The factor by which to pool the document embeddings, resulting in 1/pool_factor of the original tokens.
+        protected_tokens
+            The number of tokens at the beginning of the sequence that should not be pooled. Defaults to 1 (CLS token).
 
         Examples
         --------
@@ -1173,7 +1181,7 @@ class ColBERT(SentenceTransformer):
             Additional keyword arguments for the tokenizer. Defaults to None.
         config_kwargs
             Additional keyword arguments for the config. Defaults to None.
-        has_modules (bool, optional)
+        has_modules
             Whether the model has modules.json. Defaults to False.
 
         """

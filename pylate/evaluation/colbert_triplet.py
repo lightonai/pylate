@@ -27,8 +27,8 @@ def csv_writer(
     ----------
     path
         The path to the CSV file.
-    rows
-        The rows to write to the CSV file.
+    data
+        Data to write.
     header
         The header of the CSV file.
 
