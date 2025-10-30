@@ -90,6 +90,8 @@ class PLAID(Base):
     ...    documents_ids=range(len(documents_embeddings)),
     ...    documents_embeddings=documents_embeddings
     ... )
+    Computing centroids of embeddings.
+    Creating FastPlaid index.
 
     >>> queries_embeddings = model.encode(
     ...     ["search query", "hello world"],
