@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import itertools
+import logging
 from typing import Callable
 
 import torch
+
+logger = logging.getLogger(__name__)
 
 
 class ColBERTCollator:
@@ -97,7 +100,6 @@ class ColBERTCollator:
         # We should always be able to return a loss, label or not:
         batch = {"return_loss": True}
 
-
         if "dataset_name" in column_names:
             column_names.remove("dataset_name")
             batch["dataset_name"] = features[0]["dataset_name"]
@@ -177,11 +179,70 @@ class ColBERTCollator:
                             [prompt_length] * len(features), dtype=torch.int
                         )
                 texts = [prompt + text for text in texts]
-            print(column_name)
-            print(texts[:2])
             is_query = "query" in column_name or "anchor" in column_name
             tokenized = self.tokenize_fn(texts, is_query=is_query, pad=True)
             for key, value in tokenized.items():
                 batch[f"{column_name}_{key}"] = value
 
         return batch
+
+    def _get_prompt_length(self, prompt: str, task: str | None = None) -> int:
+        if (prompt, task) in self._prompt_length_mapping:
+            return self._prompt_length_mapping[(prompt, task)]
+
+        tokenized_prompt = self.tokenize_fn([prompt], task=task)
+        if "input_ids" not in tokenized_prompt:
+            # If the tokenizer does not return input_ids, we cannot determine the prompt length.
+            # This can happen with some tokenizers that do not use input_ids.
+            return None
+        prompt_length = tokenized_prompt["input_ids"].shape[-1]
+        # If the tokenizer adds a special EOS token, we do not count it as part of the prompt length.
+        # This is to ensure that the prompt length does not include the EOS token.
+        last_token = tokenized_prompt["input_ids"][..., -1].item()
+        if last_token in self.all_special_ids:
+            prompt_length -= 1
+
+        self._prompt_length_mapping[(prompt, task)] = prompt_length
+        return prompt_length
+
+    def maybe_warn_about_column_order(self, column_names: list[str]) -> None:
+        """Warn the user if the columns are likely not in the expected order."""
+        # A mapping from common column names to the expected index in the dataset
+        column_name_to_expected_idx = {
+            "anchor": 0,
+            "positive": 1,
+            "negative": 2,
+            "question": 0,
+            "answer": 1,
+            "query": 0,
+            "response": 1,
+            "hypothesis": 0,
+            "entailment": 1,
+            "contradiction": 2,
+        }
+        for column_name, expected_idx in column_name_to_expected_idx.items():
+            if (
+                column_name in column_names
+                and column_names.index(column_name) != expected_idx
+            ):
+                if column_name in ("anchor", "positive", "negative"):
+                    proposed_fix_columns = ["anchor", "positive", "negative"]
+                elif column_name in ("question", "answer"):
+                    proposed_fix_columns = ["question", "answer"]
+                elif column_name in ("query", "response"):
+                    proposed_fix_columns = ["query", "response"]
+                elif column_name in ("hypothesis", "entailment", "contradiction"):
+                    proposed_fix_columns = ["hypothesis", "entailment", "contradiction"]
+
+                logger.warning(
+                    f"Column {column_name!r} is at index {column_names.index(column_name)}, whereas "
+                    f"a column with this name is usually expected at index {expected_idx}. Note that the column "
+                    "order can be important for some losses, e.g. MultipleNegativesRankingLoss will always "
+                    "consider the first column as the anchor and the second as the positive, regardless of "
+                    "the dataset column names. Consider renaming the columns to match the expected order, e.g.:\n"
+                    f"dataset = dataset.select_columns({proposed_fix_columns})"
+                )
+                # We only need to warn once per list of column names to prevent spamming the user
+                break
+
+        self._warned_columns.add(tuple(column_names))
