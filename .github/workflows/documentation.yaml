@@ -12,7 +12,7 @@ permissions:
   contents: write
 
 jobs:
-  deploy:
+  documentation:
     runs-on: ubuntu-latest
 
     steps:
