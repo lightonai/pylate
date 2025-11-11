@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
   pull_request:
+  release:
+    types: [published]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -11,8 +14,10 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v3
+
       - uses: actions/setup-python@v4
         with:
           python-version: "3.10"
@@ -21,12 +26,10 @@ jobs:
         run: |
           pip install -e . --group docs
 
-      - name: Build and Deploy
-        if: github.event_name == 'push'
-        run: |
-          make builddoc
-          make deploydoc
-
       - name: Build
-        if: github.event_name == 'pull_request'
         run: make builddoc
+
+      - name: Deploy
+        if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+        run: |
+          make deploydoc
