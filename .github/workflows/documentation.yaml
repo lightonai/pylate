@@ -1,0 +1,35 @@
+name: Documentation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  documentation:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Dependencies
+        run: |
+          pip install -e . --group docs
+
+      - name: Build
+        run: make builddoc
+
+      - name: Deploy
+        if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+        run: |
+          make deploydoc
