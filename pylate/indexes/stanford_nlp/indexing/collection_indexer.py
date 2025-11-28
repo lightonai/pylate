@@ -373,8 +373,12 @@ class CollectionIndexer:
         )
 
         # Replacement for torch.quantile due to 2^24 size limit on tensors.
-        bucket_cutoffs = torch_quantile(heldout_avg_residual.float(), q=bucket_cutoffs_quantiles)
-        bucket_weights = torch_quantile(heldout_avg_residual.float(), q=bucket_weights_quantiles)
+        bucket_cutoffs = torch_quantile(
+            heldout_avg_residual.float(), q=bucket_cutoffs_quantiles
+        )
+        bucket_weights = torch_quantile(
+            heldout_avg_residual.float(), q=bucket_weights_quantiles
+        )
 
         if self.verbose > 2:
             print_message(

@@ -1,10 +1,12 @@
-'''
+"""
 Torch limits quantile operation to 2^24 elements, this can be problematic for colbert indexing with larger embedding dims while computing the codebooks.
-'''
+"""
 
 from typing import Optional
+
 import torch
 from torch import Tensor
+
 
 def torch_quantile(
     input: Tensor,
@@ -20,8 +22,10 @@ def torch_quantile(
     Signature matches torch.quantile (PyTorch >=2.9.0).
     Note: This uses repeated torch.kthvalue calls for unique indices.
     """
-    if dim!=None: #TODO: Multiple dims will work but not tested rigorously so better not use it for now.
-        assert isinstance(dim,int), f'Currently only a single dimension is supported :)'
+    if (
+        dim is not None
+    ):  # TODO: Multiple dims will work but not tested rigorously so better not use it for now.
+        assert isinstance(dim, int), "Currently only a single dimension is supported :)"
 
     if interpolation not in {"linear", "lower", "higher", "midpoint", "nearest"}:
         raise ValueError(f"unsupported interpolation: {interpolation}")
@@ -51,7 +55,7 @@ def torch_quantile(
     # positions in [0, n-1]
     pos = (n - 1) * q_t  # double
     i0 = torch.floor(pos).to(torch.long).clamp(min=0, max=n - 1)  # lower index
-    i1 = torch.ceil(pos).to(torch.long).clamp(min=0, max=n - 1)   # higher index
+    i1 = torch.ceil(pos).to(torch.long).clamp(min=0, max=n - 1)  # higher index
 
     # Determine which indices we'll need to select
     if interpolation == "lower":
@@ -101,7 +105,7 @@ def torch_quantile(
     else:  # linear
         v0 = gather_for(i0).to(dtype=torch.double)
         v1 = gather_for(i1).to(dtype=torch.double)
-        frac = (pos - i0.to(dtype=torch.double))
+        frac = pos - i0.to(dtype=torch.double)
         # reshape frac to (m, 1, 1, ..., 1) so it broadcasts over v0/v1 shape
         expand_shape = [frac.shape[0]] + [1] * (v0.dim() - 1)
         frac = frac.view(*expand_shape)
@@ -112,7 +116,9 @@ def torch_quantile(
     D = input_.dim()
     # stacked axes: 0 -> q, 1.. -> original dims except 'dim'
     perm = list(range(1, dim + 1)) + [0] + list(range(dim + 1, D))
-    res_permuted = res_stack.permute(perm)  # shape: original.shape[:dim] + (m,) + original.shape[dim+1:]
+    res_permuted = res_stack.permute(
+        perm
+    )  # shape: original.shape[:dim] + (m,) + original.shape[dim+1:]
 
     # If q was scalar, collapse that axis
     if scalar_q:
@@ -127,7 +133,7 @@ def torch_quantile(
         if scalar_q:
             res_final = res_final.unsqueeze(dim)
         else:
-            res_final = res_permuted  
+            res_final = res_permuted
             # currently shape already contains q as axis; but for keepdim True torch.quantile places q-dim at 'dim' with same size as q
             # When keepdim=True, torch.quantile keeps reduced dim; semantics for multi-q:
             # torch.quantile(..., keepdim=True) returns shape where the reduced dim has size=len(q)
@@ -141,9 +147,11 @@ def torch_quantile(
         except Exception:
             # fallback: leave as-is TODO: Handle edge cases
             pass
-    
-    if (not scalar_q) and dim > 0: #reshape to match ordering
-        res_final = res_final.permute(dim, *[i for i in range(res_final.ndim) if i != dim])
+
+    if (not scalar_q) and dim > 0:  # reshape to match ordering
+        res_final = res_final.permute(
+            dim, *[i for i in range(res_final.ndim) if i != dim]
+        )
 
     if out is not None:
         out.copy_(res_final)
