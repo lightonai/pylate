@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 
+from pylate.indexes.stanford_nlp.utils.torch_utils import torch_quantile
 from pylate.indexes.stanford_nlp.utils.utils import flatten
 
 """
@@ -117,8 +118,9 @@ def _select_strides(lengths, quantiles):
 
 
 def _get_quantiles(lengths, quantiles):
+    # Replacement for torch.quantile due to 2^24 size limit on tensors.
     return (
-        torch.quantile(lengths.float(), torch.tensor(quantiles, device=lengths.device))
+        torch_quantile(lengths.float(), torch.tensor(quantiles, device=lengths.device))
         .int()
         .tolist()
     )

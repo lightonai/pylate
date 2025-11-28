@@ -17,6 +17,7 @@ from pylate.indexes.stanford_nlp.indexing.utils import optimize_ivf
 from pylate.indexes.stanford_nlp.infra.config.config import ColBERTConfig
 from pylate.indexes.stanford_nlp.infra.launcher import print_memory_stats
 from pylate.indexes.stanford_nlp.infra.run import Run
+from pylate.indexes.stanford_nlp.utils.torch_utils import torch_quantile
 from pylate.indexes.stanford_nlp.utils.utils import print_message
 
 use_faiss = False
@@ -371,8 +372,9 @@ class CollectionIndexer:
             quantiles + (0.5 / num_options),
         )
 
-        bucket_cutoffs = heldout_avg_residual.float().quantile(bucket_cutoffs_quantiles)
-        bucket_weights = heldout_avg_residual.float().quantile(bucket_weights_quantiles)
+        # Replacement for torch.quantile due to 2^24 size limit on tensors.
+        bucket_cutoffs = torch_quantile(heldout_avg_residual.float(), q=bucket_cutoffs_quantiles)
+        bucket_weights = torch_quantile(heldout_avg_residual.float(), q=bucket_weights_quantiles)
 
         if self.verbose > 2:
             print_message(
