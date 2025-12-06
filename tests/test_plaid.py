@@ -90,4 +90,5 @@ def test_plaid():
     assert len(matches[0]) == 2
     assert matches[0][0].keys() == {"id", "score"}
 
+    del index
     shutil.rmtree(f"test_indexes_{random_hash}")
