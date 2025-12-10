@@ -2,7 +2,7 @@
 Torch limits quantile operation to 2^24 elements, this can be problematic for colbert indexing with larger embedding dims while computing the codebooks.
 """
 
-from typing import Optional
+from typing import Optional, Union
 
 import torch
 from torch import Tensor
@@ -10,7 +10,7 @@ from torch import Tensor
 
 def torch_quantile(
     input: Tensor,
-    q: float | Tensor,
+    q: Union[float, Tensor],
     dim: Optional[int] = None,
     keepdim: bool = False,
     *,
