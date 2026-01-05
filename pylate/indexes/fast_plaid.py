@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
+from bisect import bisect_left
 
 import numpy as np
 import torch
@@ -225,10 +226,11 @@ class FastPlaid(Base):
         return self
 
     def remove_documents(self, documents_ids: list[str]) -> "FastPlaid":
-        """Remove documents from the index.
+        """Remove documents from the index and update ID mappings.
 
         Note: Fast-plaid does not support direct document removal.
-        This method removes the document mappings but the embeddings remain in the index.
+        This method removes the document mappings, updates plaid IDs to maintain
+        sequential ordering, and the embeddings remain in the index.
         For complete removal, consider rebuilding the index without the unwanted documents.
 
         Parameters
@@ -236,21 +238,36 @@ class FastPlaid(Base):
         documents_ids
             The document IDs to remove.
         """
-        logger.warning(
-            "Fast-plaid does not support direct document removal from the index. "
-            "This will only remove the document ID mappings. For complete removal, "
-            "consider rebuilding the index without the unwanted documents."
-        )
 
         documents_ids_to_plaid_ids = self._load_documents_ids_to_plaid_ids()
         plaid_ids_to_documents_ids = self._load_plaid_ids_to_documents_ids()
 
-        # Remove mappings
+        # Collect plaid_ids to remove and track which ones are being deleted
+        plaid_ids_to_remove = []
         for document_id in documents_ids:
             if document_id in documents_ids_to_plaid_ids:
                 plaid_id = documents_ids_to_plaid_ids[document_id]
+                plaid_ids_to_remove.append(plaid_id)
                 del documents_ids_to_plaid_ids[document_id]
                 del plaid_ids_to_documents_ids[plaid_id]
+        self.fast_plaid.delete(plaid_ids_to_remove)
+
+        # Sort plaid_ids to remove for efficient offset calculation
+        plaid_ids_to_remove.sort()
+
+        updated_plaid_ids_to_documents_ids = {}
+        for old_plaid_id, document_id in plaid_ids_to_documents_ids.items():
+            old_plaid_id_int = int(old_plaid_id)
+            # bisect_left gives count of elements < old_plaid_id_int
+            offset = bisect_left(plaid_ids_to_remove, old_plaid_id_int)
+            new_plaid_id = old_plaid_id_int - offset
+
+            updated_plaid_ids_to_documents_ids[new_plaid_id] = document_id
+            documents_ids_to_plaid_ids[document_id] = new_plaid_id
+
+        # Replace the old mappings with updated ones
+        plaid_ids_to_documents_ids.clear()
+        plaid_ids_to_documents_ids.update(updated_plaid_ids_to_documents_ids)
 
         documents_ids_to_plaid_ids.commit()
         documents_ids_to_plaid_ids.close()
