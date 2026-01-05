@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
+import shutil
 from bisect import bisect_left
 
 import numpy as np
@@ -123,7 +124,7 @@ class FastPlaid(Base):
         self.fast_plaid_index_path = os.path.join(self.index_path, "fast_plaid_index")
         if override:
             if os.path.exists(self.index_path):
-                os.remove(self.index_path)
+                shutil.rmtree(self.index_path)
             self.is_indexed = False
 
         if not os.path.exists(index_folder):
