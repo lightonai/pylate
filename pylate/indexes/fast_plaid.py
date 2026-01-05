@@ -121,6 +121,10 @@ class FastPlaid(Base):
         # Create the index directory structure
         self.index_path = os.path.join(index_folder, index_name)
         self.fast_plaid_index_path = os.path.join(self.index_path, "fast_plaid_index")
+        if override:
+            if os.path.exists(self.index_path):
+                os.remove(self.index_path)
+            self.is_indexed = False
 
         if not os.path.exists(index_folder):
             os.makedirs(index_folder)
@@ -139,19 +143,10 @@ class FastPlaid(Base):
         self.fast_plaid = search.FastPlaid(
             index=self.fast_plaid_index_path, device=device
         )
-
-        if override:
-            # Remove existing SQLite mappings
-            if os.path.exists(self.documents_ids_to_plaid_ids_path):
-                os.remove(self.documents_ids_to_plaid_ids_path)
-            if os.path.exists(self.plaid_ids_to_documents_ids_path):
-                os.remove(self.plaid_ids_to_documents_ids_path)
-            self.is_indexed = False
-        else:
-            # Check if index already exists
-            documents_ids_to_plaid_ids = self._load_documents_ids_to_plaid_ids()
-            self.is_indexed = len(documents_ids_to_plaid_ids) > 0
-            documents_ids_to_plaid_ids.close()
+        # Check if index already exists
+        documents_ids_to_plaid_ids = self._load_documents_ids_to_plaid_ids()
+        self.is_indexed = len(documents_ids_to_plaid_ids) > 0
+        documents_ids_to_plaid_ids.close()
 
     def _load_documents_ids_to_plaid_ids(self) -> SqliteDict:
         """Load the SQLite database that maps document IDs to PLAID IDs."""
