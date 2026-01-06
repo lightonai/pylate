@@ -1,4 +1,5 @@
 """Test suite for FastPlaid index delete and re-indexing logic."""
+
 import shutil
 import uuid
 
@@ -43,8 +44,7 @@ def test_fast_plaid_delete_reindexing():
     # Add all documents with IDs 0-4
     document_ids = ["0", "1", "2", "3", "4"]
     index.add_documents(
-        documents_ids=document_ids,
-        documents_embeddings=documents_embeddings
+        documents_ids=document_ids, documents_embeddings=documents_embeddings
     )
 
     # Query to find all documents
@@ -55,7 +55,9 @@ def test_fast_plaid_delete_reindexing():
     matches = index(query_embedding, k=10)
     assert len(matches[0]) == 5, "Should have 5 documents initially"
     returned_ids = {match["id"] for match in matches[0]}
-    assert returned_ids == {"0", "1", "2", "3", "4"}, "All document IDs should be present"
+    assert returned_ids == {"0", "1", "2", "3", "4"}, (
+        "All document IDs should be present"
+    )
 
     # Delete document "1" (middle position)
     index.remove_documents(["1"])
@@ -119,8 +121,7 @@ def test_fast_plaid_delete_multiple_at_once():
     document_ids = ["A", "B", "C", "D", "E"]
 
     index.add_documents(
-        documents_ids=document_ids,
-        documents_embeddings=documents_embeddings
+        documents_ids=document_ids, documents_embeddings=documents_embeddings
     )
 
     query_embedding = model.encode(["health and wellness"], is_query=True)
@@ -166,8 +167,7 @@ def test_fast_plaid_delete_and_add_new():
 
     documents_embeddings = model.encode(documents, is_query=False)
     index.add_documents(
-        documents_ids=["1", "2", "3"],
-        documents_embeddings=documents_embeddings
+        documents_ids=["1", "2", "3"], documents_embeddings=documents_embeddings
     )
 
     # Delete document "2"
@@ -176,10 +176,7 @@ def test_fast_plaid_delete_and_add_new():
     # Add new document "4"
     new_doc = ["Fourth document about legumes."]
     new_embedding = model.encode(new_doc, is_query=False)
-    index.add_documents(
-        documents_ids=["4"],
-        documents_embeddings=new_embedding
-    )
+    index.add_documents(documents_ids=["4"], documents_embeddings=new_embedding)
 
     # Query and verify all expected documents are present
     query_embedding = model.encode(["food and nutrition"], is_query=True)
@@ -215,16 +212,14 @@ def test_fast_plaid_delete_edge_cases():
     )
 
     documents = [
-        f"Document {i} with unique content about topic {i}."
-        for i in range(10)
+        f"Document {i} with unique content about topic {i}." for i in range(10)
     ]
 
     documents_embeddings = model.encode(documents, is_query=False)
     document_ids = [str(i) for i in range(10)]
 
     index.add_documents(
-        documents_ids=document_ids,
-        documents_embeddings=documents_embeddings
+        documents_ids=document_ids, documents_embeddings=documents_embeddings
     )
 
     query_embedding = model.encode(["document content"], is_query=True)
@@ -278,8 +273,7 @@ def test_fast_plaid_delete_nonexistent():
     documents_embeddings = model.encode(documents, is_query=False)
 
     index.add_documents(
-        documents_ids=["1", "2"],
-        documents_embeddings=documents_embeddings
+        documents_ids=["1", "2"], documents_embeddings=documents_embeddings
     )
 
     # Try to delete non-existent document - should not raise error
@@ -324,8 +318,7 @@ def test_fast_plaid_reload_after_delete():
 
     documents_embeddings = model.encode(documents, is_query=False)
     index.add_documents(
-        documents_ids=["X", "Y", "Z"],
-        documents_embeddings=documents_embeddings
+        documents_ids=["X", "Y", "Z"], documents_embeddings=documents_embeddings
     )
 
     # Delete document Y
@@ -347,7 +340,9 @@ def test_fast_plaid_reload_after_delete():
 
     returned_ids = {match["id"] for match in matches[0]}
     assert returned_ids == {"X", "Z"}, "After reload, only X and Z should remain"
-    assert "Y" not in returned_ids, "Deleted document Y should not be present after reload"
+    assert "Y" not in returned_ids, (
+        "Deleted document Y should not be present after reload"
+    )
 
     # Cleanup
     del index
