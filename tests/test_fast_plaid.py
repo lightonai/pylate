@@ -203,6 +203,7 @@ def test_fast_plaid_delete_edge_cases():
         use_fast=True,
         nbits=2,
         kmeans_niters=1,
+        n_ivf_probe=10,  # Make sure we can get all of the possible documents
     )
 
     model = models.ColBERT(
