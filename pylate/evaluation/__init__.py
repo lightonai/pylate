@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from .beir import evaluate, get_beir_triples, load_beir
+from .code_stack_network_evaluator import CodeSearchNetworkEvaluator
 from .colbert_distillation import ColBERTDistillationEvaluator
 from .colbert_triplet import ColBERTTripletEvaluator
 from .custom_dataset import load_custom_dataset
@@ -16,4 +17,5 @@ __all__ = [
     "load_custom_dataset",
     "evaluate",
     "PyLateInformationRetrievalEvaluator",
+    "CodeSearchNetworkEvaluator",
 ]
