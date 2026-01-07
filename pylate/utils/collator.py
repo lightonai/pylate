@@ -73,25 +73,27 @@ class ColBERTCollator:
         self,
         tokenize_fn: Callable,
         valid_label_columns: list[str] | None = None,
-        router_mapping: dict[str, str] | dict[str, dict[str, str]] = dict(),
-        prompts: dict[str, str] | dict[str, dict[str, str]] = dict(),
+        router_mapping: dict[str, str] | dict[str, dict[str, str]] | None = None,
+        prompts: dict[str, str] | dict[str, dict[str, str]] | None = None,
         include_prompt_lengths: bool = False,
-        all_special_ids: set[int] = set(),
-        _prompt_length_mapping: dict[str, int] = dict(),
-        _warned_columns: set[tuple[str]] = set(),
-    ) -> None:
+        all_special_ids: set[int] | None = None,
+        _prompt_length_mapping: dict[str, int] | None = None,
+        _warned_columns: set[tuple[str]] | None = None,
+    ):
         self.tokenize_fn = tokenize_fn
+        self.router_mapping = router_mapping if router_mapping is not None else {}
+        self.prompts = prompts if prompts is not None else {}
+        self.all_special_ids = all_special_ids if all_special_ids is not None else set()
+        self._prompt_length_mapping = (
+            _prompt_length_mapping if _prompt_length_mapping is not None else {}
+        )
+        self._warned_columns = _warned_columns if _warned_columns is not None else set()
 
         if valid_label_columns is None:
             valid_label_columns = ["label", "scores"]
 
         self.valid_label_columns = valid_label_columns
-        self.router_mapping = router_mapping
-        self.prompts = prompts
         self.include_prompt_lengths = include_prompt_lengths
-        self.all_special_ids = all_special_ids
-        self._prompt_length_mapping = _prompt_length_mapping
-        self._warned_columns = _warned_columns
 
     def __call__(self, features: list[dict]) -> dict[str, torch.Tensor]:
         """Collate a list of features into a batch."""
