@@ -189,7 +189,8 @@ class ColBERTCollator:
                         )
                 texts = [prompt + text for text in texts]
             is_query = "query" in column_name or "anchor" in column_name
-            tokenized = self.tokenize_fn(texts, is_query=is_query, pad=True)
+            tokenized = self.tokenize_fn(texts, is_query=is_query, pad=True, task=task)
+
             for key, value in tokenized.items():
                 batch[f"{column_name}_{key}"] = value
 
