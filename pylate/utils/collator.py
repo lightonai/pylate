@@ -147,6 +147,13 @@ class ColBERTCollator:
                         f"The keys to the provided prompts dictionary are {list(prompts.keys())!r}"
                     )
                 else:
+                    logger.warning(
+                        "Prompts were provided as a nested dictionary for multiple datasets, but no prompts were "
+                        "found for dataset %r. Available datasets with prompts are: %r. Proceeding without prompts "
+                        "for this dataset.",
+                        batch["dataset_name"],
+                        list(prompts.keys()),
+                    )
                     prompts = {}
 
         for column_name in column_names:
