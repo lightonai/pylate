@@ -165,7 +165,7 @@ def load_train_datasets():
         try:
             dataset = Dataset.load_from_disk(f"{cache_dir}/{split}")
             print(f"Loaded {split}")
-        except:
+        except FileNotFoundError:
             print(f"{split} missing")
 
             dataset = load_dataset(

@@ -133,7 +133,7 @@ class ColBERTCollatorSampleNeg:
             if prompt:
                 try:
                     inputs = [prompt + row[column] for row in features]
-                except:
+                except KeyError:
                     key = "document" if "document" in features[0][column] else "query"
                     inputs = [prompt + row[column][key] for row in features]
             else:
