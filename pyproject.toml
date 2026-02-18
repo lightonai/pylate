@@ -42,6 +42,7 @@ dev = [
     "pytest-xdist >=3.6.0",
     "pytest-rerunfailures >= 15.0.0",
     "pytest >= 8.2.1",
+    "psutil >= 7.2.2",
     "pandas >= 2.2.1",
     "einops>=0.8.1",
     "pre-commit>=4.1.0",
@@ -56,6 +57,8 @@ dev = [
 eval = ["ranx >= 0.3.16", "beir >= 2.0.0"]
 api = ["fastapi >= 0.114.1", "uvicorn >= 0.30.6", "batched >= 0.1.2"]
 voyager = ["voyager >= 2.0.9"]
+scann = ["scann >= 1.4.2", "psutil >= 7.2.2"]
+
 
 [dependency-groups]
 docs = [
