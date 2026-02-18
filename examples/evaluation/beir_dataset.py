@@ -39,14 +39,42 @@ if __name__ == "__main__":
     # Parse dataset_name from command line arguments
     parser = argparse.ArgumentParser(description="Dataset name")
     parser.add_argument(
+        "--model_name",
+        type=str,
+        default="lightonai/GTE-ModernColBERT-v1",
+        help="Name of the model to use (default: 'lightonai/GTE-ModernColBERT-v1')",
+    )
+    parser.add_argument(
         "--dataset_name",
         type=str,
         default="nfcorpus",
         help="Name of the dataset to evaluate on (default: 'fiqa')",
     )
+    parser.add_argument(
+        "--index_type",
+        type=str,
+        default="plaid",
+        choices=["plaid", "scann"],
+        help="Type of index to use (default: 'plaid')",
+    )
+    parser.add_argument(
+        "--retrieval_type",
+        type=str,
+        default="colbert",
+        choices=["colbert", "xtr"],
+        help="Type of retrieval to use (default: 'colbert')",
+    )
+    parser.add_argument(
+        "--do_encode_and_index",
+        action="store_true",
+        help="Whether to encode and index the documents or load the index from the disk (default: False)",
+    )
     args = parser.parse_args()
     dataset_name = args.dataset_name
-    model_name = "lightonai/GTE-ModernColBERT-v1"
+    index_type = args.index_type
+    model_name = args.model_name
+    retrieval_type = args.retrieval_type
+
     model = models.ColBERT(
         model_name_or_path=model_name,
         document_length=300,
@@ -72,32 +100,56 @@ if __name__ == "__main__":
             split="dev" if "msmarco" in dataset_name else "test",
         )
 
-    index = indexes.PLAID(
-        override=True,
-        index_name=f"{dataset_name}_{model_name.split('/')[-1]}",
-    )
+    if index_type == "scann":
+        index = indexes.ScaNN(
+            override=args.do_encode_and_index,
+            name=f"{dataset_name}_{model_name.split('/')[-1]}",
+            store_embeddings=retrieval_type != "xtr",
+            dimensions_per_block=1,
+            anisotropic_quantization_threshold=0.1,
+            verbose="all",
+            index_folder="indexes",
+        )
 
-    retriever = retrieve.ColBERT(index=index)
+    elif index_type == "plaid":
+        index = indexes.PLAID(
+            override=args.do_encode_and_index,
+            index_name=f"{dataset_name}_{model_name.split('/')[-1]}",
+        )
 
-    documents_embeddings = model.encode(
-        sentences=[document["text"] for document in documents],
-        batch_size=2000,
-        is_query=False,
-        show_progress_bar=True,
-    )
+    if retrieval_type == "colbert":
+        retriever = retrieve.ColBERT(index=index)
+    elif retrieval_type == "xtr":
+        retriever = retrieve.XTR(index=index, verbose=True)
+    else:
+        raise ValueError(f"Invalid retrieval type: {retrieval_type}")
 
-    index.add_documents(
-        documents_ids=[document["id"] for document in documents],
-        documents_embeddings=documents_embeddings,
-    )
+    if args.do_encode_and_index:
+        documents_embeddings = model.encode(
+            sentences=[document["text"].lower() for document in documents],
+            batch_size=1000,
+            is_query=False,
+            show_progress_bar=True,
+            convert_to_tensor=True,
+        )
+
+        index.add_documents(
+            documents_ids=[document["id"] for document in documents],
+            documents_embeddings=documents_embeddings,
+            batch_size=1000,
+        )
+
     queries_embeddings = model.encode(
-        sentences=list(queries.values()),
+        sentences=[query.lower() for query in list(queries.values())],
         is_query=True,
         show_progress_bar=True,
         batch_size=32,
+        convert_to_tensor=True,
     )
 
-    scores = retriever.retrieve(queries_embeddings=queries_embeddings, k=20)
+    scores = retriever.retrieve(
+        queries_embeddings=queries_embeddings, k=20, k_token=40_000
+    )
 
     # Remove query_id from scores, needed for FiQA dataset
     for (query_id, query), query_scores in zip(queries.items(), scores):
