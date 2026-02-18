@@ -24,7 +24,9 @@ def test_scann_is_exported() -> None:
         ("all", "all"),
     ],
 )
-def test_scann_verbose_normalization(verbose_input: bool | str, expected_level: str) -> None:
+def test_scann_verbose_normalization(
+    verbose_input: bool | str, expected_level: str
+) -> None:
     """ScaNN should normalize bool/string verbosity to internal levels."""
     index = indexes.ScaNN(verbose=verbose_input)
     assert index.verbose_level == expected_level
@@ -113,6 +115,24 @@ def test_scann_errors_on_mixed_embedding_dtypes() -> None:
         )
 
 
+@pytest.mark.parametrize("docs_dtype", [np.float16, np.float32])
+def test_scann_accepts_numpy_document_embeddings(docs_dtype: np.dtype) -> None:
+    """ScaNN should accept numpy doc embeddings and preserve their dtype."""
+    index = indexes.ScaNN(store_embeddings=True)
+    docs = [
+        np.random.randn(12, 8).astype(docs_dtype),
+        np.random.randn(10, 8).astype(docs_dtype),
+    ]
+    index.add_documents(
+        documents_ids=["d1", "d2"],
+        documents_embeddings=docs,
+        batch_size=2,
+    )
+
+    assert index.flattened_embeddings is not None
+    assert index.flattened_embeddings.dtype == docs_dtype
+
+
 @pytest.mark.parametrize("docs_dtype", [torch.float16, torch.float32])
 def test_scann_get_documents_embeddings_by_docid(docs_dtype: torch.dtype) -> None:
     """Stored embeddings should be retrievable by document ID."""
@@ -129,7 +149,9 @@ def test_scann_get_documents_embeddings_by_docid(docs_dtype: torch.dtype) -> Non
     retrieved = index.get_documents_embeddings([["d2", "d1"]])
     assert len(retrieved) == 1
     assert len(retrieved[0]) == 2
-    assert retrieved[0][0].dtype == (np.float16 if docs_dtype == torch.float16 else np.float32)
+    assert retrieved[0][0].dtype == (
+        np.float16 if docs_dtype == torch.float16 else np.float32
+    )
     assert np.array_equal(retrieved[0][0], d2.cpu().numpy())
     assert np.array_equal(retrieved[0][1], d1.cpu().numpy())
 
