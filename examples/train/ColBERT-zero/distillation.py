@@ -1,20 +1,12 @@
 import os, sys
-
 import torch
 from datasets import load_dataset
-
-DATA_PATH = os.environ.get("DATA_PATH")
-
 import argparse
-
 from sentence_transformers import (
     SentenceTransformerTrainer,
     SentenceTransformerTrainingArguments,
 )
-
 from pylate import losses, models, utils, evaluation
-from utils import ProperFloatType
-from utils import StopTrainingCallback
 
 EXTRA_LENGTH = 7  # Number of extra tokens to add to query and document length when using prompts. This is to compensate for the additional tokens added by the prompts.
 QUERY_LENGTH = 32
@@ -22,10 +14,12 @@ DOCUMENT_LENGTH = 512
 QUERY_PROMPT = "search_query: "
 CORPUS_PROMPT = "search_document: "
 
+GRADIENT_ACCUMULATION_STEPS = 2
+
 
 def load_train_datasets(**kwargs):
     """Load the dataset for the distillation task."""
-    cache_dir = DATA_PATH + "distillation/hf_cache"
+    cache_dir = "./data_cache/distillation"
     os.makedirs(cache_dir, exist_ok=True)
     train = load_dataset(
         path="lightonai/ms-marco-en-bge-gemma",
@@ -57,9 +51,9 @@ def main():
     )
     parser.add_argument(
         "--epochs",
-        type=ProperFloatType,
+        type=float,
         default=1.0,
-        help="Number of epochs to train the model. Default is 1.0. Must be <= 1.0. This does not affect the learning rate scheduler.",
+        help="Number of epochs to train the model. Default is 1.0.",
     )
     parser.add_argument(
         "--lr",
@@ -70,20 +64,8 @@ def main():
     parser.add_argument(
         "--bs",
         type=int,
-        default=16,
-        help="Batch size for training. ",
-    )
-    parser.add_argument(
-        "--ga",
-        type=int,
-        default=2,
-        help="Gradient accumulation steps.",
-    )
-    parser.add_argument(
-        "--note",
-        type=str,
-        default="",
-        help="Note to include in the run name.",
+        default=128,
+        help="Batch size for training. Note that this INCLUDES the gradient accumulation steps, so the effective batch size for a single step is bs / gradient_accumulation_steps, accumulated for gradient_accumulation_steps steps. ",
     )
     parser.add_argument(
         "--debug",
@@ -106,28 +88,13 @@ def main():
     train_dataset = load_train_datasets()
 
     # Define training parameters
-    num_train_epochs = 1  # Since we want the learning rate scheduler to always assume 1 epoch, we set this to 1. The actual number of epochs is controlled by the StopTrainingCallback.
     lr = args.lr
     batch_size = args.bs
-    gradient_accumulation_steps = args.ga
+    assert batch_size % torch.cuda.device_count() == 0, "Batch size must be a multiple of the number of GPUs!"
+    assert batch_size % GRADIENT_ACCUMULATION_STEPS == 0, "Batch size must be a multiple of the gradient accumulation steps!"
+    per_device_batch_size = batch_size // torch.cuda.device_count() // GRADIENT_ACCUMULATION_STEPS
     model_name = args.model
-
-    # Configure devices and data mode
-    node_count = int(os.environ.get("SLURM_NNODES", 1))
-    gpu_count = torch.cuda.device_count() * node_count
-    num_workers = 4
-    if int(os.environ.get("WORLD_SIZE", 1)) > 1:
-        data_mode = "DDP"
-    elif gpu_count > 1:
-        data_mode = "DP"
-    else:
-        data_mode = "plain"
-    devices_fingerprint = f'{data_mode}-{node_count}node-{gpu_count}gpu'
-
-    # Set run name for wandb and output directory
-    model_shortname = model_name.split("/")[-1]
-    run_name = f"distilled-from-{model_shortname}-lr{lr}-bs{batch_size * gpu_count}-ga{gradient_accumulation_steps}" + ('-prompts' if args.prompts else '') + ('-extratokens' if (args.extra_length and not args.prompts) else '') + ('-noextratokens' if (not args.extra_length and args.prompts) else '') + (f"-{args.note}" if args.note != "" else "")
-    output_dir = DATA_PATH+f"output/{model_shortname}/{run_name}"
+    output_dir = f"output/colbert-zero-distillation"
 
     # Initialize model
     model = models.ColBERT(
@@ -135,7 +102,6 @@ def main():
         document_length=DOCUMENT_LENGTH + (EXTRA_LENGTH if args.extra_length else 0),
         query_length=QUERY_LENGTH + (EXTRA_LENGTH if args.extra_length else 0),
     )
-    # model = torch.compile(model)
 
     # Setup evaluation and loss
     evaluators_kwargs = {}
@@ -150,22 +116,21 @@ def main():
     # Configure training arguments
     st_args = SentenceTransformerTrainingArguments(
         output_dir=output_dir,
-        num_train_epochs=num_train_epochs,
+        num_train_epochs=args.epochs,
         # Differently from unsupervised and supervised, here per_device_train_batch_size is the batch size per GPU, since we do not use accelerator_config.split_batches=True
-        per_device_train_batch_size=batch_size // gpu_count,
-        per_device_eval_batch_size=batch_size // gpu_count,
-        gradient_accumulation_steps=gradient_accumulation_steps,
+        per_device_train_batch_size=per_device_batch_size,
+        per_device_eval_batch_size=per_device_batch_size,
+        gradient_accumulation_steps=GRADIENT_ACCUMULATION_STEPS,
         eval_strategy="steps",
         eval_steps=int(1500 * 16 / batch_size),
         save_steps=int(1500 * 16 / batch_size),
         logging_steps=1 if args.debug else 50,
         fp16=False,
         bf16=True,
-        run_name=run_name,
         learning_rate=lr,
-        dataloader_num_workers=num_workers,
+        dataloader_num_workers=8,
         dataloader_pin_memory=True,
-        dataloader_drop_last=True if data_mode == "DDP" else False,
+        dataloader_drop_last=True, # Needed for DDP
         ddp_find_unused_parameters=False,
     )
 
@@ -184,11 +149,6 @@ def main():
             } if args.prompts else None)
         ),
     )
-
-    # Stop training callback based on --epochs
-    stop_at_epoch = StopTrainingCallback(args.epochs) # This does not affect the learning rate scheduler.
-    trainer.add_callback(stop_at_epoch)
-
     trainer.train()
     model.save_pretrained(f"{output_dir}/final")
 

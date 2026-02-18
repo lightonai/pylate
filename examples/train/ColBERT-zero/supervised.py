@@ -1,22 +1,12 @@
 import os, sys
-
 from sentence_transformers.training_args import MultiDatasetBatchSamplers
-
-DATA_PATH = os.environ.get("DATA_PATH")
-
 import argparse
-
 import torch
-
 from datasets import DatasetDict, load_dataset
 from sentence_transformers import (
     SentenceTransformerTrainer,
     SentenceTransformerTrainingArguments,
 )
-
-from utils import ProperFloatType
-from utils import StopTrainingCallback, ContrastiveTemperatureTracker
-
 from pylate import evaluation, losses, models, utils
 
 EXTRA_LENGTH = 7  # Number of extra tokens to add to query and document length when using prompts. This is to compensate for the additional tokens added by the prompts.
@@ -42,7 +32,7 @@ def get_min_negatives_count(dataset):
 
 def load_train_datasets(**kwargs):
     """Load all available splits from nomic-embed-unsupervised-data, with caching"""
-    cache_dir = DATA_PATH+"nomic_data_hf/supervised_cache"
+    cache_dir = "./data_cache/supervised"
     os.makedirs(cache_dir, exist_ok=True)
     train_dataset = DatasetDict()
     try:
@@ -98,9 +88,9 @@ def main():
     )
     parser.add_argument(
         "--epochs",
-        type=ProperFloatType,
+        type=float,
         default=1.0,
-        help="Number of epochs to train the model. Default is 1.0. Must be <= 1.0. This does not affect the learning rate scheduler.",
+        help="Number of epochs to train the model. Default is 1.0.",
     )
     parser.add_argument(
         "--debug",
@@ -131,12 +121,6 @@ def main():
         help="If set, the temperature of the contrastive loss will be learned.",
     )
     parser.add_argument(
-        "--scheduler-type",
-        type=str,
-        default="linear",
-        help="Type of learning rate scheduler to use.",
-    )
-    parser.add_argument(
         "--note",
         type=str,
         default="",
@@ -158,7 +142,7 @@ def main():
     train_dataset = load_train_datasets()
 
     # Define training parameters
-    num_train_epochs = 1 # Since we want the learning rate scheduler to always assume 1 epoch, we set this to 1. The actual number of epochs is controlled by the StopTrainingCallback.
+    num_train_epochs = args.epochs
     lr = args.lr
     batch_size = args.bs
     model_name = args.model
@@ -171,20 +155,11 @@ def main():
     node_count = int(os.environ.get("SLURM_NNODES", 1))
     gpu_count = torch.cuda.device_count() * node_count
     num_workers = 4
-    if int(os.environ.get("WORLD_SIZE", 1)) > 1:
-        data_mode = "DDP"
-    elif gpu_count > 1:
-        data_mode = "DP"
-    else:
-        data_mode = "plain"
     split_batches = True
     assert batch_size % node_count == 0, "Batch size must be divisible by the number of nodes if using split_batches!"
-    devices_fingerprint = f'{data_mode}-{node_count}node-{gpu_count}gpu'
-
-    # Set run name for wandb and output directory
-    model_shortname = model_name.split("/")[-1]
-    run_name = f"supervised-from-{model_shortname}-lr{lr}-bs{batch_size}-temp{temperature}-" + ('-prompts' if args.prompts else '') + ('-extratokens' if (args.extra_length and not args.prompts) else '') + ('-noextratokens' if (not args.extra_length and args.prompts) else '') + (f"-{args.note}" if args.note != "" else "")
-    output_dir = DATA_PATH+f"output/{model_shortname}/{run_name}"
+    mini_batch_size = min(batch_size // gpu_count, 512) # Batch size per GPU, cannot be larger than 512 otherwise it will crash with OOM on GH200/H100 GPUs.
+    assert batch_size % mini_batch_size == 0, f"Batch size {batch_size} must be a multiple of mini_batch_size {mini_batch_size}."
+    output_dir = f"output/colbert-zero-supervised"
 
     # Initialize model
     model = models.ColBERT(
@@ -192,7 +167,6 @@ def main():
         document_length = DOCUMENT_LENGTH + (EXTRA_LENGTH if args.extra_length else 0),
         query_length = QUERY_LENGTH + (EXTRA_LENGTH if args.extra_length else 0),
     )
-    # model = torch.compile(model)
 
     # Setup evaluation and loss
     evaluators_kwargs = {}
@@ -212,7 +186,7 @@ def main():
     st_args = SentenceTransformerTrainingArguments(
         output_dir=output_dir,
         num_train_epochs=num_train_epochs,
-        # See unsupervised.py for more details on these parameters
+        # ACHTUNG! When using accelerator_config.split_batches=True per_device_train_batch_size is the total batch size across all GPUs, and not per GPU as the name suggests
         per_device_train_batch_size=batch_size if split_batches else batch_size // gpu_count,
         per_device_eval_batch_size=batch_size if split_batches else batch_size // gpu_count,
         multi_dataset_batch_sampler=MultiDatasetBatchSamplers.PROPORTIONAL,
@@ -222,13 +196,10 @@ def main():
         logging_steps=1 if args.debug else 50,
         fp16=False,
         bf16=True,
-        run_name=run_name,
         learning_rate=lr,
-        lr_scheduler_type=args.scheduler_type,
-        # warmup_ratio=0.1,
         dataloader_num_workers=num_workers,
         dataloader_pin_memory=True,
-        dataloader_drop_last=True if data_mode == "DDP" else False,
+        dataloader_drop_last=True,
         ddp_find_unused_parameters=False,
         accelerator_config={
             "split_batches": split_batches,
@@ -251,13 +222,6 @@ def main():
             } if args.prompts else None)
         ),
     )
-
-    # Stop training callback based on --epochs
-    stop_at_epoch = StopTrainingCallback(args.epochs) # This does not affect the learning rate scheduler.
-    trainer.add_callback(stop_at_epoch)
-
-    # Tracking temperature
-    trainer.add_callback(ContrastiveTemperatureTracker(temperature))
 
     trainer.train()
     model.save_pretrained(f"{output_dir}/final")
