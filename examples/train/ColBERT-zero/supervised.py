@@ -1,4 +1,4 @@
-import os, sys
+import os
 from sentence_transformers.training_args import MultiDatasetBatchSamplers
 import argparse
 import torch
@@ -93,11 +93,6 @@ def main():
         help="Number of epochs to train the model. Default is 1.0.",
     )
     parser.add_argument(
-        "--debug",
-        action='store_true',
-        help="If set, the model will be run in debug mode.",
-    )
-    parser.add_argument(
         "--lr",
         type=float,
         default=8e-6,
@@ -121,18 +116,12 @@ def main():
         help="If set, the temperature of the contrastive loss will be learned.",
     )
     parser.add_argument(
-        "--note",
-        type=str,
-        default="",
-        help="Note to include in the run name.",
-    )
-    parser.add_argument(
-        "--prompts",
+        "--no-prompts",
         action='store_true',
-        help="If set, use prompts in the collator.",
+        help="If set, do not use prompts in the collator.",
     )
     parser.add_argument(
-        "--extra-length",
+        "--no-extra-length",
         action='store_true',
         help="If set, add EXTRA_LENGTH tokens to the query and document length to compensate for prompts.",
     )
@@ -142,35 +131,21 @@ def main():
     train_dataset = load_train_datasets()
 
     # Define training parameters
-    num_train_epochs = args.epochs
-    lr = args.lr
-    batch_size = args.bs
-    model_name = args.model
     if args.learnable_temperature:
         temperature = torch.nn.Parameter(torch.tensor(args.temp))
     else:
         temperature = args.temp
 
-    # Configure devices and data mode
-    node_count = int(os.environ.get("SLURM_NNODES", 1))
-    gpu_count = torch.cuda.device_count() * node_count
-    num_workers = 4
-    split_batches = True
-    assert batch_size % node_count == 0, "Batch size must be divisible by the number of nodes if using split_batches!"
-    mini_batch_size = min(batch_size // gpu_count, 512) # Batch size per GPU, cannot be larger than 512 otherwise it will crash with OOM on GH200/H100 GPUs.
-    assert batch_size % mini_batch_size == 0, f"Batch size {batch_size} must be a multiple of mini_batch_size {mini_batch_size}."
-    output_dir = f"output/colbert-zero-supervised"
-
     # Initialize model
     model = models.ColBERT(
-        model_name_or_path=model_name,
-        document_length = DOCUMENT_LENGTH + (EXTRA_LENGTH if args.extra_length else 0),
-        query_length = QUERY_LENGTH + (EXTRA_LENGTH if args.extra_length else 0),
+        model_name_or_path=args.model,
+        document_length = DOCUMENT_LENGTH + (EXTRA_LENGTH if not args.no_extra_length else 0),
+        query_length = QUERY_LENGTH + (EXTRA_LENGTH if not args.no_extra_length else 0),
     )
 
     # Setup evaluation and loss
     evaluators_kwargs = {}
-    if args.prompts:
+    if not args.no_prompts:
         evaluators_kwargs = {
             "query_prompts": QUERY_PROMPT,
             "corpus_prompts": CORPUS_PROMPT
@@ -183,26 +158,26 @@ def main():
     )
 
     # Configure training arguments
+    output_dir = f"output/colbert-zero-supervised"
     st_args = SentenceTransformerTrainingArguments(
         output_dir=output_dir,
-        num_train_epochs=num_train_epochs,
+        num_train_epochs=args.epochs,
         # ACHTUNG! When using accelerator_config.split_batches=True per_device_train_batch_size is the total batch size across all GPUs, and not per GPU as the name suggests
-        per_device_train_batch_size=batch_size if split_batches else batch_size // gpu_count,
-        per_device_eval_batch_size=batch_size if split_batches else batch_size // gpu_count,
+        per_device_train_batch_size=args.bs,
+        per_device_eval_batch_size=args.bs,
         multi_dataset_batch_sampler=MultiDatasetBatchSamplers.PROPORTIONAL,
         eval_strategy="steps",
         eval_steps=1500,
         save_steps=1500,
-        logging_steps=1 if args.debug else 50,
+        logging_steps=50,
         fp16=False,
         bf16=True,
-        learning_rate=lr,
-        dataloader_num_workers=num_workers,
+        learning_rate=args.lr,
+        dataloader_num_workers=8,
         dataloader_pin_memory=True,
         dataloader_drop_last=True,
-        ddp_find_unused_parameters=False,
         accelerator_config={
-            "split_batches": split_batches,
+            "split_batches": True,
         },
     )
 
@@ -219,7 +194,7 @@ def main():
                 "query": QUERY_PROMPT,
                 **{k: CORPUS_PROMPT for k in ["document", *[f"negative_{i}" for i in range(50)]]
             },
-            } if args.prompts else None)
+            } if not args.no_prompts else None)
         ),
     )
 

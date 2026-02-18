@@ -1,5 +1,4 @@
-import os, sys
-import torch
+import os
 from datasets import load_dataset
 import argparse
 from sentence_transformers import (
@@ -68,19 +67,14 @@ def main():
         help="Batch size for training. Note that this INCLUDES the gradient accumulation steps, so the effective batch size for a single step is bs / gradient_accumulation_steps, accumulated for gradient_accumulation_steps steps. ",
     )
     parser.add_argument(
-        "--debug",
+        "--no-prompts",
         action='store_true',
-        help="If set, the model will be run in debug mode.",
+        help="If set, do not use prompts in the collator.",
     )
     parser.add_argument(
-        "--prompts",
+        "--no-extra-length",
         action='store_true',
-        help="If set, use prompts in the collator.",
-    )
-    parser.add_argument(
-        "--extra-length",
-        action='store_true',
-        help="If set, use extra length for query and document.",
+        help="If set, do not add EXTRA_LENGTH tokens to the query and document length to compensate for prompts.",
     )
     args = parser.parse_args()
 
@@ -88,24 +82,18 @@ def main():
     train_dataset = load_train_datasets()
 
     # Define training parameters
-    lr = args.lr
-    batch_size = args.bs
-    assert batch_size % torch.cuda.device_count() == 0, "Batch size must be a multiple of the number of GPUs!"
-    assert batch_size % GRADIENT_ACCUMULATION_STEPS == 0, "Batch size must be a multiple of the gradient accumulation steps!"
-    per_device_batch_size = batch_size // torch.cuda.device_count() // GRADIENT_ACCUMULATION_STEPS
-    model_name = args.model
-    output_dir = f"output/colbert-zero-distillation"
+    assert args.bs % GRADIENT_ACCUMULATION_STEPS == 0, "Batch size must be a multiple of the gradient accumulation steps!"
 
     # Initialize model
     model = models.ColBERT(
-        model_name_or_path=model_name,
-        document_length=DOCUMENT_LENGTH + (EXTRA_LENGTH if args.extra_length else 0),
-        query_length=QUERY_LENGTH + (EXTRA_LENGTH if args.extra_length else 0),
+        model_name_or_path=args.model,
+        document_length=DOCUMENT_LENGTH + (EXTRA_LENGTH if not args.no_extra_length else 0),
+        query_length=QUERY_LENGTH + (EXTRA_LENGTH if not args.no_extra_length else 0),
     )
 
     # Setup evaluation and loss
     evaluators_kwargs = {}
-    if args.prompts:
+    if not args.no_prompts:
         evaluators_kwargs = {
             "query_prompts": QUERY_PROMPT,
             "corpus_prompts": CORPUS_PROMPT
@@ -114,24 +102,28 @@ def main():
     train_loss = losses.Distillation(model=model)
 
     # Configure training arguments
+    output_dir = f"output/colbert-zero-distillation"
     st_args = SentenceTransformerTrainingArguments(
         output_dir=output_dir,
         num_train_epochs=args.epochs,
-        # Differently from unsupervised and supervised, here per_device_train_batch_size is the batch size per GPU, since we do not use accelerator_config.split_batches=True
-        per_device_train_batch_size=per_device_batch_size,
-        per_device_eval_batch_size=per_device_batch_size,
+        # ACHTUNG! When using accelerator_config.split_batches=True per_device_train_batch_size is the total batch size across all GPUs, and not per GPU as the name suggests
+        per_device_train_batch_size=args.bs // GRADIENT_ACCUMULATION_STEPS,
+        per_device_eval_batch_size=args.bs // GRADIENT_ACCUMULATION_STEPS,
         gradient_accumulation_steps=GRADIENT_ACCUMULATION_STEPS,
         eval_strategy="steps",
-        eval_steps=int(1500 * 16 / batch_size),
-        save_steps=int(1500 * 16 / batch_size),
-        logging_steps=1 if args.debug else 50,
+        eval_steps=400,
+        save_steps=400,
+        logging_steps=50,
         fp16=False,
         bf16=True,
-        learning_rate=lr,
+        learning_rate=args.lr,
         dataloader_num_workers=8,
         dataloader_pin_memory=True,
         dataloader_drop_last=True, # Needed for DDP
         ddp_find_unused_parameters=False,
+        accelerator_config={
+            "split_batches": True,
+        }
     )
 
     # Initialize and run trainer
@@ -146,7 +138,7 @@ def main():
             prompts=({
                 "query": QUERY_PROMPT,
                 "documents": CORPUS_PROMPT
-            } if args.prompts else None)
+            } if not args.no_prompts else None)
         ),
     )
     trainer.train()

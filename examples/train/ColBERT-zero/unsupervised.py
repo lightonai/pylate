@@ -1,4 +1,4 @@
-import os, sys
+import os
 from sentence_transformers.training_args import MultiDatasetBatchSamplers
 import argparse
 import torch
@@ -81,10 +81,10 @@ def main():
         description="Train ColBERT model on nomic-unsupervised data."
     )
     parser.add_argument(
-        "--dense-model",
+        "--model",
         type=str,
         default='answerdotai/ModernBERT-base',
-        help="Name of the dense model to use. Default is 'answerdotai/ModernBERT-base'.",
+        help="Base model to be trained.",
     )
     parser.add_argument(
         "--epochs",
@@ -116,17 +116,12 @@ def main():
         help="If set, the temperature of the contrastive loss will be learned.",
     )
     parser.add_argument(
-        "--debug",
+        "--no-prompts",
         action='store_true',
-        help="If set, the model will be run in debug mode.",
+        help="If set, do not use prompts in the collator.",
     )
     parser.add_argument(
-        "--prompts",
-        action='store_true',
-        help="If set, use prompts in the collator.",
-    )
-    parser.add_argument(
-        "--extra-length",
+        "--no-extra-length",
         action='store_true',
         help="If set, add EXTRA_LENGTH tokens to the query and document length to compensate for prompts.",
     )
@@ -136,36 +131,21 @@ def main():
     train_dataset = load_train_datasets()
 
     # Define training parameters
-    model_name = args.dense_model
-    num_train_epochs = args.epochs
-    lr = args.lr
-    batch_size = args.bs
-
     if args.learnable_temperature:
         temperature = torch.nn.Parameter(torch.tensor(args.temp))
     else:
         temperature = args.temp
 
-    # Configure devices and data mode
-    node_count = int(os.environ.get("SLURM_NNODES", 1))
-    gpu_count = torch.cuda.device_count() * node_count
-    num_workers = 4
-    split_batches = True
-    assert batch_size % node_count == 0, "Batch size must be divisible by the number of nodes if using split_batches!"
-    mini_batch_size = min(batch_size // gpu_count, 512) # Batch size per GPU, cannot be larger than 512 otherwise it will crash with OOM on GH200/H100 GPUs.
-    assert batch_size % mini_batch_size == 0, f"Batch size {batch_size} must be a multiple of mini_batch_size {mini_batch_size}."
-    output_dir = f"output/colbert-zero-unsupervised"
-
     # Initialize model
     model = models.ColBERT(
-        model_name_or_path=model_name,
-        document_length=DOCUMENT_LENGTH + (EXTRA_LENGTH if args.extra_length else 0),
-        query_length=QUERY_LENGTH + (EXTRA_LENGTH if args.extra_length else 0),
+        model_name_or_path=args.model,
+        document_length=DOCUMENT_LENGTH + (EXTRA_LENGTH if not args.no_extra_length else 0),
+        query_length=QUERY_LENGTH + (EXTRA_LENGTH if not args.no_extra_length else 0),
     )
 
     # Setup evaluation and loss
     evaluators_kwargs = {}
-    if args.prompts:
+    if not args.no_prompts:
         evaluators_kwargs = {
             "query_prompts": QUERY_PROMPT,
             "corpus_prompts": CORPUS_PROMPT
@@ -173,32 +153,32 @@ def main():
     dev_evaluator = evaluation.NanoBEIREvaluator(**evaluators_kwargs)
     train_loss = losses.CachedContrastive(
         model=model,
-        mini_batch_size=mini_batch_size,
+        mini_batch_size=512, # This is for H100/ GH200. Change this to fit your GPU if you are using a different one. 
         gather_across_devices=True,
         temperature=temperature
     )
 
     # Configure training arguments
+    output_dir = f"output/colbert-zero-unsupervised"
     st_args = SentenceTransformerTrainingArguments(
         output_dir=output_dir,
-        num_train_epochs=num_train_epochs,
+        num_train_epochs=args.epochs,
         # ACHTUNG! When using accelerator_config.split_batches=True per_device_train_batch_size is the total batch size across all GPUs, and not per GPU as the name suggests
-        per_device_train_batch_size=batch_size if split_batches else batch_size // gpu_count,
-        per_device_eval_batch_size=batch_size if split_batches else batch_size // gpu_count,
+        per_device_train_batch_size=args.bs,
+        per_device_eval_batch_size=args.bs,
         multi_dataset_batch_sampler=MultiDatasetBatchSamplers.PROPORTIONAL,
         eval_strategy="steps",
         eval_steps=500,
         save_steps=500,
-        logging_steps=1 if args.debug else 50,
+        logging_steps=50,
         fp16=False,
         bf16=True,
-        learning_rate=lr,
-        dataloader_num_workers=num_workers,
+        learning_rate=args.lr,
+        dataloader_num_workers=8,
         dataloader_pin_memory=True,
         dataloader_drop_last=True,
-        ddp_find_unused_parameters=False,
         accelerator_config={
-            "split_batches": split_batches,
+            "split_batches": True,
         },
     )
 
@@ -214,9 +194,10 @@ def main():
             prompts=({
                 "query": QUERY_PROMPT,
                 "document": CORPUS_PROMPT
-            } if args.prompts else None)
+            } if not args.no_prompts else None)
         ),
     )
+
     trainer.train()
     model.save_pretrained(f"{output_dir}/final")
 
