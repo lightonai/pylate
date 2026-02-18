@@ -163,7 +163,7 @@ def main():
 
     # Initialize model
     model = models.ColBERT(
-        model_name_or_path=model_name+'/final' if os.path.exists(model_name+'/final') else model_name,
+        model_name_or_path=model_name,
         document_length = DOCUMENT_LENGTH + (EXTRA_LENGTH if args.extra_length else 0),
         query_length = QUERY_LENGTH + (EXTRA_LENGTH if args.extra_length else 0),
     )
