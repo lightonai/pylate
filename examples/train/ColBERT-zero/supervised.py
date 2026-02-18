@@ -1,12 +1,14 @@
-import os
-from sentence_transformers.training_args import MultiDatasetBatchSamplers
 import argparse
+import os
+
 import torch
 from datasets import DatasetDict, load_dataset
 from sentence_transformers import (
     SentenceTransformerTrainer,
     SentenceTransformerTrainingArguments,
 )
+from sentence_transformers.training_args import MultiDatasetBatchSamplers
+
 from pylate import evaluation, losses, models, utils
 
 EXTRA_LENGTH = 7  # Number of extra tokens to add to query and document length when using prompts. This is to compensate for the additional tokens added by the prompts.
@@ -158,7 +160,7 @@ def main():
     )
 
     # Configure training arguments
-    output_dir = f"output/colbert-zero-supervised"
+    output_dir = "output/colbert-zero-supervised"
     st_args = SentenceTransformerTrainingArguments(
         output_dir=output_dir,
         num_train_epochs=args.epochs,

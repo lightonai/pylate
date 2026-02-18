@@ -1,11 +1,13 @@
-import os
-from datasets import load_dataset
 import argparse
+import os
+
+from datasets import load_dataset
 from sentence_transformers import (
     SentenceTransformerTrainer,
     SentenceTransformerTrainingArguments,
 )
-from pylate import losses, models, utils, evaluation
+
+from pylate import evaluation, losses, models, utils
 
 EXTRA_LENGTH = 7  # Number of extra tokens to add to query and document length when using prompts. This is to compensate for the additional tokens added by the prompts.
 QUERY_LENGTH = 32
@@ -102,7 +104,7 @@ def main():
     train_loss = losses.Distillation(model=model)
 
     # Configure training arguments
-    output_dir = f"output/colbert-zero-distillation"
+    output_dir = "output/colbert-zero-distillation"
     st_args = SentenceTransformerTrainingArguments(
         output_dir=output_dir,
         num_train_epochs=args.epochs,
