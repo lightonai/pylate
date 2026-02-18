@@ -177,6 +177,7 @@ def main():
         dataloader_num_workers=8,
         dataloader_pin_memory=True,
         dataloader_drop_last=True,
+        # split_batches=True ensures all GPUs sample from the same sub-dataset chosen by MultiDatasetBatchSamplers.PROPORTIONAL. This is required for contrastive loss to effectively find hard negatives within the same dataset across all ranks.
         accelerator_config={
             "split_batches": True,
         },
