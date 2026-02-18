@@ -18,19 +18,20 @@ QUERY_PROMPT = "search_query: "
 CORPUS_PROMPT = "search_document: "
 
 
-
 def split_negatives(example, max_negatives):
     # Assuming the 'negative' column contains a list of strings
-    negatives = example['negative']
+    negatives = example["negative"]
     # Create new columns for each negative example
     for i, neg in enumerate(negatives):
-        example[f'negative_{i}'] = neg
-        if(i>=max_negatives):
+        example[f"negative_{i}"] = neg
+        if i >= max_negatives:
             break
     return example
 
+
 def get_min_negatives_count(dataset):
-    return min(len(neg) for neg in dataset['negative'])
+    return min(len(neg) for neg in dataset["negative"])
+
 
 def load_train_datasets(**kwargs):
     """Load all available splits from nomic-embed-unsupervised-data, with caching"""
@@ -43,23 +44,22 @@ def load_train_datasets(**kwargs):
     except FileNotFoundError:
         print("No cached datasets found. Loading datasets...")
         splits = [
-            'medi_sts_wiki_rephrasal',
-            'fever_hn_mine',
-            'msmarco_distillation_simlm_rescored_reranked_min15',
-            'reddit_triples',
-            'medi_sts_flickr_sampled',
-            'nq_cocondensor_hn_mine_reranked_min15',
-            'nli_simcse_50negs_fixed',
-            'medi_supernli_sampled',
-            'hotpotqa_hn_mine_shuffled',
-            'medi_sts_stackexchange_dupe'
+            "medi_sts_wiki_rephrasal",
+            "fever_hn_mine",
+            "msmarco_distillation_simlm_rescored_reranked_min15",
+            "reddit_triples",
+            "medi_sts_flickr_sampled",
+            "nq_cocondensor_hn_mine_reranked_min15",
+            "nli_simcse_50negs_fixed",
+            "medi_supernli_sampled",
+            "hotpotqa_hn_mine_shuffled",
+            "medi_sts_stackexchange_dupe",
         ]
 
         for split in splits:
             print(f"Loading {split} dataset...")
             dataset = load_dataset(
-                "nomic-ai/nomic-embed-supervised", split=split,
-                **kwargs
+                "nomic-ai/nomic-embed-supervised", split=split, **kwargs
             )
 
             # Map function to split negatives into separate columns
@@ -67,7 +67,7 @@ def load_train_datasets(**kwargs):
             print("Min negatives", min_negatives)
             dataset = dataset.map(
                 lambda x: split_negatives(x, min(min_negatives, 10)),
-                remove_columns=['negative']  # Remove the original 'negative' column
+                remove_columns=["negative"],  # Remove the original 'negative' column
             )
             train_dataset[split] = dataset
             print(f"Loaded {split} dataset with {len(dataset)} examples.")
@@ -84,9 +84,7 @@ def main():
         description="Train ColBERT model on nomic-supervised data."
     )
     parser.add_argument(
-        "--model",
-        type=str,
-        help="Model already trained on unsupervised data."
+        "--model", type=str, help="Model already trained on unsupervised data."
     )
     parser.add_argument(
         "--epochs",
@@ -114,17 +112,17 @@ def main():
     )
     parser.add_argument(
         "--learnable-temperature",
-        action='store_true',
+        action="store_true",
         help="If set, the temperature of the contrastive loss will be learned.",
     )
     parser.add_argument(
         "--no-prompts",
-        action='store_true',
+        action="store_true",
         help="If set, do not use prompts in the collator.",
     )
     parser.add_argument(
         "--no-extra-length",
-        action='store_true',
+        action="store_true",
         help="If set, do not add extra length to the query and document length for the prompts.",
     )
     args = parser.parse_args()
@@ -141,8 +139,9 @@ def main():
     # Initialize model
     model = models.ColBERT(
         model_name_or_path=args.model,
-        document_length = DOCUMENT_LENGTH + (EXTRA_LENGTH if not args.no_extra_length else 0),
-        query_length = QUERY_LENGTH + (EXTRA_LENGTH if not args.no_extra_length else 0),
+        document_length=DOCUMENT_LENGTH
+        + (EXTRA_LENGTH if not args.no_extra_length else 0),
+        query_length=QUERY_LENGTH + (EXTRA_LENGTH if not args.no_extra_length else 0),
     )
 
     # Setup evaluation and loss
@@ -150,13 +149,11 @@ def main():
     if not args.no_prompts:
         evaluators_kwargs = {
             "query_prompts": QUERY_PROMPT,
-            "corpus_prompts": CORPUS_PROMPT
+            "corpus_prompts": CORPUS_PROMPT,
         }
     dev_evaluator = evaluation.NanoBEIREvaluator(**evaluators_kwargs)
     train_loss = losses.Contrastive(
-        model=model,
-        gather_across_devices=True,
-        temperature=temperature
+        model=model, gather_across_devices=True, temperature=temperature
     )
 
     # Configure training arguments
@@ -193,11 +190,17 @@ def main():
         evaluator=dev_evaluator,
         data_collator=utils.ColBERTCollator(
             tokenize_fn=model.tokenize,
-            prompts=({
-                "query": QUERY_PROMPT,
-                **{k: CORPUS_PROMPT for k in ["document", *[f"negative_{i}" for i in range(50)]]
-            },
-            } if not args.no_prompts else None)
+            prompts=(
+                {
+                    "query": QUERY_PROMPT,
+                    **{
+                        k: CORPUS_PROMPT
+                        for k in ["document", *[f"negative_{i}" for i in range(50)]]
+                    },
+                }
+                if not args.no_prompts
+                else None
+            ),
         ),
     )
 

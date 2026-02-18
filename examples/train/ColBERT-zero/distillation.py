@@ -41,6 +41,7 @@ def load_train_datasets(**kwargs):
     )
     return train
 
+
 def main():
     parser = argparse.ArgumentParser(
         description="Train ColBERT model on LightOn MS MARCO distilled from Gemma model."
@@ -70,12 +71,12 @@ def main():
     )
     parser.add_argument(
         "--no-prompts",
-        action='store_true',
+        action="store_true",
         help="If set, do not use prompts in the collator.",
     )
     parser.add_argument(
         "--no-extra-length",
-        action='store_true',
+        action="store_true",
         help="If set, do not add EXTRA_LENGTH tokens to the query and document length to compensate for prompts.",
     )
     args = parser.parse_args()
@@ -84,12 +85,15 @@ def main():
     train_dataset = load_train_datasets()
 
     # Define training parameters
-    assert args.bs % GRADIENT_ACCUMULATION_STEPS == 0, "Batch size must be a multiple of the gradient accumulation steps!"
+    assert args.bs % GRADIENT_ACCUMULATION_STEPS == 0, (
+        "Batch size must be a multiple of the gradient accumulation steps!"
+    )
 
     # Initialize model
     model = models.ColBERT(
         model_name_or_path=args.model,
-        document_length=DOCUMENT_LENGTH + (EXTRA_LENGTH if not args.no_extra_length else 0),
+        document_length=DOCUMENT_LENGTH
+        + (EXTRA_LENGTH if not args.no_extra_length else 0),
         query_length=QUERY_LENGTH + (EXTRA_LENGTH if not args.no_extra_length else 0),
     )
 
@@ -98,7 +102,7 @@ def main():
     if not args.no_prompts:
         evaluators_kwargs = {
             "query_prompts": QUERY_PROMPT,
-            "corpus_prompts": CORPUS_PROMPT
+            "corpus_prompts": CORPUS_PROMPT,
         }
     dev_evaluator = evaluation.NanoBEIREvaluator(**evaluators_kwargs)
     train_loss = losses.Distillation(model=model)
@@ -121,11 +125,11 @@ def main():
         learning_rate=args.lr,
         dataloader_num_workers=8,
         dataloader_pin_memory=True,
-        dataloader_drop_last=True, # Needed for DDP
+        dataloader_drop_last=True,  # Needed for DDP
         ddp_find_unused_parameters=False,
         accelerator_config={
             "split_batches": True,
-        }
+        },
     )
 
     # Initialize and run trainer
@@ -137,14 +141,16 @@ def main():
         evaluator=dev_evaluator,
         data_collator=utils.ColBERTCollator(
             tokenize_fn=model.tokenize,
-            prompts=({
-                "query": QUERY_PROMPT,
-                "documents": CORPUS_PROMPT
-            } if not args.no_prompts else None)
+            prompts=(
+                {"query": QUERY_PROMPT, "documents": CORPUS_PROMPT}
+                if not args.no_prompts
+                else None
+            ),
         ),
     )
     trainer.train()
     model.save_pretrained(f"{output_dir}/final")
+
 
 if __name__ == "__main__":
     main()

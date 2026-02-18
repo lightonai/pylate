@@ -65,7 +65,8 @@ def load_train_datasets(**kwargs):
             print(f"Loading {split} dataset...")
             # data_files = {split: f"data/{split}-*"}
             dataset = load_dataset(
-                "nomic-ai/nomic-embed-unsupervised-data", split=split,
+                "nomic-ai/nomic-embed-unsupervised-data",
+                split=split,
                 **kwargs,
             )
             train_dataset[split] = dataset
@@ -85,7 +86,7 @@ def main():
     parser.add_argument(
         "--model",
         type=str,
-        default='answerdotai/ModernBERT-base',
+        default="answerdotai/ModernBERT-base",
         help="Base model to be trained.",
     )
     parser.add_argument(
@@ -114,17 +115,17 @@ def main():
     )
     parser.add_argument(
         "--learnable-temperature",
-        action='store_true',
+        action="store_true",
         help="If set, the temperature of the contrastive loss will be learned.",
     )
     parser.add_argument(
         "--no-prompts",
-        action='store_true',
+        action="store_true",
         help="If set, do not use prompts in the collator.",
     )
     parser.add_argument(
         "--no-extra-length",
-        action='store_true',
+        action="store_true",
         help="If set, do not add extra length to the query and document length for the prompts.",
     )
     args = parser.parse_args()
@@ -141,7 +142,8 @@ def main():
     # Initialize model
     model = models.ColBERT(
         model_name_or_path=args.model,
-        document_length=DOCUMENT_LENGTH + (EXTRA_LENGTH if not args.no_extra_length else 0),
+        document_length=DOCUMENT_LENGTH
+        + (EXTRA_LENGTH if not args.no_extra_length else 0),
         query_length=QUERY_LENGTH + (EXTRA_LENGTH if not args.no_extra_length else 0),
     )
 
@@ -150,14 +152,14 @@ def main():
     if not args.no_prompts:
         evaluators_kwargs = {
             "query_prompts": QUERY_PROMPT,
-            "corpus_prompts": CORPUS_PROMPT
+            "corpus_prompts": CORPUS_PROMPT,
         }
     dev_evaluator = evaluation.NanoBEIREvaluator(**evaluators_kwargs)
     train_loss = losses.CachedContrastive(
         model=model,
-        mini_batch_size=512, # This is for H100/ GH200. Change this to fit your GPU if you are using a different one. 
+        mini_batch_size=512,  # This is for H100/ GH200. Change this to fit your GPU if you are using a different one.
         gather_across_devices=True,
-        temperature=temperature
+        temperature=temperature,
     )
 
     # Configure training arguments
@@ -194,15 +196,17 @@ def main():
         evaluator=dev_evaluator,
         data_collator=utils.ColBERTCollator(
             tokenize_fn=model.tokenize,
-            prompts=({
-                "query": QUERY_PROMPT,
-                "document": CORPUS_PROMPT
-            } if not args.no_prompts else None)
+            prompts=(
+                {"query": QUERY_PROMPT, "document": CORPUS_PROMPT}
+                if not args.no_prompts
+                else None
+            ),
         ),
     )
 
     trainer.train()
     model.save_pretrained(f"{output_dir}/final")
+
 
 if __name__ == "__main__":
     main()
