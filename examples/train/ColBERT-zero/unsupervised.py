@@ -123,7 +123,7 @@ def main():
     parser.add_argument(
         "--no-extra-length",
         action='store_true',
-        help="If set, add EXTRA_LENGTH tokens to the query and document length to compensate for prompts.",
+        help="If set, do not add extra length to the query and document length for the prompts.",
     )
     args = parser.parse_args()
 
