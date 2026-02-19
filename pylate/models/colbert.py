@@ -1051,6 +1051,8 @@ class ColBERT(SentenceTransformer):
         texts: list[str] | list[dict] | list[tuple[str, str]],
         is_query: bool = True,
         pad: bool = False,
+        task: str
+        | None = None,  # this is to be compatible with the new collator that supports "task". It isn't used here, only if the model is a router, but I find it cleaner than kwargs
     ) -> dict[str, torch.Tensor]:
         """
         Tokenizes the input texts.

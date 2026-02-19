@@ -149,11 +149,28 @@ class PylateModelCardData(SentenceTransformerModelCardData):
     url = "https://arxiv.org/abs/1908.10084"
 }""",
             "PyLate": """
-@misc{PyLate,
-title={PyLate: Flexible Training and Retrieval for Late Interaction Models},
-author={Chaffin, Antoine and Sourty, Raphaël},
-url={https://github.com/lightonai/pylate},
-year={2024}
+@inproceedings{DBLP:conf/cikm/ChaffinS25,
+  author       = {Antoine Chaffin and
+                  Rapha{\"{e}}l Sourty},
+  editor       = {Meeyoung Cha and
+                  Chanyoung Park and
+                  Noseong Park and
+                  Carl Yang and
+                  Senjuti Basu Roy and
+                  Jessie Li and
+                  Jaap Kamps and
+                  Kijung Shin and
+                  Bryan Hooi and
+                  Lifang He},
+  title        = {PyLate: Flexible Training and Retrieval for Late Interaction Models},
+  booktitle    = {Proceedings of the 34th {ACM} International Conference on Information
+                  and Knowledge Management, {CIKM} 2025, Seoul, Republic of Korea, November
+                  10-14, 2025},
+  pages        = {6334--6339},
+  publisher    = {{ACM}},
+  year         = {2025},
+  url          = {https://github.com/lightonai/pylate},
+  doi          = {10.1145/3746252.3761608},
 }""",
         }
         for loss in losses:
