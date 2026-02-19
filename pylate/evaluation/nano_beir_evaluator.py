@@ -6,7 +6,6 @@ from typing import Literal
 from sentence_transformers.evaluation.NanoBEIREvaluator import (
     NanoBEIREvaluator as NanoBEIREvaluatorST,
 )
-from sentence_transformers.util import is_datasets_available
 
 from .pylate_information_retrieval_evaluator import PyLateInformationRetrievalEvaluator
 
@@ -28,24 +27,7 @@ DatasetNameType = Literal[
     "touche2020",
 ]
 
-
-MAPPING_DATASET_NAME_TO_ID = {
-    "climatefever": "zeta-alpha-ai/NanoClimateFEVER",
-    "dbpedia": "zeta-alpha-ai/NanoDBPedia",
-    "fever": "zeta-alpha-ai/NanoFEVER",
-    "fiqa2018": "zeta-alpha-ai/NanoFiQA2018",
-    "hotpotqa": "zeta-alpha-ai/NanoHotpotQA",
-    "msmarco": "zeta-alpha-ai/NanoMSMARCO",
-    "nfcorpus": "zeta-alpha-ai/NanoNFCorpus",
-    "nq": "zeta-alpha-ai/NanoNQ",
-    "quoraretrieval": "zeta-alpha-ai/NanoQuoraRetrieval",
-    "scidocs": "zeta-alpha-ai/NanoSCIDOCS",
-    "arguana": "zeta-alpha-ai/NanoArguAna",
-    "scifact": "zeta-alpha-ai/NanoSciFact",
-    "touche2020": "zeta-alpha-ai/NanoTouche2020",
-}
-
-MAPPING_DATASET_NAME_TO_HUMAN_READABLE = {
+DATASET_NAME_TO_HUMAN_READABLE = {
     "climatefever": "ClimateFEVER",
     "dbpedia": "DBPedia",
     "fever": "FEVER",
@@ -99,18 +81,25 @@ class NanoBEIREvaluator(NanoBEIREvaluatorST):
     """
 
     def _load_dataset(
-        self, dataset_name: DatasetNameType, **ir_evaluator_kwargs
+        self, dataset_name: DatasetNameType | str, **ir_evaluator_kwargs
     ) -> PyLateInformationRetrievalEvaluator:
-        if not is_datasets_available():
+        if dataset_name.lower() not in DATASET_NAME_TO_HUMAN_READABLE:
             raise ValueError(
-                "datasets is not available. Please install it to use the NanoBEIREvaluator."
+                f"Dataset '{dataset_name}' is not a valid NanoBEIR dataset."
             )
-        from datasets import load_dataset
+        human_readable = DATASET_NAME_TO_HUMAN_READABLE[dataset_name.lower()]
+        split_name = f"Nano{human_readable}"
 
-        dataset_path = MAPPING_DATASET_NAME_TO_ID[dataset_name.lower()]
-        corpus = load_dataset(dataset_path, "corpus", split="train")
-        queries = load_dataset(dataset_path, "queries", split="train")
-        qrels = load_dataset(dataset_path, "qrels", split="train")
+        corpus = self._load_dataset_subset_split(
+            "corpus", split=split_name, required_columns=["_id", "text"]
+        )
+        queries = self._load_dataset_subset_split(
+            "queries", split=split_name, required_columns=["_id", "text"]
+        )
+        qrels = self._load_dataset_subset_split(
+            "qrels", split=split_name, required_columns=["query-id", "corpus-id"]
+        )
+
         corpus_dict = {
             sample["_id"]: sample["text"]
             for sample in corpus
@@ -121,11 +110,17 @@ class NanoBEIREvaluator(NanoBEIREvaluatorST):
             for sample in queries
             if len(sample["text"]) > 0
         }
+
         qrels_dict = {}
         for sample in qrels:
+            corpus_ids = sample.get("corpus-id")
             if sample["query-id"] not in qrels_dict:
                 qrels_dict[sample["query-id"]] = set()
-            qrels_dict[sample["query-id"]].add(sample["corpus-id"])
+
+            if isinstance(corpus_ids, list):
+                qrels_dict[sample["query-id"]].update(corpus_ids)
+            else:
+                qrels_dict[sample["query-id"]].add(corpus_ids)
 
         if self.query_prompts is not None:
             ir_evaluator_kwargs["query_prompt"] = self.query_prompts.get(
