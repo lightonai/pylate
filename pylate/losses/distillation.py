@@ -20,6 +20,10 @@ class Distillation(torch.nn.Module):
         Function that returns a score between two sequences of embeddings.
     size_average
         Average by the size of the mini-batch or perform sum.
+    normalize_scores
+        Whether to min-max normalize scores before computing the loss.
+    temperature
+        Temperature to divide scores by before log_softmax.
 
     Examples
     --------
@@ -57,6 +61,7 @@ class Distillation(torch.nn.Module):
         score_metric: Callable = colbert_kd_scores,
         size_average: bool = True,
         normalize_scores: bool = True,
+        temperature: float = 1.0,
     ) -> None:
         super(Distillation, self).__init__()
         self.score_metric = score_metric
@@ -65,6 +70,7 @@ class Distillation(torch.nn.Module):
             reduction="batchmean" if size_average else "sum", log_target=True
         )
         self.normalize_scores = normalize_scores
+        self.temperature = temperature
 
     def forward(
         self, sentence_features: Iterable[dict[str, torch.Tensor]], labels: torch.Tensor
@@ -129,6 +135,6 @@ class Distillation(torch.nn.Module):
             # Normalize the scores
             scores = (scores - min_scores) / (max_scores - min_scores + epsilon)
         return self.loss_function(
-            torch.nn.functional.log_softmax(scores, dim=-1),
+            torch.nn.functional.log_softmax(scores / self.temperature, dim=-1),
             torch.nn.functional.log_softmax(labels, dim=-1),
         )

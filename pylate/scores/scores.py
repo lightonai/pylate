@@ -6,109 +6,6 @@ import torch
 from ..utils.tensor import convert_to_tensor
 
 
-def xtr_scores(
-    queries_embeddings: list | np.ndarray | torch.Tensor,
-    documents_embeddings: list | np.ndarray | torch.Tensor,
-    queries_mask: torch.Tensor | None = None,
-    documents_mask: torch.Tensor | None = None,
-    k: int = 128,
-) -> torch.Tensor:
-    """Computes XTR scores between queries and documents using global top-k token retrieval.
-
-    Each query's top-k token matches are selected globally across all Q*N documents in the
-    batch, simulating retrieval from an index. Returns the full (Q, Q*N) cross-product score
-    matrix so that all in-batch documents compete as negatives.
-
-    Parameters
-    ----------
-    queries_embeddings
-        Query token embeddings. Shape: (Q, Qt, H)
-    documents_embeddings
-        Document token embeddings grouped per query. Shape: (Q, N, Dt, H)
-    queries_mask
-        Attention mask for queries. Shape: (Q, Qt). Pass None when using query expansion so
-        that MASK/expansion tokens are not zeroed out.
-    documents_mask
-        Attention mask for documents. Shape: (Q, N, Dt)
-    k
-        Number of top token matches to retain per query token across all Q*N documents.
-
-    Returns
-    -------
-    torch.Tensor
-        Scores of shape (Q, Q*N). For contrastive training with N nway docs per query, the
-        positive for query i is at column i*N.
-
-    Examples
-    --------
-    >>> import torch
-
-    >>> queries_embeddings = torch.tensor([
-    ...     [[1., 0.], [0., 0.]],
-    ...     [[0., 1.], [0., 0.]],
-    ... ])
-
-    >>> documents_embeddings = torch.tensor([
-    ...     [[[1., 0.], [0., 1.]], [[0., 1.], [1., 0.]]],
-    ...     [[[0., 1.], [1., 0.]], [[1., 0.], [0., 1.]]],
-    ... ])
-
-    >>> scores = xtr_scores(
-    ...     queries_embeddings=queries_embeddings,
-    ...     documents_embeddings=documents_embeddings,
-    ...     k=2,
-    ... )
-    >>> scores.shape
-    torch.Size([2, 4])
-
-    """
-    queries_embeddings = convert_to_tensor(queries_embeddings)
-    documents_embeddings = convert_to_tensor(documents_embeddings)
-
-    Dq, N = documents_embeddings.shape[:2]
-    Qb = queries_embeddings.shape[0]
-
-    # (Dq, N, Dt, H) → (Dq*N, Dt, H)
-    docs_flat = documents_embeddings.view(Dq * N, *documents_embeddings.shape[2:])
-
-    # All-pair token scores: (Qb, Dq*N, Qt, Dt)
-    scores = queries_embeddings.unsqueeze(1) @ docs_flat.transpose(1, 2).unsqueeze(0)
-
-    if documents_mask is not None:
-        # (Dq, N, Dt) → (Dq*N, Dt), expand to (Qb, Dq*N, Dt) — broadcast over Qt via transpose trick
-        docs_mask_flat = documents_mask.view(Dq * N, -1)
-        D_mask = docs_mask_flat.unsqueeze(0).expand(Qb, -1, -1)  # (Qb, Dq*N, Dt)
-        scores.transpose(2, 3)[~D_mask.bool()] = -99999
-
-    Qb, Db, Qt, Dt = scores.shape
-
-    # (Q, Qt, Q*N*Dt) — club all doc tokens together per query token
-    clubbed = scores.permute(0, 2, 1, 3).flatten(2, 3)
-
-    _, topk_indices = clubbed.topk(k, dim=-1)  # (Q, Qt, k)
-
-    # Zero out all non-top-k positions
-    alignment_mask = torch.ones_like(clubbed, dtype=torch.bool)
-    alignment_mask.scatter_(-1, topk_indices, False)
-    masked = clubbed.masked_fill(alignment_mask, 0)
-
-    # (Q, Qt, Q*N, Dt) → max over Dt → (Q, Qt, Q*N)
-    topk_scores_max = masked.view(Qb, Qt, Db, Dt).max(dim=-1).values
-
-    if queries_mask is not None:
-        topk_scores_max = topk_scores_max * queries_mask.unsqueeze(-1)
-
-    # Z: number of non-zero query-token contributions per doc, clamped for stability
-    Z = (topk_scores_max > 0.0).float().sum(dim=1).clamp(min=1e-3)  # (Q, Q*N)
-
-    return (1.0 / Z) * topk_scores_max.sum(dim=1)  # (Q, Q*N)
-
-
-# Flag consumed by Contrastive to call this score metric once over all grouped docs
-# rather than in a per-group loop, since the global top-k requires seeing all docs at once.
-xtr_scores.requires_full_batch = True
-
-
 def colbert_scores(
     queries_embeddings: list | np.ndarray | torch.Tensor,
     documents_embeddings: list | np.ndarray | torch.Tensor,
@@ -306,3 +203,172 @@ def colbert_kd_scores(
 
     scores = scores.max(axis=-1).values.sum(axis=-1)
     return scores
+
+
+# Adapted from PrimeQA (https://github.com/primeqa/primeqa branch:xtr)
+# Specifically: https://github.com/primeqa/primeqa/blob/bb9385fa129a0dbb3c7aae96ad3c782913f8280d/primeqa/ir/dense/xtr_top/xtr/modeling/XTR.py
+
+#   Copyright 2026 IBM PrimeQA Authors
+#    Licensed under the Apache License, Version 2.0 (the "License");
+#    you may not use this file except in compliance with the License.
+#    You may obtain a copy of the License at
+#        http://www.apache.org/licenses/LICENSE-2.0
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS,
+#    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#    See the License for the specific language governing permissions and
+#    limitations under the License.
+
+# Changes:
+# - extricated scoring function from E2E modeling class that also handled contrastive loss computation.
+# - fixed a bug in the original implementation where the alignment mask was not being applied correctly.
+
+
+def xtr_scores(
+    queries_embeddings: list | np.ndarray | torch.Tensor,
+    documents_embeddings: list | np.ndarray | torch.Tensor,
+    queries_mask: torch.Tensor | None = None,
+    documents_mask: torch.Tensor | None = None,
+    k: int = 128,
+) -> torch.Tensor:
+    """Computes XTR scores between queries and documents using global top-k token retrieval.
+
+    Each query's top-k token matches are selected globally across all Q*N documents in the
+    batch, simulating retrieval from an index. Returns the full (Q, Q*N) cross-product score
+    matrix so that all in-batch documents compete as negatives.
+
+    Parameters
+    ----------
+    queries_embeddings
+        Query token embeddings. Shape: (Q, Qt, H)
+    documents_embeddings
+        Document token embeddings grouped per query. Shape: (Q, N, Dt, H)
+    queries_mask
+        Attention mask for queries. Shape: (Q, Qt). Pass None when using query expansion so
+        that MASK/expansion tokens are not zeroed out.
+    documents_mask
+        Attention mask for documents. Shape: (Q, N, Dt)
+    k
+        Number of top token matches to retain per query token across all Q*N documents.
+
+    Returns
+    -------
+    torch.Tensor
+        Scores of shape (Q, Q*N). For contrastive training with N nway docs per query, the
+        positive for query i is at column i*N.
+
+    Examples
+    --------
+    >>> import torch
+
+    >>> queries_embeddings = torch.tensor([
+    ...     [[1., 0.], [0., 0.]],
+    ...     [[0., 1.], [0., 0.]],
+    ... ])
+
+    >>> documents_embeddings = torch.tensor([
+    ...     [[[1., 0.], [0., 1.]], [[0., 1.], [1., 0.]]],
+    ...     [[[0., 1.], [1., 0.]], [[1., 0.], [0., 1.]]],
+    ... ])
+
+    >>> scores = xtr_scores(
+    ...     queries_embeddings=queries_embeddings,
+    ...     documents_embeddings=documents_embeddings,
+    ...     k=2,
+    ... )
+    >>> scores.shape
+    torch.Size([2, 4])
+
+    """
+    queries_embeddings = convert_to_tensor(queries_embeddings)
+    documents_embeddings = convert_to_tensor(documents_embeddings)
+
+    Q, N = documents_embeddings.shape[:2]
+
+    # (Q, N, Dt, H) → (Q*N, Dt, H)
+    docs_flat = documents_embeddings.view(Q * N, *documents_embeddings.shape[2:])
+
+    # All-pair token scores: (Q, Q*N, Qt, Dt)
+    scores = queries_embeddings.unsqueeze(1) @ docs_flat.transpose(1, 2).unsqueeze(0)
+
+    if documents_mask is not None:
+        # (Q, N, Dt) → (Q*N, Dt), expand to (Q, Q*N, Dt) — broadcast over Qt via transpose trick
+        docs_mask_flat = documents_mask.view(Q * N, -1)
+        D_mask = docs_mask_flat.unsqueeze(0).expand(Q, -1, -1)  # (Q, Q*N, Dt)
+        scores.transpose(2, 3)[~D_mask.bool()] = -99999
+
+    Qb, Db, Qt, Dt = scores.shape
+
+    # (Q, Qt, Q*N*Dt) — club all doc tokens together per query token
+    clubbed = scores.permute(0, 2, 1, 3).flatten(2, 3)
+
+    _, topk_indices = clubbed.topk(k, dim=-1)  # (Q, Qt, k)
+
+    # Zero out all non-top-k positions
+    alignment_mask = torch.ones_like(clubbed, dtype=torch.bool)
+    alignment_mask.scatter_(-1, topk_indices, False)
+    masked = clubbed.masked_fill(alignment_mask, 0)
+
+    # (Q, Qt, Q*N, Dt) → max over Dt → (Q, Qt, Q*N)
+    topk_scores_max = masked.view(Qb, Qt, Db, Dt).max(dim=-1).values
+
+    if queries_mask is not None:
+        topk_scores_max = topk_scores_max * queries_mask.unsqueeze(-1)
+
+    # Z: number of non-zero query-token contributions per doc, clamped for stability
+    Z = (topk_scores_max > 0.0).float().sum(dim=1).clamp(min=1e-3)  # (Q, Q*N)
+
+    return (1.0 / Z) * topk_scores_max.sum(dim=1)  # (Q, Q*N)
+
+
+# Flag consumed by Contrastive to call this score metric once over all grouped docs
+# rather than in a per-group loop, since the global top-k requires seeing all docs at once.
+xtr_scores.requires_full_batch = True
+
+
+def xtr_kd_scores(
+    queries_embeddings: list | np.ndarray | torch.Tensor,
+    documents_embeddings: list | np.ndarray | torch.Tensor,
+    queries_mask: torch.Tensor | None = None,
+    documents_mask: torch.Tensor | None = None,
+    k: int = 128,
+) -> torch.Tensor:
+    """XTR scores for knowledge distillation. Same global top-k scoring as
+    :func:`xtr_scores`, but returns only each query's own N-way document scores
+    to match the ``(Q, N)`` interface expected by :class:`~pylate.losses.Distillation`.
+
+    Parameters
+    ----------
+    queries_embeddings
+        Query token embeddings. Shape: (Q, Qt, H)
+    documents_embeddings
+        Document token embeddings grouped per query. Shape: (Q, N, Dt, H)
+    queries_mask
+        Attention mask for queries. Shape: (Q, Qt)
+    documents_mask
+        Attention mask for documents. Shape: (Q, N, Dt)
+    k
+        Number of top token matches to retain per query token.
+
+    Returns
+    -------
+    torch.Tensor
+        Scores of shape (Q, N).
+    """
+    documents_embeddings = convert_to_tensor(documents_embeddings)
+    Q, N = documents_embeddings.shape[:2]
+
+    # Full cross-product scores: (Q, Q*N)
+    all_scores = xtr_scores(
+        queries_embeddings,
+        documents_embeddings,
+        queries_mask=queries_mask,
+        documents_mask=documents_mask,
+        k=k,
+    )
+
+    # Slice out each query's own N documents
+    idx = torch.arange(Q, device=all_scores.device).unsqueeze(1) * N + torch.arange(
+        N, device=all_scores.device
+    )
+    return all_scores.gather(1, idx)
