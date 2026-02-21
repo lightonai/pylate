@@ -128,6 +128,11 @@ class Contrastive(nn.Module):
         self.gather_across_devices = gather_across_devices
         self.temperature = temperature
 
+        print(f"Score metric: {self.score_metric}")
+        print(
+            f"Score metric requires full batch: {getattr(self.score_metric, 'requires_full_batch', False)}"
+        )
+
     def forward(
         self,
         sentence_features: Iterable[dict[str, Tensor]],
@@ -187,18 +192,33 @@ class Contrastive(nn.Module):
             labels = labels + rank * batch_size
         # Note: the queries mask is not used, if added, take care that the expansion tokens are not masked from scoring (because they might be masked during encoding).
         # We might not need to compute the mask for queries but I let the logic there for now
-        scores = torch.cat(
-            [
-                self.score_metric(
-                    embeddings[0],
-                    group_embeddings,
-                    queries_mask=masks[0] if not do_query_expansion else None,
-                    documents_mask=documents_masks,
-                )
-                for group_embeddings, documents_masks in zip(embeddings[1:], masks[1:])
-            ],
-            dim=1,
-        )
+        if getattr(self.score_metric, "requires_full_batch", False):
+            # Score metrics like xtr_scores require all documents simultaneously for global
+            # top-k. Stack groups into (Q, N, Dt, H) and call once.
+            N = len(embeddings) - 1
+            scores = self.score_metric(
+                embeddings[0],
+                torch.stack(embeddings[1:], dim=1),
+                queries_mask=masks[0] if not do_query_expansion else None,
+                documents_mask=torch.stack(masks[1:], dim=1),
+            )
+            # Positive for query i is at column i*N (docs are interleaved per query)
+            labels = torch.arange(batch_size, device=embeddings[0].device) * N
+        else:
+            scores = torch.cat(
+                [
+                    self.score_metric(
+                        embeddings[0],
+                        group_embeddings,
+                        queries_mask=masks[0] if not do_query_expansion else None,
+                        documents_mask=documents_masks,
+                    )
+                    for group_embeddings, documents_masks in zip(
+                        embeddings[1:], masks[1:]
+                    )
+                ],
+                dim=1,
+            )
 
         # compute constrastive loss using cross-entropy over the scores
         loss = F.cross_entropy(
