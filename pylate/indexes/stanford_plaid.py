@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import logging
 import os
+import pickle
 
 import numpy as np
 import torch
-from sqlitedict import SqliteDict
 
 from ..rank import RerankResult
 from .base import Base
@@ -131,10 +131,10 @@ class StanfordPLAID(Base):
         self.index_folder = index_folder
         self.indexer = Indexer(config=self.config)
         self.documents_ids_to_plaid_ids_path = os.path.join(
-            index_folder, index_name, "documents_ids_to_plaid_ids.sqlite"
+            index_folder, index_name, "documents_ids_to_plaid_ids.pkl"
         )
         self.plaid_ids_to_documents_ids_path = os.path.join(
-            index_folder, index_name, "plaid_ids_to_documents_ids.sqlite"
+            index_folder, index_name, "plaid_ids_to_documents_ids.pkl"
         )
         if not os.path.exists(index_folder):
             os.makedirs(index_folder)
@@ -147,9 +147,8 @@ class StanfordPLAID(Base):
                 os.remove(self.plaid_ids_to_documents_ids_path)
             self.searcher = None
         else:
-            documents_ids_to_plaid_ids = self._load_documents_ids_to_plaid_ids()
             # Check if the collection has already been populated and if so, load the searcher
-            if len(documents_ids_to_plaid_ids) == 0:
+            if not os.path.exists(self.documents_ids_to_plaid_ids_path):
                 self.searcher = None
             else:
                 self.searcher = Searcher(
@@ -157,15 +156,31 @@ class StanfordPLAID(Base):
                     config=self.config,
                     index_root=f"{index_folder}/",
                 )
-            documents_ids_to_plaid_ids.close()
 
-    def _load_documents_ids_to_plaid_ids(self) -> SqliteDict:
-        """Load the SQLite database that maps document IDs to PLAID IDs."""
-        return SqliteDict(self.documents_ids_to_plaid_ids_path, outer_stack=False)
+    def _load_documents_ids_to_plaid_ids(self) -> dict:
+        """Load the pickle file that maps document IDs to PLAID IDs."""
+        if os.path.exists(self.documents_ids_to_plaid_ids_path):
+            with open(self.documents_ids_to_plaid_ids_path, "rb") as f:
+                return pickle.load(f)
+        return {}
 
-    def _load_plaid_ids_to_documents_ids(self) -> SqliteDict:
-        """Load the SQLite database that maps PLAID IDs to document IDs."""
-        return SqliteDict(self.plaid_ids_to_documents_ids_path, outer_stack=False)
+    def _load_plaid_ids_to_documents_ids(self) -> dict:
+        """Load the pickle file that maps PLAID IDs to document IDs."""
+        if os.path.exists(self.plaid_ids_to_documents_ids_path):
+            with open(self.plaid_ids_to_documents_ids_path, "rb") as f:
+                return pickle.load(f)
+        return {}
+
+    def _save_mappings(
+        self,
+        documents_ids_to_plaid_ids: dict,
+        plaid_ids_to_documents_ids: dict,
+    ) -> None:
+        """Save the ID mappings to pickle files."""
+        with open(self.documents_ids_to_plaid_ids_path, "wb") as f:
+            pickle.dump(documents_ids_to_plaid_ids, f)
+        with open(self.plaid_ids_to_documents_ids_path, "wb") as f:
+            pickle.dump(plaid_ids_to_documents_ids, f)
 
     def add_documents(
         self,
@@ -201,16 +216,10 @@ class StanfordPLAID(Base):
             plaid_ids = index_updater.add(documents_embeddings)
             index_updater.persist_to_disk()
 
-        # Get total number of existing documents
-        for plaid_id, document_id in zip(plaid_ids, documents_ids):
-            documents_ids_to_plaid_ids[document_id] = plaid_id
-            plaid_ids_to_documents_ids[plaid_id] = document_id
-
-        documents_ids_to_plaid_ids.commit()
-        documents_ids_to_plaid_ids.close()
-
-        plaid_ids_to_documents_ids.commit()
-        plaid_ids_to_documents_ids.close()
+        # Store mappings
+        documents_ids_to_plaid_ids.update(zip(documents_ids, plaid_ids))
+        plaid_ids_to_documents_ids.update(zip(plaid_ids, documents_ids))
+        self._save_mappings(documents_ids_to_plaid_ids, plaid_ids_to_documents_ids)
 
         return self
 
@@ -236,11 +245,7 @@ class StanfordPLAID(Base):
             del document_ids_to_plaid_ids[document_id]
             del plaid_ids_to_documents_ids[plaid_id]
 
-        document_ids_to_plaid_ids.commit()
-        document_ids_to_plaid_ids.close()
-
-        plaid_ids_to_documents_ids.commit()
-        plaid_ids_to_documents_ids.close()
+        self._save_mappings(document_ids_to_plaid_ids, plaid_ids_to_documents_ids)
 
         return self
 

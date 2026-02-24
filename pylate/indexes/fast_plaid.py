@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import logging
 import os
+import pickle
 import shutil
 from bisect import bisect_left
 
 import numpy as np
 import torch
 from fast_plaid import search
-from sqlitedict import SqliteDict
 
 from ..rank import RerankResult
 from .base import Base
@@ -125,19 +125,18 @@ class FastPlaid(Base):
         if override:
             if os.path.exists(self.index_path):
                 shutil.rmtree(self.index_path)
-            self.is_indexed = False
 
         if not os.path.exists(index_folder):
             os.makedirs(index_folder)
         if not os.path.exists(self.index_path):
             os.makedirs(self.index_path)
 
-        # SQLite mappings for document IDs
+        # Pickle mappings for document IDs
         self.documents_ids_to_plaid_ids_path = os.path.join(
-            self.index_path, "documents_ids_to_plaid_ids.sqlite"
+            self.index_path, "documents_ids_to_plaid_ids.pkl"
         )
         self.plaid_ids_to_documents_ids_path = os.path.join(
-            self.index_path, "plaid_ids_to_documents_ids.sqlite"
+            self.index_path, "plaid_ids_to_documents_ids.pkl"
         )
 
         # Initialize or load the fast-plaid index
@@ -145,17 +144,32 @@ class FastPlaid(Base):
             index=self.fast_plaid_index_path, device=device
         )
         # Check if index already exists
-        documents_ids_to_plaid_ids = self._load_documents_ids_to_plaid_ids()
-        self.is_indexed = len(documents_ids_to_plaid_ids) > 0
-        documents_ids_to_plaid_ids.close()
+        self.is_indexed = os.path.exists(self.documents_ids_to_plaid_ids_path)
 
-    def _load_documents_ids_to_plaid_ids(self) -> SqliteDict:
-        """Load the SQLite database that maps document IDs to PLAID IDs."""
-        return SqliteDict(self.documents_ids_to_plaid_ids_path, outer_stack=False)
+    def _load_documents_ids_to_plaid_ids(self) -> dict:
+        """Load the pickle file that maps document IDs to PLAID IDs."""
+        if os.path.exists(self.documents_ids_to_plaid_ids_path):
+            with open(self.documents_ids_to_plaid_ids_path, "rb") as f:
+                return pickle.load(f)
+        return {}
 
-    def _load_plaid_ids_to_documents_ids(self) -> SqliteDict:
-        """Load the SQLite database that maps PLAID IDs to document IDs."""
-        return SqliteDict(self.plaid_ids_to_documents_ids_path, outer_stack=False)
+    def _load_plaid_ids_to_documents_ids(self) -> dict:
+        """Load the pickle file that maps PLAID IDs to document IDs."""
+        if os.path.exists(self.plaid_ids_to_documents_ids_path):
+            with open(self.plaid_ids_to_documents_ids_path, "rb") as f:
+                return pickle.load(f)
+        return {}
+
+    def _save_mappings(
+        self,
+        documents_ids_to_plaid_ids: dict,
+        plaid_ids_to_documents_ids: dict,
+    ) -> None:
+        """Save the ID mappings to pickle files."""
+        with open(self.documents_ids_to_plaid_ids_path, "wb") as f:
+            pickle.dump(documents_ids_to_plaid_ids, f)
+        with open(self.plaid_ids_to_documents_ids_path, "wb") as f:
+            pickle.dump(plaid_ids_to_documents_ids, f)
 
     def add_documents(
         self,
@@ -170,15 +184,13 @@ class FastPlaid(Base):
         # Convert embeddings to torch tensors
         documents_embeddings_torch = convert_embeddings_to_torch(documents_embeddings)
 
-        # Load SQLite mappings
+        # Load existing mappings
         documents_ids_to_plaid_ids = self._load_documents_ids_to_plaid_ids()
         plaid_ids_to_documents_ids = self._load_plaid_ids_to_documents_ids()
 
         # Get the current number of documents for ID assignment
         current_max_id = (
-            max([int(k) for k in plaid_ids_to_documents_ids.keys()])
-            if plaid_ids_to_documents_ids
-            else -1
+            max(plaid_ids_to_documents_ids.keys()) if plaid_ids_to_documents_ids else -1
         )
 
         if not self.is_indexed:
@@ -209,15 +221,9 @@ class FastPlaid(Base):
             )
 
         # Store mappings
-        for plaid_id, document_id in zip(plaid_ids, documents_ids):
-            documents_ids_to_plaid_ids[document_id] = plaid_id
-            plaid_ids_to_documents_ids[plaid_id] = document_id
-
-        documents_ids_to_plaid_ids.commit()
-        documents_ids_to_plaid_ids.close()
-
-        plaid_ids_to_documents_ids.commit()
-        plaid_ids_to_documents_ids.close()
+        documents_ids_to_plaid_ids.update(zip(documents_ids, plaid_ids))
+        plaid_ids_to_documents_ids.update(zip(plaid_ids, documents_ids))
+        self._save_mappings(documents_ids_to_plaid_ids, plaid_ids_to_documents_ids)
 
         return self
 
@@ -253,23 +259,17 @@ class FastPlaid(Base):
 
         updated_plaid_ids_to_documents_ids = {}
         for old_plaid_id, document_id in plaid_ids_to_documents_ids.items():
-            old_plaid_id_int = int(old_plaid_id)
-            # bisect_left gives count of elements < old_plaid_id_int
-            offset = bisect_left(plaid_ids_to_remove, old_plaid_id_int)
-            new_plaid_id = old_plaid_id_int - offset
+            # bisect_left gives count of elements < old_plaid_id
+            offset = bisect_left(plaid_ids_to_remove, old_plaid_id)
+            new_plaid_id = old_plaid_id - offset
 
             updated_plaid_ids_to_documents_ids[new_plaid_id] = document_id
             documents_ids_to_plaid_ids[document_id] = new_plaid_id
 
-        # Replace the old mappings with updated ones
-        plaid_ids_to_documents_ids.clear()
-        plaid_ids_to_documents_ids.update(updated_plaid_ids_to_documents_ids)
-
-        documents_ids_to_plaid_ids.commit()
-        documents_ids_to_plaid_ids.close()
-
-        plaid_ids_to_documents_ids.commit()
-        plaid_ids_to_documents_ids.close()
+        # Save updated mappings
+        self._save_mappings(
+            documents_ids_to_plaid_ids, updated_plaid_ids_to_documents_ids
+        )
 
         return self
 
@@ -306,6 +306,7 @@ class FastPlaid(Base):
             """
             raise ValueError(error)
 
+        # Load mappings into memory
         plaid_ids_to_documents_ids = self._load_plaid_ids_to_documents_ids()
         documents_ids_to_plaid_ids = self._load_documents_ids_to_plaid_ids()
 
@@ -357,8 +358,6 @@ class FastPlaid(Base):
                     query_docs.append(RerankResult(id=doc_id, score=float(score)))
             results.append(query_docs)
 
-        plaid_ids_to_documents_ids.close()
-        documents_ids_to_plaid_ids.close()
         return results
 
     def get_documents_embeddings(
