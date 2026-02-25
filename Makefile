@@ -26,7 +26,7 @@ install-test:
 release:
 	@if [ -z "$(VERSION)" ]; then echo "Usage: make release VERSION=X.Y.Z"; exit 1; fi
 	@echo "Bumping version to $(VERSION)..."
-	python -c "v='$(VERSION)'; t=', '.join(v.split('.')); open('pylate/__version__.py','w').write('from __future__ import annotations\n\nVERSION = ('+t+')\n\n__version__ = \".\".join(map(str, VERSION))\n')"
+	python3 -c "v='$(VERSION)'; t=', '.join(v.split('.')); open('pylate/__version__.py','w').write('from __future__ import annotations\n\nVERSION = ('+t+')\n\n__version__ = \".\".join(map(str, VERSION))\n')"
 	git add pylate/__version__.py
 	git commit -m "Bump version to $(VERSION)"
 	git tag "v$(VERSION)"
