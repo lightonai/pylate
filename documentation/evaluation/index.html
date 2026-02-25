@@ -1,0 +1,1255 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="PyLate 🐶">
+      
+      
+        <meta name="author" content="Raphael Sourty">
+      
+      
+        <link rel="canonical" href="https://lightonai.github.io/pylate/documentation/evaluation/">
+      
+      
+        <link rel="prev" href="../retrieval/">
+      
+      
+        <link rel="next" href="../fastapi/">
+      
+      
+      <link rel="icon" href="../../img/favicon.ico">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.32">
+    
+    
+      
+        <title>Evaluation - PyLate</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.3cba04c6.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Fira+Sans:300,300i,400,400i,700,700i%7CFira+Code:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Fira Sans";--md-code-font:"Fira Code"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
+    
+      <link rel="stylesheet" href="../../css/version-select.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue" data-md-color-accent="blue">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#retrieval-evaluation" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="PyLate" class="md-header__button md-logo" aria-label="PyLate" data-md-component="logo">
+      
+  <img src="../../img/favicon.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            PyLate
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Evaluation
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue" data-md-color-accent="blue"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69Z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue" data-md-color-accent="blue"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12c0-2.42-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69Z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var media,input,key,value,palette=__md_get("__palette");if(palette&&palette.color){"(prefers-color-scheme)"===palette.color.media&&(media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']"),palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent"));for([key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/lightonai/pylate" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    lighton/pylate
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../training/" class="md-tabs__link">
+          
+  
+    
+  
+  Documentation
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../models/models/" class="md-tabs__link">
+          
+  
+    
+  
+  Models
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../api/overview/" class="md-tabs__link">
+          
+  
+    
+  
+  API reference
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="PyLate" class="md-nav__button md-logo" aria-label="PyLate" data-md-component="logo">
+      
+  <img src="../../img/favicon.png" alt="logo">
+
+    </a>
+    PyLate
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/lightonai/pylate" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    lighton/pylate
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+      
+    
+    
+      
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Documentation
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            Documentation
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../training/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Training
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../datasets/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Datasets
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../retrieval/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Retrieval
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Evaluation
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    Evaluation
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#retrieval-evaluation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Retrieval evaluation
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Retrieval evaluation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#beir-retrieval-evaluation-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      BEIR Retrieval Evaluation Pipeline
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#beir-datasets" class="md-nav__link">
+    <span class="md-ellipsis">
+      BEIR datasets
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#custom-datasets" class="md-nav__link">
+    <span class="md-ellipsis">
+      Custom datasets
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Metrics
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../fastapi/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    FastAPI
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../models/models/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    Models
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../../api/overview/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    API reference
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#retrieval-evaluation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Retrieval evaluation
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Retrieval evaluation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#beir-retrieval-evaluation-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      BEIR Retrieval Evaluation Pipeline
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#beir-datasets" class="md-nav__link">
+    <span class="md-ellipsis">
+      BEIR datasets
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#custom-datasets" class="md-nav__link">
+    <span class="md-ellipsis">
+      Custom datasets
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Metrics
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  <h1>Evaluation</h1>
+
+<h2 id="retrieval-evaluation">Retrieval evaluation<a class="headerlink" href="#retrieval-evaluation" title="Permanent link">&para;</a></h2>
+<p>This guide demonstrates an end-to-end pipeline to evaluate the performance of the ColBERT model on retrieval tasks. The pipeline involves three key steps: indexing documents, retrieving top-k documents for a given set of queries, and evaluating the retrieval results using standard metrics.</p>
+<h3 id="beir-retrieval-evaluation-pipeline">BEIR Retrieval Evaluation Pipeline<a class="headerlink" href="#beir-retrieval-evaluation-pipeline" title="Permanent link">&para;</a></h3>
+<div class="language-python highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pylate</span><span class="w"> </span><span class="kn">import</span> <span class="n">evaluation</span><span class="p">,</span> <span class="n">indexes</span><span class="p">,</span> <span class="n">models</span><span class="p">,</span> <span class="n">retrieve</span>
+
+<span class="c1"># Step 1: Initialize the ColBERT model</span>
+
+<span class="n">dataset</span> <span class="o">=</span> <span class="s2">&quot;scifact&quot;</span> <span class="c1"># Choose the dataset you want to evaluate</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ColBERT</span><span class="p">(</span>
+    <span class="n">model_name_or_path</span><span class="o">=</span><span class="s2">&quot;lightonai/GTE-ModernColBERT-v1&quot;</span><span class="p">,</span>
+    <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span> <span class="c1"># &quot;cpu&quot; or &quot;cuda&quot; or &quot;mps&quot;</span>
+<span class="p">)</span>
+
+<span class="c1"># Step 2: Create a Voyager index</span>
+<span class="n">index</span> <span class="o">=</span> <span class="n">indexes</span><span class="o">.</span><span class="n">Voyager</span><span class="p">(</span>
+    <span class="n">index_folder</span><span class="o">=</span><span class="s2">&quot;pylate-index&quot;</span><span class="p">,</span>
+    <span class="n">index_name</span><span class="o">=</span><span class="n">dataset</span><span class="p">,</span>
+    <span class="n">override</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>  <span class="c1"># Overwrite any existing index</span>
+<span class="p">)</span>
+
+<span class="c1"># Step 3: Load the documents, queries, and relevance judgments (qrels)</span>
+<span class="n">documents</span><span class="p">,</span> <span class="n">queries</span><span class="p">,</span> <span class="n">qrels</span> <span class="o">=</span> <span class="n">evaluation</span><span class="o">.</span><span class="n">load_beir</span><span class="p">(</span>
+    <span class="n">dataset</span><span class="p">,</span>  <span class="c1"># Specify the dataset (e.g., &quot;scifact&quot;)</span>
+    <span class="n">split</span><span class="o">=</span><span class="s2">&quot;test&quot;</span><span class="p">,</span>  <span class="c1"># Specify the split (e.g., &quot;test&quot;)</span>
+<span class="p">)</span>
+
+<span class="c1"># Step 4: Encode the documents</span>
+<span class="n">documents_embeddings</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span>
+    <span class="p">[</span><span class="n">document</span><span class="p">[</span><span class="s2">&quot;text&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">document</span> <span class="ow">in</span> <span class="n">documents</span><span class="p">],</span>
+    <span class="n">batch_size</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span>
+    <span class="n">is_query</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>  <span class="c1"># Indicate that these are documents</span>
+    <span class="n">show_progress_bar</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># Step 5: Add document embeddings to the index</span>
+<span class="n">index</span><span class="o">.</span><span class="n">add_documents</span><span class="p">(</span>
+    <span class="n">documents_ids</span><span class="o">=</span><span class="p">[</span><span class="n">document</span><span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">document</span> <span class="ow">in</span> <span class="n">documents</span><span class="p">],</span>
+    <span class="n">documents_embeddings</span><span class="o">=</span><span class="n">documents_embeddings</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># Step 6: Encode the queries</span>
+<span class="n">queries_embeddings</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span>
+    <span class="n">queries</span><span class="p">,</span>
+    <span class="n">batch_size</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span>
+    <span class="n">is_query</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>  <span class="c1"># Indicate that these are queries</span>
+    <span class="n">show_progress_bar</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># Step 7: Retrieve top-k documents</span>
+<span class="n">retriever</span> <span class="o">=</span> <span class="n">retrieve</span><span class="o">.</span><span class="n">ColBERT</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">index</span><span class="p">)</span>
+<span class="n">scores</span> <span class="o">=</span> <span class="n">retriever</span><span class="o">.</span><span class="n">retrieve</span><span class="p">(</span>
+    <span class="n">queries_embeddings</span><span class="o">=</span><span class="n">queries_embeddings</span><span class="p">,</span>
+    <span class="n">k</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>  <span class="c1"># Retrieve the top 100 matches for each query</span>
+<span class="p">)</span>
+
+<span class="c1"># Step 8: Evaluate the retrieval results</span>
+<span class="n">results</span> <span class="o">=</span> <span class="n">evaluation</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span>
+    <span class="n">scores</span><span class="o">=</span><span class="n">scores</span><span class="p">,</span>
+    <span class="n">qrels</span><span class="o">=</span><span class="n">qrels</span><span class="p">,</span>
+    <span class="n">queries</span><span class="o">=</span><span class="n">queries</span><span class="p">,</span>
+    <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;ndcg@</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">100</span><span class="p">]]</span> <span class="c1"># NDCG for different k values</span>
+    <span class="o">+</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;hits@</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">100</span><span class="p">]]</span>       <span class="c1"># Hits at different k values</span>
+    <span class="o">+</span> <span class="p">[</span><span class="s2">&quot;map&quot;</span><span class="p">]</span>                                         <span class="c1"># Mean Average Precision (MAP)</span>
+    <span class="o">+</span> <span class="p">[</span><span class="s2">&quot;recall@10&quot;</span><span class="p">,</span> <span class="s2">&quot;recall@100&quot;</span><span class="p">]</span>                     <span class="c1"># Recall at k</span>
+    <span class="o">+</span> <span class="p">[</span><span class="s2">&quot;precision@10&quot;</span><span class="p">,</span> <span class="s2">&quot;precision@100&quot;</span><span class="p">],</span>              <span class="c1"># Precision at k</span>
+<span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">results</span><span class="p">)</span>
+</code></pre></div>
+<p>The output is a dictionary containing various evaluation metrics. Here’s a sample output:</p>
+<div class="language-python highlight"><pre><span></span><code><span class="p">{</span>
+    <span class="s2">&quot;ndcg@1&quot;</span><span class="p">:</span> <span class="mf">0.47333333333333333</span><span class="p">,</span>
+    <span class="s2">&quot;ndcg@3&quot;</span><span class="p">:</span> <span class="mf">0.543862513095773</span><span class="p">,</span>
+    <span class="s2">&quot;ndcg@5&quot;</span><span class="p">:</span> <span class="mf">0.5623210323686343</span><span class="p">,</span>
+    <span class="s2">&quot;ndcg@10&quot;</span><span class="p">:</span> <span class="mf">0.5891793972249917</span><span class="p">,</span>
+    <span class="s2">&quot;ndcg@100&quot;</span><span class="p">:</span> <span class="mf">0.5891793972249917</span><span class="p">,</span>
+    <span class="s2">&quot;hits@1&quot;</span><span class="p">:</span> <span class="mf">0.47333333333333333</span><span class="p">,</span>
+    <span class="s2">&quot;hits@3&quot;</span><span class="p">:</span> <span class="mf">0.64</span><span class="p">,</span>
+    <span class="s2">&quot;hits@5&quot;</span><span class="p">:</span> <span class="mf">0.7033333333333334</span><span class="p">,</span>
+    <span class="s2">&quot;hits@10&quot;</span><span class="p">:</span> <span class="mf">0.8</span><span class="p">,</span>
+    <span class="s2">&quot;hits@100&quot;</span><span class="p">:</span> <span class="mf">0.8</span><span class="p">,</span>
+    <span class="s2">&quot;map&quot;</span><span class="p">:</span> <span class="mf">0.5442202380952381</span><span class="p">,</span>
+    <span class="s2">&quot;recall@10&quot;</span><span class="p">:</span> <span class="mf">0.7160555555555556</span><span class="p">,</span>
+    <span class="s2">&quot;recall@100&quot;</span><span class="p">:</span> <span class="mf">0.7160555555555556</span><span class="p">,</span>
+    <span class="s2">&quot;precision@10&quot;</span><span class="p">:</span> <span class="mf">0.08</span><span class="p">,</span>
+    <span class="s2">&quot;precision@100&quot;</span><span class="p">:</span> <span class="mf">0.008000000000000002</span><span class="p">,</span>
+<span class="p">}</span>
+</code></pre></div>
+<details class="info" open="open">
+<summary>Info</summary>
+<ol>
+<li>
+<p>is_query flag: Always set is_query=True when encoding queries and is_query=False when encoding documents. This ensures the model applies the correct prefixes for queries and documents.</p>
+</li>
+<li>
+<p>Evaluation metrics: The pipeline supports a wide range of evaluation metrics, including NDCG, hits, MAP, recall, and precision, with different cutoff points.</p>
+</li>
+<li>
+<p>Relevance judgments (qrels): The qrels are used to calculate how well the retrieved documents match the ground truth.</p>
+</li>
+</ol>
+</details>
+<h3 id="beir-datasets">BEIR datasets<a class="headerlink" href="#beir-datasets" title="Permanent link">&para;</a></h3>
+<p>The following table lists the datasets available in the BEIR benchmark along with their names, types, number of queries, corpus size, and relevance degree per query. Source: <a href="https://github.com/beir-cellar/beir?tab=readme-ov-file">BEIR Datasets</a></p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:1"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Table</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<table>
+<thead>
+<tr>
+<th>Dataset</th>
+<th>BEIR-Name</th>
+<th>Type</th>
+<th>Queries</th>
+<th>Corpus</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MSMARCO</td>
+<td>msmarco</td>
+<td>train, dev, test</td>
+<td>6,980</td>
+<td>8,840,000</td>
+</tr>
+<tr>
+<td>TREC-COVID</td>
+<td>trec-covid</td>
+<td>test</td>
+<td>50</td>
+<td>171,000</td>
+</tr>
+<tr>
+<td>NFCorpus</td>
+<td>nfcorpus</td>
+<td>train, dev, test</td>
+<td>323</td>
+<td>3,600</td>
+</tr>
+<tr>
+<td>BioASQ</td>
+<td>bioasq</td>
+<td>train, test</td>
+<td>500</td>
+<td>14,910,000</td>
+</tr>
+<tr>
+<td>NQ</td>
+<td>nq</td>
+<td>train, test</td>
+<td>3,452</td>
+<td>2,680,000</td>
+</tr>
+<tr>
+<td>HotpotQA</td>
+<td>hotpotqa</td>
+<td>train, dev, test</td>
+<td>7,405</td>
+<td>5,230,000</td>
+</tr>
+<tr>
+<td>FiQA-2018</td>
+<td>fiqa</td>
+<td>train, dev, test</td>
+<td>648</td>
+<td>57,000</td>
+</tr>
+<tr>
+<td>Signal-1M(RT)</td>
+<td>signal1m</td>
+<td>test</td>
+<td>97</td>
+<td>2,860,000</td>
+</tr>
+<tr>
+<td>TREC-NEWS</td>
+<td>trec-news</td>
+<td>test</td>
+<td>57</td>
+<td>595,000</td>
+</tr>
+<tr>
+<td>Robust04</td>
+<td>robust04</td>
+<td>test</td>
+<td>249</td>
+<td>528,000</td>
+</tr>
+<tr>
+<td>ArguAna</td>
+<td>arguana</td>
+<td>test</td>
+<td>1,406</td>
+<td>8,670</td>
+</tr>
+<tr>
+<td>Touche-2020</td>
+<td>webis-touche2020</td>
+<td>test</td>
+<td>49</td>
+<td>382,000</td>
+</tr>
+<tr>
+<td>CQADupstack</td>
+<td>cqadupstack</td>
+<td>test</td>
+<td>13,145</td>
+<td>457,000</td>
+</tr>
+<tr>
+<td>Quora</td>
+<td>quora</td>
+<td>dev, test</td>
+<td>10,000</td>
+<td>523,000</td>
+</tr>
+<tr>
+<td>DBPedia</td>
+<td>dbpedia-entity</td>
+<td>dev, test</td>
+<td>400</td>
+<td>4,630,000</td>
+</tr>
+<tr>
+<td>SCIDOCS</td>
+<td>scidocs</td>
+<td>test</td>
+<td>1,000</td>
+<td>25,000</td>
+</tr>
+<tr>
+<td>FEVER</td>
+<td>fever</td>
+<td>train, dev, test</td>
+<td>6,666</td>
+<td>5,420,000</td>
+</tr>
+<tr>
+<td>Climate-FEVER</td>
+<td>climate-fever</td>
+<td>test</td>
+<td>1,535</td>
+<td>5,420,000</td>
+</tr>
+<tr>
+<td>SciFact</td>
+<td>scifact</td>
+<td>train, test</td>
+<td>300</td>
+<td>5,000</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<h3 id="custom-datasets">Custom datasets<a class="headerlink" href="#custom-datasets" title="Permanent link">&para;</a></h3>
+<p>You can also run evaluation on your custom dataset using the following structure:</p>
+<ul>
+<li><code>corpus.jsonl</code>: each row contains a json element with two properties: <code>['_id', 'text']</code><ul>
+<li><code>_id</code> refers to the document identifier.</li>
+<li><code>text</code> contains the text of the document.</li>
+<li>(an additional <code>title</code> field can also be added if necessary)</li>
+</ul>
+</li>
+<li><code>queries.jsonl</code>: each row contains a json element with two properties: <code>['_id', 'text']</code><ul>
+<li><code>_id</code> refers to the query identifier.</li>
+<li><code>text</code> contains the text of the query.</li>
+</ul>
+</li>
+<li><code>qrels</code> folder contains tsv files with three columns: <code>['query-id', 'doc-id', 'score']</code><ul>
+<li><code>query-id</code> refers to the query identifier.</li>
+<li><code>doc-id</code> refers to the document identifier.</li>
+<li><code>score</code> contains the relation between the query and the document (1 if relevant, else 0)
+The name of the tsv corresponds to the split (e.g, "dev").</li>
+</ul>
+</li>
+</ul>
+<p>You can then use the same pipeline as with BEIR datasets by changing the loading of the data in step 3:</p>
+<div class="language-python highlight"><pre><span></span><code><span class="n">documents</span><span class="p">,</span> <span class="n">queries</span><span class="p">,</span> <span class="n">qrels</span> <span class="o">=</span> <span class="n">evaluation</span><span class="o">.</span><span class="n">load_custom_dataset</span><span class="p">(</span>
+    <span class="s2">&quot;custom_dataset&quot;</span><span class="p">,</span> <span class="n">split</span><span class="o">=</span><span class="s2">&quot;dev&quot;</span>
+<span class="p">)</span>
+</code></pre></div>
+<h3 id="metrics">Metrics<a class="headerlink" href="#metrics" title="Permanent link">&para;</a></h3>
+<p>PyLate evaluation is based on <a href="https://amenra.github.io/ranx/metrics/">Ranx Python library</a> to compute standard Information Retrieval metrics. The following metrics are supported:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="2:1"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">Table</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Alias</th>
+<th>@k</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Hits</td>
+<td>hits</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Hit Rate / Success</td>
+<td>hit_rate</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Precision</td>
+<td>precision</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Recall</td>
+<td>recall</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>F1</td>
+<td>f1</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>R-Precision</td>
+<td>r_precision</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Bpref</td>
+<td>bpref</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Rank-biased Precision</td>
+<td>rbp</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Mean Reciprocal Rank</td>
+<td>mrr</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Mean Average Precision</td>
+<td>map</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>DCG</td>
+<td>dcg</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>DCG Burges</td>
+<td>dcg_burges</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>NDCG</td>
+<td>ndcg</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>NDCG Burges</td>
+<td>ndcg_burges</td>
+<td>Yes</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<p>For any details about the metrics, please refer to <a href="https://amenra.github.io/ranx/metrics/">Ranx documentation</a>.</p>
+<p>Sample code to evaluate the retrieval results using specific metrics:</p>
+<div class="language-python highlight"><pre><span></span><code><span class="n">results</span> <span class="o">=</span> <span class="n">evaluation</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span>
+    <span class="n">scores</span><span class="o">=</span><span class="n">scores</span><span class="p">,</span>
+    <span class="n">qrels</span><span class="o">=</span><span class="n">qrels</span><span class="p">,</span>
+    <span class="n">queries</span><span class="o">=</span><span class="n">queries</span><span class="p">,</span>
+    <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;ndcg@</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">100</span><span class="p">]]</span> <span class="c1"># NDCG for different k values</span>
+    <span class="o">+</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;hits@</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">100</span><span class="p">]]</span>       <span class="c1"># Hits at different k values</span>
+    <span class="o">+</span> <span class="p">[</span><span class="s2">&quot;map&quot;</span><span class="p">]</span>                                         <span class="c1"># Mean Average Precision (MAP)</span>
+    <span class="o">+</span> <span class="p">[</span><span class="s2">&quot;recall@10&quot;</span><span class="p">,</span> <span class="s2">&quot;recall@100&quot;</span><span class="p">]</span>                     <span class="c1"># Recall at k</span>
+    <span class="o">+</span> <span class="p">[</span><span class="s2">&quot;precision@10&quot;</span><span class="p">,</span> <span class="s2">&quot;precision@100&quot;</span><span class="p">],</span>              <span class="c1"># Precision at k</span>
+<span class="p">)</span>
+</code></pre></div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2023
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        <div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/lightonai/pylate" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 512"><!--! Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M186.1 328.7c0 20.9-10.9 55.1-36.7 55.1s-36.7-34.2-36.7-55.1 10.9-55.1 36.7-55.1 36.7 34.2 36.7 55.1zM480 278.2c0 31.9-3.2 65.7-17.5 95-37.9 76.6-142.1 74.8-216.7 74.8-75.8 0-186.2 2.7-225.6-74.8-14.6-29-20.2-63.1-20.2-95 0-41.9 13.9-81.5 41.5-113.6-5.2-15.8-7.7-32.4-7.7-48.8 0-21.5 4.9-32.3 14.6-51.8 45.3 0 74.3 9 108.8 36 29-6.9 58.8-10 88.7-10 27 0 54.2 2.9 80.4 9.2 34-26.7 63-35.2 107.8-35.2 9.8 19.5 14.6 30.3 14.6 51.8 0 16.4-2.6 32.7-7.7 48.2 27.5 32.4 39 72.3 39 114.2zm-64.3 50.5c0-43.9-26.7-82.6-73.5-82.6-18.9 0-37 3.4-56 6-14.9 2.3-29.8 3.2-45.1 3.2-15.2 0-30.1-.9-45.1-3.2-18.7-2.6-37-6-56-6-46.8 0-73.5 38.7-73.5 82.6 0 87.8 80.4 101.3 150.4 101.3h48.2c70.3 0 150.6-13.4 150.6-101.3zm-82.6-55.1c-25.8 0-36.7 34.2-36.7 55.1s10.9 55.1 36.7 55.1 36.7-34.2 36.7-55.1-10.9-55.1-36.7-55.1z"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../..", "features": ["content.code.copy", "navigation.tabs", "navigation.instant", "navigation.indexes", "navigation.prune"], "search": "../../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.471ce7a9.min.js"></script>
+      
+        <script src="../../javascripts/config.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3.2/es5/tex-mml-chtml.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+      
+        <script src="https://unpkg.com/tablesort@5.3.0/dist/tablesort.min.js"></script>
+      
+        <script src="../../javascripts/tablesort.js"></script>
+      
+    
+  </body>
+</html>

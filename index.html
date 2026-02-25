@@ -1,0 +1,1146 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="PyLate 🐶">
+      
+      
+        <meta name="author" content="Raphael Sourty">
+      
+      
+        <link rel="canonical" href="https://lightonai.github.io/pylate/">
+      
+      
+      
+        <link rel="next" href="api/overview/">
+      
+      
+      <link rel="icon" href="img/favicon.ico">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.32">
+    
+    
+      
+        <title>PyLate</title>
+      
+    
+    
+      <link rel="stylesheet" href="assets/stylesheets/main.3cba04c6.min.css">
+      
+        
+        <link rel="stylesheet" href="assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Fira+Sans:300,300i,400,400i,700,700i%7CFira+Code:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Fira Sans";--md-code-font:"Fira Code"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="stylesheets/extra.css">
+    
+      <link rel="stylesheet" href="css/version-select.css">
+    
+    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue" data-md-color-accent="blue">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#installation" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="." title="PyLate" class="md-header__button md-logo" aria-label="PyLate" data-md-component="logo">
+      
+  <img src="img/favicon.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            PyLate
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Home
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue" data-md-color-accent="blue"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69Z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue" data-md-color-accent="blue"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12c0-2.42-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69Z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var media,input,key,value,palette=__md_get("__palette");if(palette&&palette.color){"(prefers-color-scheme)"===palette.color.media&&(media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']"),palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent"));for([key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/lightonai/pylate" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    lighton/pylate
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="documentation/training/" class="md-tabs__link">
+          
+  
+    
+  
+  Documentation
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="models/models/" class="md-tabs__link">
+          
+  
+    
+  
+  Models
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="api/overview/" class="md-tabs__link">
+          
+  
+    
+  
+  API reference
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="." title="PyLate" class="md-nav__button md-logo" aria-label="PyLate" data-md-component="logo">
+      
+  <img src="img/favicon.png" alt="logo">
+
+    </a>
+    PyLate
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/lightonai/pylate" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    lighton/pylate
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="documentation/training/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    Documentation
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="models/models/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    Models
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="api/overview/" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    API reference
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Installation
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Documentation
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#training" class="md-nav__link">
+    <span class="md-ellipsis">
+      Training
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Training">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#contrastive-training" class="md-nav__link">
+    <span class="md-ellipsis">
+      Contrastive Training
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#knowledge-distillation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Knowledge Distillation
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#datasets" class="md-nav__link">
+    <span class="md-ellipsis">
+      Datasets
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#retrieval" class="md-nav__link">
+    <span class="md-ellipsis">
+      Retrieval
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reranking" class="md-nav__link">
+    <span class="md-ellipsis">
+      Reranking
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#contributing" class="md-nav__link">
+    <span class="md-ellipsis">
+      Contributing
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#citation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Citation
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#deepwiki" class="md-nav__link">
+    <span class="md-ellipsis">
+      DeepWiki
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+<div align="center">
+  <h1>PyLate</h1>
+  <p>Flexible Training and Retrieval for Late Interaction Models</p>
+</div>
+
+<p align="center"><img width=500 src="https://raw.githubusercontent.com/lightonai/pylate/refs/heads/main/docs/img/logo.png"/></p>
+
+<div align="center">
+  <!-- Documentation -->
+  <a href="https://lightonai.github.io/pylate/"><img src="https://img.shields.io/badge/Documentation-purple.svg?style=flat-square" alt="documentation"></a>
+  <!-- License -->
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square" alt="license"></a>
+</div>
+
+<p>&nbsp;</p>
+<p align="justify">
+PyLate is a library built on top of Sentence Transformers, designed to simplify and optimize fine-tuning, inference, and retrieval with state-of-the-art ColBERT models. It enables easy fine-tuning on both single and multiple GPUs, providing flexibility for various hardware setups. PyLate also streamlines document retrieval and allows you to load a wide range of models, enabling you to construct ColBERT models from most pre-trained language models.
+</p>
+
+<p>&nbsp;</p>
+<h2 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">&para;</a></h2>
+<p>You can install PyLate using pip:</p>
+<div class="language-bash highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>pylate
+</code></pre></div>
+<p>For evaluation dependencies, use:</p>
+<div class="language-bash highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;pylate[eval]&quot;</span>
+</code></pre></div>
+<h2 id="documentation">Documentation<a class="headerlink" href="#documentation" title="Permanent link">&para;</a></h2>
+<p>The complete documentation is available <a href="https://lightonai.github.io/pylate/">here</a>, which includes in-depth guides, examples, and API references.</p>
+<p>&nbsp;</p>
+<h2 id="training">Training<a class="headerlink" href="#training" title="Permanent link">&para;</a></h2>
+<h3 id="contrastive-training">Contrastive Training<a class="headerlink" href="#contrastive-training" title="Permanent link">&para;</a></h3>
+<p>Here’s a simple example of training a ColBERT model on the MS MARCO dataset triplet dataset using PyLate. This script demonstrates training with contrastive loss and evaluating the model on a held-out eval set:</p>
+<div class="language-python highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datasets</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_dataset</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sentence_transformers</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">SentenceTransformerTrainer</span><span class="p">,</span>
+    <span class="n">SentenceTransformerTrainingArguments</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">pylate</span><span class="w"> </span><span class="kn">import</span> <span class="n">evaluation</span><span class="p">,</span> <span class="n">losses</span><span class="p">,</span> <span class="n">models</span><span class="p">,</span> <span class="n">utils</span>
+
+<span class="c1"># Define model parameters for contrastive training</span>
+<span class="n">model_name</span> <span class="o">=</span> <span class="s2">&quot;bert-base-uncased&quot;</span>  <span class="c1"># Choose the pre-trained model you want to use as base</span>
+<span class="n">batch_size</span> <span class="o">=</span> <span class="mi">32</span>  <span class="c1"># Larger batch size often improves results, but requires more memory</span>
+
+<span class="n">num_train_epochs</span> <span class="o">=</span> <span class="mi">1</span>  <span class="c1"># Adjust based on your requirements</span>
+<span class="c1"># Set the run name for logging and output directory</span>
+<span class="n">run_name</span> <span class="o">=</span> <span class="s2">&quot;contrastive-bert-base-uncased&quot;</span>
+<span class="n">output_dir</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;output/</span><span class="si">{</span><span class="n">run_name</span><span class="si">}</span><span class="s2">&quot;</span>
+
+<span class="c1"># 1. Here we define our ColBERT model. If not a ColBERT model, will add a linear layer to the base encoder.</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ColBERT</span><span class="p">(</span><span class="n">model_name_or_path</span><span class="o">=</span><span class="n">model_name</span><span class="p">)</span>
+
+<span class="c1"># Compiling the model makes the training faster</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+
+<span class="c1"># Load dataset</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">load_dataset</span><span class="p">(</span><span class="s2">&quot;sentence-transformers/msmarco-bm25&quot;</span><span class="p">,</span> <span class="s2">&quot;triplet&quot;</span><span class="p">,</span> <span class="n">split</span><span class="o">=</span><span class="s2">&quot;train&quot;</span><span class="p">)</span>
+<span class="c1"># Split the dataset (this dataset does not have a validation set, so we split the training set)</span>
+<span class="n">splits</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">train_test_split</span><span class="p">(</span><span class="n">test_size</span><span class="o">=</span><span class="mf">0.01</span><span class="p">)</span>
+<span class="n">train_dataset</span> <span class="o">=</span> <span class="n">splits</span><span class="p">[</span><span class="s2">&quot;train&quot;</span><span class="p">]</span>
+<span class="n">eval_dataset</span> <span class="o">=</span> <span class="n">splits</span><span class="p">[</span><span class="s2">&quot;test&quot;</span><span class="p">]</span>
+
+<span class="c1"># Define the loss function</span>
+<span class="n">train_loss</span> <span class="o">=</span> <span class="n">losses</span><span class="o">.</span><span class="n">Contrastive</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">)</span>
+
+<span class="c1"># Initialize the evaluator</span>
+<span class="n">dev_evaluator</span> <span class="o">=</span> <span class="n">evaluation</span><span class="o">.</span><span class="n">ColBERTTripletEvaluator</span><span class="p">(</span>
+    <span class="n">anchors</span><span class="o">=</span><span class="n">eval_dataset</span><span class="p">[</span><span class="s2">&quot;query&quot;</span><span class="p">],</span>
+    <span class="n">positives</span><span class="o">=</span><span class="n">eval_dataset</span><span class="p">[</span><span class="s2">&quot;positive&quot;</span><span class="p">],</span>
+    <span class="n">negatives</span><span class="o">=</span><span class="n">eval_dataset</span><span class="p">[</span><span class="s2">&quot;negative&quot;</span><span class="p">],</span>
+<span class="p">)</span>
+
+<span class="c1"># Configure the training arguments (e.g., batch size, evaluation strategy, logging steps)</span>
+<span class="n">args</span> <span class="o">=</span> <span class="n">SentenceTransformerTrainingArguments</span><span class="p">(</span>
+    <span class="n">output_dir</span><span class="o">=</span><span class="n">output_dir</span><span class="p">,</span>
+    <span class="n">num_train_epochs</span><span class="o">=</span><span class="n">num_train_epochs</span><span class="p">,</span>
+    <span class="n">per_device_train_batch_size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">,</span>
+    <span class="n">per_device_eval_batch_size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">,</span>
+    <span class="n">fp16</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>  <span class="c1"># Set to False if you get an error that your GPU can&#39;t run on FP16</span>
+    <span class="n">bf16</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>  <span class="c1"># Set to True if you have a GPU that supports BF16</span>
+    <span class="n">run_name</span><span class="o">=</span><span class="n">run_name</span><span class="p">,</span>  <span class="c1"># Will be used in W&amp;B if `wandb` is installed</span>
+    <span class="n">learning_rate</span><span class="o">=</span><span class="mf">3e-6</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># Initialize the trainer for the contrastive training</span>
+<span class="n">trainer</span> <span class="o">=</span> <span class="n">SentenceTransformerTrainer</span><span class="p">(</span>
+    <span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span>
+    <span class="n">args</span><span class="o">=</span><span class="n">args</span><span class="p">,</span>
+    <span class="n">train_dataset</span><span class="o">=</span><span class="n">train_dataset</span><span class="p">,</span>
+    <span class="n">eval_dataset</span><span class="o">=</span><span class="n">eval_dataset</span><span class="p">,</span>
+    <span class="n">loss</span><span class="o">=</span><span class="n">train_loss</span><span class="p">,</span>
+    <span class="n">evaluator</span><span class="o">=</span><span class="n">dev_evaluator</span><span class="p">,</span>
+    <span class="n">data_collator</span><span class="o">=</span><span class="n">utils</span><span class="o">.</span><span class="n">ColBERTCollator</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">tokenize</span><span class="p">),</span>
+<span class="p">)</span>
+<span class="c1"># Start the training process</span>
+<span class="n">trainer</span><span class="o">.</span><span class="n">train</span><span class="p">()</span>
+</code></pre></div>
+<p>After training, the model can be loaded using the output directory path:</p>
+<div class="language-python highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pylate</span><span class="w"> </span><span class="kn">import</span> <span class="n">models</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ColBERT</span><span class="p">(</span><span class="n">model_name_or_path</span><span class="o">=</span><span class="s2">&quot;contrastive-bert-base-uncased&quot;</span><span class="p">)</span>
+</code></pre></div>
+<p>Please note that temperature parameter has a <a href="https://openaccess.thecvf.com/content/CVPR2021/papers/Wang_Understanding_the_Behaviour_of_Contrastive_Loss_CVPR_2021_paper.pdf">very high importance in contrastive learning</a>, and a temperature around 0.02 is often used in the literature:</p>
+<div class="language-python highlight"><pre><span></span><code><span class="n">train_loss</span> <span class="o">=</span> <span class="n">losses</span><span class="o">.</span><span class="n">Contrastive</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span> <span class="n">temperature</span><span class="o">=</span><span class="mf">0.02</span><span class="p">)</span>
+</code></pre></div>
+<p>As contrastive learning is not compatible with gradient accumulation, you can leverage <a href="https://arxiv.org/abs/2101.06983">GradCache</a> to emulate bigger batch sizes without requiring more memory by using the <code>CachedContrastiveLoss</code> to define a mini_batch_size while increasing the <code>per_device_train_batch_size</code>:</p>
+<div class="language-python highlight"><pre><span></span><code><span class="n">train_loss</span> <span class="o">=</span> <span class="n">losses</span><span class="o">.</span><span class="n">CachedContrastive</span><span class="p">(</span>
+        <span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span> <span class="n">mini_batch_size</span><span class="o">=</span><span class="n">mini_batch_size</span>
+<span class="p">)</span>
+</code></pre></div>
+<p>Finally, if you are in a multi-GPU setting, you can gather all the elements from the different GPUs to create even bigger batch sizes by setting <code>gather_across_devices</code> to <code>True</code> (for both <code>Contrastive</code> and <code>CachedContrastive</code> losses):</p>
+<div class="language-python highlight"><pre><span></span><code><span class="n">train_loss</span> <span class="o">=</span> <span class="n">losses</span><span class="o">.</span><span class="n">Contrastive</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span> <span class="n">gather_across_devices</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</code></pre></div>
+<p>&nbsp;</p>
+<h3 id="knowledge-distillation">Knowledge Distillation<a class="headerlink" href="#knowledge-distillation" title="Permanent link">&para;</a></h3>
+<p>To get the best performance when training a ColBERT model, you should use knowledge distillation to train the model using the scores of a strong teacher model.
+Here's a simple example of how to train a model using knowledge distillation in PyLate on MS MARCO:</p>
+<div class="language-python highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datasets</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_dataset</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sentence_transformers</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">SentenceTransformerTrainer</span><span class="p">,</span>
+    <span class="n">SentenceTransformerTrainingArguments</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">pylate</span><span class="w"> </span><span class="kn">import</span> <span class="n">losses</span><span class="p">,</span> <span class="n">models</span><span class="p">,</span> <span class="n">utils</span>
+
+<span class="c1"># Load the datasets required for knowledge distillation (train, queries, documents)</span>
+<span class="n">train</span> <span class="o">=</span> <span class="n">load_dataset</span><span class="p">(</span>
+    <span class="n">path</span><span class="o">=</span><span class="s2">&quot;lightonai/ms-marco-en-bge&quot;</span><span class="p">,</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;train&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">queries</span> <span class="o">=</span> <span class="n">load_dataset</span><span class="p">(</span>
+    <span class="n">path</span><span class="o">=</span><span class="s2">&quot;lightonai/ms-marco-en-bge&quot;</span><span class="p">,</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;queries&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">documents</span> <span class="o">=</span> <span class="n">load_dataset</span><span class="p">(</span>
+    <span class="n">path</span><span class="o">=</span><span class="s2">&quot;lightonai/ms-marco-en-bge&quot;</span><span class="p">,</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;documents&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># Set the transformation to load the documents/queries texts using the corresponding ids on the fly</span>
+<span class="n">train</span><span class="o">.</span><span class="n">set_transform</span><span class="p">(</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">KDProcessing</span><span class="p">(</span><span class="n">queries</span><span class="o">=</span><span class="n">queries</span><span class="p">,</span> <span class="n">documents</span><span class="o">=</span><span class="n">documents</span><span class="p">)</span><span class="o">.</span><span class="n">transform</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># Define the base model, training parameters, and output directory</span>
+<span class="n">model_name</span> <span class="o">=</span> <span class="s2">&quot;bert-base-uncased&quot;</span>  <span class="c1"># Choose the pre-trained model you want to use as base</span>
+<span class="n">batch_size</span> <span class="o">=</span> <span class="mi">16</span>
+<span class="n">num_train_epochs</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="c1"># Set the run name for logging and output directory</span>
+<span class="n">run_name</span> <span class="o">=</span> <span class="s2">&quot;knowledge-distillation-bert-base&quot;</span>
+<span class="n">output_dir</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;output/</span><span class="si">{</span><span class="n">run_name</span><span class="si">}</span><span class="s2">&quot;</span>
+
+<span class="c1"># Initialize the ColBERT model from the base model</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ColBERT</span><span class="p">(</span><span class="n">model_name_or_path</span><span class="o">=</span><span class="n">model_name</span><span class="p">)</span>
+
+<span class="c1"># Compiling the model to make the training faster</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+
+<span class="c1"># Configure the training arguments (e.g., epochs, batch size, learning rate)</span>
+<span class="n">args</span> <span class="o">=</span> <span class="n">SentenceTransformerTrainingArguments</span><span class="p">(</span>
+    <span class="n">output_dir</span><span class="o">=</span><span class="n">output_dir</span><span class="p">,</span>
+    <span class="n">num_train_epochs</span><span class="o">=</span><span class="n">num_train_epochs</span><span class="p">,</span>
+    <span class="n">per_device_train_batch_size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">,</span>
+    <span class="n">fp16</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>  <span class="c1"># Set to False if you get an error that your GPU can&#39;t run on FP16</span>
+    <span class="n">bf16</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>  <span class="c1"># Set to True if you have a GPU that supports BF16</span>
+    <span class="n">run_name</span><span class="o">=</span><span class="n">run_name</span><span class="p">,</span>
+    <span class="n">learning_rate</span><span class="o">=</span><span class="mf">1e-5</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># Use the Distillation loss function for training</span>
+<span class="n">train_loss</span> <span class="o">=</span> <span class="n">losses</span><span class="o">.</span><span class="n">Distillation</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">)</span>
+
+<span class="c1"># Initialize the trainer</span>
+<span class="n">trainer</span> <span class="o">=</span> <span class="n">SentenceTransformerTrainer</span><span class="p">(</span>
+    <span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span>
+    <span class="n">args</span><span class="o">=</span><span class="n">args</span><span class="p">,</span>
+    <span class="n">train_dataset</span><span class="o">=</span><span class="n">train</span><span class="p">,</span>
+    <span class="n">loss</span><span class="o">=</span><span class="n">train_loss</span><span class="p">,</span>
+    <span class="n">data_collator</span><span class="o">=</span><span class="n">utils</span><span class="o">.</span><span class="n">ColBERTCollator</span><span class="p">(</span><span class="n">tokenize_fn</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">tokenize</span><span class="p">),</span>
+<span class="p">)</span>
+
+<span class="c1"># Start the training process</span>
+<span class="n">trainer</span><span class="o">.</span><span class="n">train</span><span class="p">()</span>
+</code></pre></div>
+<h4 id="nanobeir-evaluator">NanoBEIR evaluator<a class="headerlink" href="#nanobeir-evaluator" title="Permanent link">&para;</a></h4>
+<p>If you are training an English retrieval model, you can use <a href="https://huggingface.co/collections/zeta-alpha-ai/nanobeir-66e1a0af21dfd93e620cd9f6">NanoBEIR evaluator</a>, which allows to run small version of BEIR to get quick validation results.</p>
+<div class="language-python highlight"><pre><span></span><code><span class="n">evaluator</span><span class="o">=</span><span class="n">evaluation</span><span class="o">.</span><span class="n">NanoBEIREvaluator</span><span class="p">(),</span>
+</code></pre></div>
+<p>&nbsp;</p>
+<h2 id="datasets">Datasets<a class="headerlink" href="#datasets" title="Permanent link">&para;</a></h2>
+<p>PyLate supports Hugging Face <a href="https://huggingface.co/docs/datasets/en/index">Datasets</a>, enabling seamless triplet / knowledge distillation based training. For contrastive training, you can use any of the existing sentence transformers triplet datasets. Below is an example of creating a custom triplet dataset for training:</p>
+<div class="language-python highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">datasets</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dataset</span>
+
+<span class="n">dataset</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">{</span>
+        <span class="s2">&quot;query&quot;</span><span class="p">:</span> <span class="s2">&quot;example query 1&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;positive&quot;</span><span class="p">:</span> <span class="s2">&quot;example positive document 1&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;negative&quot;</span><span class="p">:</span> <span class="s2">&quot;example negative document 1&quot;</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="p">{</span>
+        <span class="s2">&quot;query&quot;</span><span class="p">:</span> <span class="s2">&quot;example query 2&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;positive&quot;</span><span class="p">:</span> <span class="s2">&quot;example positive document 2&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;negative&quot;</span><span class="p">:</span> <span class="s2">&quot;example negative document 2&quot;</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="p">{</span>
+        <span class="s2">&quot;query&quot;</span><span class="p">:</span> <span class="s2">&quot;example query 3&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;positive&quot;</span><span class="p">:</span> <span class="s2">&quot;example positive document 3&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;negative&quot;</span><span class="p">:</span> <span class="s2">&quot;example negative document 3&quot;</span><span class="p">,</span>
+    <span class="p">},</span>
+<span class="p">]</span>
+
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">from_list</span><span class="p">(</span><span class="n">mapping</span><span class="o">=</span><span class="n">dataset</span><span class="p">)</span>
+
+<span class="n">train_dataset</span><span class="p">,</span> <span class="n">test_dataset</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">train_test_split</span><span class="p">(</span><span class="n">test_size</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
+</code></pre></div>
+<p>Note that PyLate supports more than one negative per query, simply add the additional negatives after the first one in the row.</p>
+<div class="language-python highlight"><pre><span></span><code><span class="p">{</span>
+        <span class="s2">&quot;query&quot;</span><span class="p">:</span> <span class="s2">&quot;example query 1&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;positive&quot;</span><span class="p">:</span> <span class="s2">&quot;example positive document 1&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;negative_1&quot;</span><span class="p">:</span> <span class="s2">&quot;example negative document 1&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;negative_2&quot;</span><span class="p">:</span> <span class="s2">&quot;example negative document 2&quot;</span><span class="p">,</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>To create a knowledge distillation dataset, you can use the following snippet:</p>
+<div class="language-python highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">datasets</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dataset</span>
+
+<span class="n">dataset</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">{</span>
+        <span class="s2">&quot;query_id&quot;</span><span class="p">:</span> <span class="mi">54528</span><span class="p">,</span>
+        <span class="s2">&quot;document_ids&quot;</span><span class="p">:</span> <span class="p">[</span>
+            <span class="mi">6862419</span><span class="p">,</span>
+            <span class="mi">335116</span><span class="p">,</span>
+            <span class="mi">339186</span><span class="p">,</span>
+        <span class="p">],</span>
+        <span class="s2">&quot;scores&quot;</span><span class="p">:</span> <span class="p">[</span>
+            <span class="mf">0.4546215673141326</span><span class="p">,</span>
+            <span class="mf">0.6575686537173476</span><span class="p">,</span>
+            <span class="mf">0.26825184192900203</span><span class="p">,</span>
+        <span class="p">],</span>
+    <span class="p">},</span>
+    <span class="p">{</span>
+        <span class="s2">&quot;query_id&quot;</span><span class="p">:</span> <span class="mi">749480</span><span class="p">,</span>
+        <span class="s2">&quot;document_ids&quot;</span><span class="p">:</span> <span class="p">[</span>
+            <span class="mi">6862419</span><span class="p">,</span>
+            <span class="mi">335116</span><span class="p">,</span>
+            <span class="mi">339186</span><span class="p">,</span>
+        <span class="p">],</span>
+        <span class="s2">&quot;scores&quot;</span><span class="p">:</span> <span class="p">[</span>
+            <span class="mf">0.2546215673141326</span><span class="p">,</span>
+            <span class="mf">0.7575686537173476</span><span class="p">,</span>
+            <span class="mf">0.96825184192900203</span><span class="p">,</span>
+        <span class="p">],</span>
+    <span class="p">},</span>
+<span class="p">]</span>
+
+
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">from_list</span><span class="p">(</span><span class="n">mapping</span><span class="o">=</span><span class="n">dataset</span><span class="p">)</span>
+
+<span class="n">documents</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">{</span><span class="s2">&quot;document_id&quot;</span><span class="p">:</span> <span class="mi">6862419</span><span class="p">,</span> <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="s2">&quot;example doc 1&quot;</span><span class="p">},</span>
+    <span class="p">{</span><span class="s2">&quot;document_id&quot;</span><span class="p">:</span> <span class="mi">335116</span><span class="p">,</span> <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="s2">&quot;example doc 2&quot;</span><span class="p">},</span>
+    <span class="p">{</span><span class="s2">&quot;document_id&quot;</span><span class="p">:</span> <span class="mi">339186</span><span class="p">,</span> <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="s2">&quot;example doc 3&quot;</span><span class="p">},</span>
+<span class="p">]</span>
+
+<span class="n">queries</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">{</span><span class="s2">&quot;query_id&quot;</span><span class="p">:</span> <span class="mi">749480</span><span class="p">,</span> <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="s2">&quot;example query&quot;</span><span class="p">},</span>
+<span class="p">]</span>
+
+<span class="n">documents</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">from_list</span><span class="p">(</span><span class="n">mapping</span><span class="o">=</span><span class="n">documents</span><span class="p">)</span>
+
+<span class="n">queries</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">from_list</span><span class="p">(</span><span class="n">mapping</span><span class="o">=</span><span class="n">queries</span><span class="p">)</span>
+</code></pre></div>
+<p>&nbsp;</p>
+<h2 id="retrieval">Retrieval<a class="headerlink" href="#retrieval" title="Permanent link">&para;</a></h2>
+<p>PyLate provides an efficient index with <a href="https://github.com/lightonai/fast-plaid">FastPLAID</a>. Simply load a ColBERT model and initialize the index to perform retrieval.</p>
+<div class="language-python highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pylate</span><span class="w"> </span><span class="kn">import</span> <span class="n">indexes</span><span class="p">,</span> <span class="n">models</span><span class="p">,</span> <span class="n">retrieve</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ColBERT</span><span class="p">(</span>
+    <span class="n">model_name_or_path</span><span class="o">=</span><span class="s2">&quot;lightonai/GTE-ModernColBERT-v1&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">index</span> <span class="o">=</span> <span class="n">indexes</span><span class="o">.</span><span class="n">PLAID</span><span class="p">(</span>
+    <span class="n">index_folder</span><span class="o">=</span><span class="s2">&quot;pylate-index&quot;</span><span class="p">,</span>
+    <span class="n">index_name</span><span class="o">=</span><span class="s2">&quot;index&quot;</span><span class="p">,</span>
+    <span class="n">override</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">retriever</span> <span class="o">=</span> <span class="n">retrieve</span><span class="o">.</span><span class="n">ColBERT</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">index</span><span class="p">)</span>
+</code></pre></div>
+<p>Once the model and index are set up, we can add documents to the index using their embeddings and corresponding ids:</p>
+<div class="language-python highlight"><pre><span></span><code><span class="n">documents_ids</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="s2">&quot;2&quot;</span><span class="p">,</span> <span class="s2">&quot;3&quot;</span><span class="p">]</span>
+
+<span class="n">documents</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;ColBERT’s late-interaction keeps token-level embeddings to deliver cross-encoder-quality ranking at near-bi-encoder speed, enabling fine-grained relevance, robustness across domains, and hardware-friendly scalable search.&quot;</span><span class="p">,</span>
+
+    <span class="s2">&quot;PLAID compresses ColBERT token vectors via product quantization to shrink storage by 10×, uses two-stage centroid scoring for sub-200 ms latency, and plugs directly into existing ColBERT pipelines.&quot;</span><span class="p">,</span>
+
+    <span class="s2">&quot;PyLate is a library built on top of Sentence Transformers, designed to simplify and optimize fine-tuning, inference, and retrieval with state-of-the-art ColBERT models. It enables easy fine-tuning on both single and multiple GPUs, providing flexibility for various hardware setups. PyLate also streamlines document retrieval and allows you to load a wide range of models, enabling you to construct ColBERT models from most pre-trained language models.&quot;</span><span class="p">,</span>
+<span class="p">]</span>
+
+<span class="c1"># Encode the documents</span>
+<span class="n">documents_embeddings</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span>
+    <span class="n">documents</span><span class="p">,</span>
+    <span class="n">batch_size</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span>
+    <span class="n">is_query</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="c1"># Encoding documents</span>
+    <span class="n">show_progress_bar</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># Add the documents ids and embeddings to the PLAID index</span>
+<span class="n">index</span><span class="o">.</span><span class="n">add_documents</span><span class="p">(</span>
+    <span class="n">documents_ids</span><span class="o">=</span><span class="n">documents_ids</span><span class="p">,</span>
+    <span class="n">documents_embeddings</span><span class="o">=</span><span class="n">documents_embeddings</span><span class="p">,</span>
+<span class="p">)</span>
+</code></pre></div>
+<p>Then we can retrieve the top-k documents for a given set of queries:</p>
+<div class="language-python highlight"><pre><span></span><code><span class="n">queries_embeddings</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span>
+    <span class="p">[</span><span class="s2">&quot;query for document 3&quot;</span><span class="p">,</span> <span class="s2">&quot;query for document 1&quot;</span><span class="p">],</span>
+    <span class="n">batch_size</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span>
+    <span class="n">is_query</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="c1"># Encoding queries</span>
+    <span class="n">show_progress_bar</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">scores</span> <span class="o">=</span> <span class="n">retriever</span><span class="o">.</span><span class="n">retrieve</span><span class="p">(</span>
+    <span class="n">queries_embeddings</span><span class="o">=</span><span class="n">queries_embeddings</span><span class="p">,</span>
+    <span class="n">k</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">scores</span><span class="p">)</span>
+</code></pre></div>
+<p>Sample Output:</p>
+<div class="language-python highlight"><pre><span></span><code><span class="p">[</span>
+    <span class="p">[</span>
+        <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;3&quot;</span><span class="p">,</span> <span class="s2">&quot;score&quot;</span><span class="p">:</span> <span class="mf">11.266985893249512</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="s2">&quot;score&quot;</span><span class="p">:</span> <span class="mf">10.303335189819336</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;2&quot;</span><span class="p">,</span> <span class="s2">&quot;score&quot;</span><span class="p">:</span> <span class="mf">9.502392768859863</span><span class="p">},</span>
+    <span class="p">],</span>
+    <span class="p">[</span>
+        <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="s2">&quot;score&quot;</span><span class="p">:</span> <span class="mf">10.88800048828125</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;3&quot;</span><span class="p">,</span> <span class="s2">&quot;score&quot;</span><span class="p">:</span> <span class="mf">9.950843811035156</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;2&quot;</span><span class="p">,</span> <span class="s2">&quot;score&quot;</span><span class="p">:</span> <span class="mf">9.602447509765625</span><span class="p">},</span>
+    <span class="p">],</span>
+<span class="p">]</span>
+</code></pre></div>
+<p>&nbsp;</p>
+<h2 id="reranking">Reranking<a class="headerlink" href="#reranking" title="Permanent link">&para;</a></h2>
+<p>If you want to use the ColBERT model to perform reranking on top of your first-stage retrieval pipeline without building an index, you can simply use <code>rank.rerank</code> function which takes the queries and documents embeddings along with the documents ids to rerank them:</p>
+<div class="language-python highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pylate</span><span class="w"> </span><span class="kn">import</span> <span class="n">rank</span>
+
+<span class="n">queries</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;query A&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;query B&quot;</span><span class="p">,</span>
+<span class="p">]</span>
+
+<span class="n">documents</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">[</span><span class="s2">&quot;document A&quot;</span><span class="p">,</span> <span class="s2">&quot;document B&quot;</span><span class="p">],</span>
+    <span class="p">[</span><span class="s2">&quot;document 1&quot;</span><span class="p">,</span> <span class="s2">&quot;document C&quot;</span><span class="p">,</span> <span class="s2">&quot;document B&quot;</span><span class="p">],</span>
+<span class="p">]</span>
+
+<span class="n">documents_ids</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span>
+    <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span>
+<span class="p">]</span>
+
+<span class="n">queries_embeddings</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span>
+    <span class="n">queries</span><span class="p">,</span>
+    <span class="n">is_query</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">documents_embeddings</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span>
+    <span class="n">documents</span><span class="p">,</span>
+    <span class="n">is_query</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">reranked_documents</span> <span class="o">=</span> <span class="n">rank</span><span class="o">.</span><span class="n">rerank</span><span class="p">(</span>
+    <span class="n">documents_ids</span><span class="o">=</span><span class="n">documents_ids</span><span class="p">,</span>
+    <span class="n">queries_embeddings</span><span class="o">=</span><span class="n">queries_embeddings</span><span class="p">,</span>
+    <span class="n">documents_embeddings</span><span class="o">=</span><span class="n">documents_embeddings</span><span class="p">,</span>
+<span class="p">)</span>
+</code></pre></div>
+<p>&nbsp;</p>
+<h2 id="contributing">Contributing<a class="headerlink" href="#contributing" title="Permanent link">&para;</a></h2>
+<p>We welcome contributions! To get started:</p>
+<ol>
+<li>Install the development dependencies:</li>
+</ol>
+<div class="language-bash highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;pylate[dev]&quot;</span>
+</code></pre></div>
+<ol>
+<li>Run tests:</li>
+</ol>
+<div class="language-bash highlight"><pre><span></span><code>make<span class="w"> </span><span class="nb">test</span>
+</code></pre></div>
+<ol>
+<li>Format code with Ruff:</li>
+</ol>
+<div class="language-bash highlight"><pre><span></span><code>make<span class="w"> </span>lint
+</code></pre></div>
+<h2 id="citation">Citation<a class="headerlink" href="#citation" title="Permanent link">&para;</a></h2>
+<p>You can refer to the library with this BibTeX:</p>
+<div class="language-bibtex highlight"><pre><span></span><code><span class="nc">@inproceedings</span><span class="p">{</span><span class="nl">DBLP:conf/cikm/ChaffinS25</span><span class="p">,</span>
+<span class="w">  </span><span class="na">author</span><span class="w">       </span><span class="p">=</span><span class="w"> </span><span class="s">{Antoine Chaffin and</span>
+<span class="s">                  Rapha{\&quot;{e}}l Sourty}</span><span class="p">,</span>
+<span class="w">  </span><span class="na">editor</span><span class="w">       </span><span class="p">=</span><span class="w"> </span><span class="s">{Meeyoung Cha and</span>
+<span class="s">                  Chanyoung Park and</span>
+<span class="s">                  Noseong Park and</span>
+<span class="s">                  Carl Yang and</span>
+<span class="s">                  Senjuti Basu Roy and</span>
+<span class="s">                  Jessie Li and</span>
+<span class="s">                  Jaap Kamps and</span>
+<span class="s">                  Kijung Shin and</span>
+<span class="s">                  Bryan Hooi and</span>
+<span class="s">                  Lifang He}</span><span class="p">,</span>
+<span class="w">  </span><span class="na">title</span><span class="w">        </span><span class="p">=</span><span class="w"> </span><span class="s">{PyLate: Flexible Training and Retrieval for Late Interaction Models}</span><span class="p">,</span>
+<span class="w">  </span><span class="na">booktitle</span><span class="w">    </span><span class="p">=</span><span class="w"> </span><span class="s">{Proceedings of the 34th {ACM} International Conference on Information</span>
+<span class="s">                  and Knowledge Management, {CIKM} 2025, Seoul, Republic of Korea, November</span>
+<span class="s">                  10-14, 2025}</span><span class="p">,</span>
+<span class="w">  </span><span class="na">pages</span><span class="w">        </span><span class="p">=</span><span class="w"> </span><span class="s">{6334--6339}</span><span class="p">,</span>
+<span class="w">  </span><span class="na">publisher</span><span class="w">    </span><span class="p">=</span><span class="w"> </span><span class="s">{{ACM}}</span><span class="p">,</span>
+<span class="w">  </span><span class="na">year</span><span class="w">         </span><span class="p">=</span><span class="w"> </span><span class="s">{2025}</span><span class="p">,</span>
+<span class="w">  </span><span class="na">url</span><span class="w">          </span><span class="p">=</span><span class="w"> </span><span class="s">{https://github.com/lightonai/pylate}</span><span class="p">,</span>
+<span class="w">  </span><span class="na">doi</span><span class="w">          </span><span class="p">=</span><span class="w"> </span><span class="s">{10.1145/3746252.3761608}</span><span class="p">,</span>
+<span class="p">}</span>
+</code></pre></div>
+<h2 id="deepwiki">DeepWiki<a class="headerlink" href="#deepwiki" title="Permanent link">&para;</a></h2>
+<p>PyLate is indexed on <a href="https://deepwiki.com/lightonai/pylate">DeepWiki</a> so you can ask questions to LLMs using Deep Research to explore the codebase and get help to add new features.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2023
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        <div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/lightonai/pylate" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 512"><!--! Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M186.1 328.7c0 20.9-10.9 55.1-36.7 55.1s-36.7-34.2-36.7-55.1 10.9-55.1 36.7-55.1 36.7 34.2 36.7 55.1zM480 278.2c0 31.9-3.2 65.7-17.5 95-37.9 76.6-142.1 74.8-216.7 74.8-75.8 0-186.2 2.7-225.6-74.8-14.6-29-20.2-63.1-20.2-95 0-41.9 13.9-81.5 41.5-113.6-5.2-15.8-7.7-32.4-7.7-48.8 0-21.5 4.9-32.3 14.6-51.8 45.3 0 74.3 9 108.8 36 29-6.9 58.8-10 88.7-10 27 0 54.2 2.9 80.4 9.2 34-26.7 63-35.2 107.8-35.2 9.8 19.5 14.6 30.3 14.6 51.8 0 16.4-2.6 32.7-7.7 48.2 27.5 32.4 39 72.3 39 114.2zm-64.3 50.5c0-43.9-26.7-82.6-73.5-82.6-18.9 0-37 3.4-56 6-14.9 2.3-29.8 3.2-45.1 3.2-15.2 0-30.1-.9-45.1-3.2-18.7-2.6-37-6-56-6-46.8 0-73.5 38.7-73.5 82.6 0 87.8 80.4 101.3 150.4 101.3h48.2c70.3 0 150.6-13.4 150.6-101.3zm-82.6-55.1c-25.8 0-36.7 34.2-36.7 55.1s10.9 55.1 36.7 55.1 36.7-34.2 36.7-55.1-10.9-55.1-36.7-55.1z"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": ".", "features": ["content.code.copy", "navigation.tabs", "navigation.instant", "navigation.indexes", "navigation.prune"], "search": "assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="assets/javascripts/bundle.471ce7a9.min.js"></script>
+      
+        <script src="javascripts/config.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3.2/es5/tex-mml-chtml.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+      
+        <script src="https://unpkg.com/tablesort@5.3.0/dist/tablesort.min.js"></script>
+      
+        <script src="javascripts/tablesort.js"></script>
+      
+    
+  </body>
+</html>
