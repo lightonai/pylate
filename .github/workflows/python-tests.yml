@@ -19,7 +19,7 @@ jobs:
       fail-fast: true
       matrix:
         os: [ubuntu-latest]
-        python-version: ["3.9", "3.12"]
+        python-version: ["3.10", "3.14"]
         test-target: ["tests", "pylate"]
 
     steps:
@@ -38,4 +38,4 @@ jobs:
         run: uv run --extra dev pytest tests -m "model_loading" --durations=5
 
       - name: Run other tests
-        run: uv run --extra dev --extra voyager pytest ${{ matrix.test-target }} -m "not model_loading" -n auto --durations=5
+        run: uv run --extra dev pytest ${{ matrix.test-target }} -m "not model_loading" -n auto --durations=5
