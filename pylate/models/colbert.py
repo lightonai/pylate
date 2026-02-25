@@ -284,18 +284,17 @@ class ColBERT(SentenceTransformer):
                         metadata = json.load(f)
                         # If the user do not override the values, read from config file
                         meta_query_token_id = metadata.get("query_token_id", None)
-                        if (
-                            self.query_prefix is None
-                            and meta_query_token_id is not None
-                        ):
-                            self.query_prefix = meta_query_token_id
-
+                        if self.query_prefix is None:
+                            if meta_query_token_id is not None:
+                                self.query_prefix = meta_query_token_id
+                            else:
+                                self.query_prefix = "[unused0]"
                         meta_doc_token_id = metadata.get("doc_token_id", None)
-                        if (
-                            self.document_prefix is None
-                            and meta_doc_token_id is not None
-                        ):
-                            self.document_prefix = meta_doc_token_id
+                        if self.document_prefix is None:
+                            if meta_doc_token_id is not None:
+                                self.document_prefix = meta_doc_token_id
+                            else:
+                                self.document_prefix = "[unused1]"
 
                         meta_query_maxlen = metadata.get("query_maxlen", None)
                         if self.query_length is None and meta_query_maxlen is not None:
