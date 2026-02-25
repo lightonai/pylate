@@ -38,8 +38,8 @@ def cleanup_hf_cache():
         (
             "colbert-ir/colbertv2.0",
             "c1e84128e85ef755c096a95bdb06b47793b13acf",
-            "[Q]\\s",
-            "[D]\\s",
+            "[unused0]\\s",
+            "[unused1]\\s",
             512,
             32,
             {},
