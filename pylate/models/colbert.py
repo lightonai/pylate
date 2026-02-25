@@ -284,19 +284,25 @@ class ColBERT(SentenceTransformer):
                         metadata = json.load(f)
                         # If the user do not override the values, read from config file
                         meta_query_token_id = metadata.get("query_token_id", None)
-                        if self.query_prefix is None and meta_query_token_id:
+                        if (
+                            self.query_prefix is None
+                            and meta_query_token_id is not None
+                        ):
                             self.query_prefix = meta_query_token_id
 
                         meta_doc_token_id = metadata.get("doc_token_id", None)
-                        if self.document_prefix is None and meta_doc_token_id:
+                        if (
+                            self.document_prefix is None
+                            and meta_doc_token_id is not None
+                        ):
                             self.document_prefix = meta_doc_token_id
 
                         meta_query_maxlen = metadata.get("query_maxlen", None)
-                        if self.query_length is None and meta_query_maxlen:
+                        if self.query_length is None and meta_query_maxlen is not None:
                             self.query_length = meta_query_maxlen
 
                         meta_doc_maxlen = metadata.get("doc_maxlen", None)
-                        if self.document_length is None and meta_doc_maxlen:
+                        if self.document_length is None and meta_doc_maxlen is not None:
                             self.document_length = meta_doc_maxlen
 
                         meta_attend_to_mask_tokens = metadata.get(
@@ -304,7 +310,7 @@ class ColBERT(SentenceTransformer):
                         )
                         if (
                             self.attend_to_expansion_tokens is None
-                            and meta_attend_to_mask_tokens
+                            and meta_attend_to_mask_tokens is not None
                         ):
                             self.attend_to_expansion_tokens = meta_attend_to_mask_tokens
 
@@ -359,12 +365,18 @@ class ColBERT(SentenceTransformer):
         self.is_hpu_graph_enabled = False
         # Override the configuration values with the provided arguments, if any. If not set and values have not been read from configs, set to default values.
         self.query_prefix = (
-            query_prefix if query_prefix is not None else self.query_prefix or "[Q] "
+            query_prefix
+            if query_prefix is not None
+            else self.query_prefix
+            if self.query_prefix is not None
+            else "[Q] "
         )
         self.document_prefix = (
             document_prefix
             if document_prefix is not None
-            else self.document_prefix or "[D] "
+            else self.document_prefix
+            if self.document_prefix is not None
+            else "[D] "
         )
 
         # Try adding the prefixes to the tokenizer. We call resize_token_embeddings twice to ensure the tokens are added only if resize_token_embeddings works. There should be a better way to do this.
@@ -403,17 +415,25 @@ class ColBERT(SentenceTransformer):
         self.document_length = (
             document_length
             if document_length is not None
-            else self.document_length or 180
+            else self.document_length
+            if self.document_length is not None
+            else 180
         )
 
         self.query_length = (
-            query_length if query_length is not None else self.query_length or 32
+            query_length
+            if query_length is not None
+            else self.query_length
+            if self.query_length is not None
+            else 32
         )
 
         self.skiplist_words = (
             skiplist_words
             if skiplist_words is not None
-            else self.skiplist_words or list(string.punctuation)
+            else self.skiplist_words
+            if self.skiplist_words is not None
+            else list(string.punctuation)
         )
 
         # Convert skiplist words to their corresponding token IDs.
@@ -1051,8 +1071,6 @@ class ColBERT(SentenceTransformer):
         texts: list[str] | list[dict] | list[tuple[str, str]],
         is_query: bool = True,
         pad: bool = False,
-        task: str
-        | None = None,  # this is to be compatible with the new collator that supports "task". It isn't used here, only if the model is a router, but I find it cleaner than kwargs
     ) -> dict[str, torch.Tensor]:
         """
         Tokenizes the input texts.
