@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import argparse
 
+import torch
+
 from pylate import evaluation, indexes, models, retrieve
 
 if __name__ == "__main__":
@@ -44,14 +46,22 @@ if __name__ == "__main__":
         default="nfcorpus",
         help="Name of the dataset to evaluate on (default: 'fiqa')",
     )
+    parser.add_argument(
+        "--index_type",
+        type=str,
+        default="plaid",
+        choices=["plaid", "scann"],
+        help="Type of index to use (default: 'plaid')",
+    )
     args = parser.parse_args()
     dataset_name = args.dataset_name
+    index_type = args.index_type
     model_name = "lightonai/GTE-ModernColBERT-v1"
     model = models.ColBERT(
         model_name_or_path=model_name,
         document_length=300,
         query_length=query_len.get(dataset_name),
-    )
+    ).to(torch.float16)
 
     if "cqadupstack" in dataset_name:
         # Download dataset if not already downloaded
@@ -72,10 +82,20 @@ if __name__ == "__main__":
             split="dev" if "msmarco" in dataset_name else "test",
         )
 
-    index = indexes.PLAID(
-        override=True,
-        index_name=f"{dataset_name}_{model_name.split('/')[-1]}",
-    )
+    if index_type == "scann":
+        index = indexes.ScaNN(
+            override=True,
+            index_name=f"{dataset_name}_{model_name.split('/')[-1]}",
+            store_embeddings=True,
+            dimensions_per_block=2,
+            anisotropic_quantization_threshold=0.2,
+            verbose="all",
+        )
+    elif index_type == "plaid":
+        index = indexes.PLAID(
+            override=True,
+            index_name=f"{dataset_name}_{model_name.split('/')[-1]}",
+        )
 
     retriever = retrieve.ColBERT(index=index)
 
