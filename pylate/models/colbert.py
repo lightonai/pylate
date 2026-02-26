@@ -357,32 +357,44 @@ class ColBERT(SentenceTransformer):
 
         self.to(device)
         self.is_hpu_graph_enabled = False
-        # Override the configuration values with the provided arguments, if any. If not set and values have not been read from configs, set to default values.
+        # Override configuration values with provided arguments, if any.
+        # If prefixes are None, do not force default marker tokens.
         self.query_prefix = (
-            query_prefix if query_prefix is not None else self.query_prefix or "[Q] "
+            query_prefix if query_prefix is not None else self.query_prefix
         )
         self.document_prefix = (
-            document_prefix
-            if document_prefix is not None
-            else self.document_prefix or "[D] "
+            document_prefix if document_prefix is not None else self.document_prefix
         )
 
-        # Try adding the prefixes to the tokenizer. We call resize_token_embeddings twice to ensure the tokens are added only if resize_token_embeddings works. There should be a better way to do this.
+        # Try adding prefixes to the tokenizer when defined.
         try:
             self._first_module().auto_model.resize_token_embeddings(len(self.tokenizer))
-            self.tokenizer.add_tokens([self.query_prefix, self.document_prefix])
-            self._first_module().auto_model.resize_token_embeddings(len(self.tokenizer))
+            tokens_to_add = [
+                token
+                for token in [self.query_prefix, self.document_prefix]
+                if token is not None
+            ]
+            if tokens_to_add:
+                self.tokenizer.add_tokens(tokens_to_add)
+                self._first_module().auto_model.resize_token_embeddings(
+                    len(self.tokenizer)
+                )
         except NotImplementedError:
             logger.warning(
-                "The tokenizer does not support resizing the token embeddings, the prefixes token have not been added to vocabulary."
+                "The tokenizer does not support resizing the token embeddings, prefix tokens have not been added to vocabulary."
             )
 
-        self.document_prefix_id = self.tokenizer.convert_tokens_to_ids(
-            self.document_prefix
+        # Set prefix IDs using the tokenizer when prefixes are defined.
+        self.document_prefix_id = (
+            self.tokenizer.convert_tokens_to_ids(self.document_prefix)
+            if self.document_prefix is not None
+            else None
         )
-
-        # Set the query prefix ID using the tokenizer.
-        self.query_prefix_id = self.tokenizer.convert_tokens_to_ids(self.query_prefix)
+        self.query_prefix_id = (
+            self.tokenizer.convert_tokens_to_ids(self.query_prefix)
+            if self.query_prefix is not None
+            else None
+        )
 
         # Set the padding token ID
         # If it is a MLM model, use the MASK token
@@ -1066,11 +1078,15 @@ class ColBERT(SentenceTransformer):
             dict[str, torch.Tensor]: A dictionary of tensors with the tokenized texts, including "input_ids",
                 "attention_mask", and optionally "token_type_ids".
         """
-        # Set max sequence length based on whether the input is a query or document
+        # Set max sequence length based on whether the input is a query or document.
+        # If a prefix token is used, leave room by subtracting one token.
         max_length = self.query_length if is_query else self.document_length
+        use_prefix = (is_query and self.query_prefix_id is not None) or (
+            not is_query and self.document_prefix_id is not None
+        )
         self._first_module().max_seq_length = (
-            max_length - 1
-        )  # Subtract 1 for the prefix token
+            max_length - 1 if use_prefix else max_length
+        )
 
         # Pad queries (if query expansion) and handle padding for documents if specified
         tokenize_args = (
@@ -1082,22 +1098,21 @@ class ColBERT(SentenceTransformer):
         # Tokenize the texts
         tokenized_outputs = self._first_module().tokenize(texts, **tokenize_args)
 
-        # Determine prefix ID based on input type
-        prefix_id = self.query_prefix_id if is_query else self.document_prefix_id
-
-        # Insert prefix token and update attention mask
-        tokenized_outputs["input_ids"] = self.insert_prefix_token(
-            tokenized_outputs["input_ids"], prefix_id
-        )
-        tokenized_outputs["attention_mask"] = self.insert_prefix_token(
-            tokenized_outputs["attention_mask"], 1
-        )
-
-        # Update token type IDs if they exist
-        if "token_type_ids" in tokenized_outputs:
-            tokenized_outputs["token_type_ids"] = self.insert_prefix_token(
-                tokenized_outputs["token_type_ids"], 0
+        # Insert prefix token and update masks only when a prefix is configured.
+        if use_prefix:
+            prefix_id = self.query_prefix_id if is_query else self.document_prefix_id
+            tokenized_outputs["input_ids"] = self.insert_prefix_token(
+                tokenized_outputs["input_ids"], prefix_id
             )
+            tokenized_outputs["attention_mask"] = self.insert_prefix_token(
+                tokenized_outputs["attention_mask"], 1
+            )
+
+            # Update token type IDs if they exist.
+            if "token_type_ids" in tokenized_outputs:
+                tokenized_outputs["token_type_ids"] = self.insert_prefix_token(
+                    tokenized_outputs["token_type_ids"], 0
+                )
 
         # Adjust attention mask for expansion tokens if required
         if is_query and self.attend_to_expansion_tokens:
