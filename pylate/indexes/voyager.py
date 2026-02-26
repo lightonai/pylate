@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import itertools
 import os
+import pickle
 
 import numpy as np
 import torch
-from sqlitedict import SqliteDict
 
 from ..utils import iter_batch
 from .base import Base
@@ -109,10 +109,10 @@ class Voyager(Base):
 
         self.index_path = os.path.join(index_folder, index_name, "index.voyager")
         self.documents_ids_to_embeddings_path = os.path.join(
-            index_folder, index_name, "document_ids_to_embeddings.sqlite"
+            index_folder, index_name, "document_ids_to_embeddings.pkl"
         )
         self.embeddings_to_documents_ids_path = os.path.join(
-            index_folder, index_name, "embeddings_to_documents_ids.sqlite"
+            index_folder, index_name, "embeddings_to_documents_ids.pkl"
         )
 
         self.index = self._create_collection(
@@ -123,13 +123,30 @@ class Voyager(Base):
             override=override,
         )
 
-    def _load_documents_ids_to_embeddings(self) -> SqliteDict:
-        """Load the SQLite database that maps document IDs to embeddings."""
-        return SqliteDict(self.documents_ids_to_embeddings_path, outer_stack=False)
+    def _load_documents_ids_to_embeddings(self) -> dict:
+        """Load the pickle file that maps document IDs to embeddings."""
+        if os.path.exists(self.documents_ids_to_embeddings_path):
+            with open(self.documents_ids_to_embeddings_path, "rb") as f:
+                return pickle.load(f)
+        return {}
 
-    def _load_embeddings_to_documents_ids(self) -> SqliteDict:
-        """Load the SQLite database that maps embeddings to document IDs."""
-        return SqliteDict(self.embeddings_to_documents_ids_path, outer_stack=False)
+    def _load_embeddings_to_documents_ids(self) -> dict:
+        """Load the pickle file that maps embeddings to document IDs."""
+        if os.path.exists(self.embeddings_to_documents_ids_path):
+            with open(self.embeddings_to_documents_ids_path, "rb") as f:
+                return pickle.load(f)
+        return {}
+
+    def _save_mappings(
+        self,
+        documents_ids_to_embeddings: dict,
+        embeddings_to_documents_ids: dict,
+    ) -> None:
+        """Save the ID mappings to pickle files."""
+        with open(self.documents_ids_to_embeddings_path, "wb") as f:
+            pickle.dump(documents_ids_to_embeddings, f)
+        with open(self.embeddings_to_documents_ids_path, "wb") as f:
+            pickle.dump(embeddings_to_documents_ids, f)
 
     def _create_collection(
         self,
@@ -185,13 +202,6 @@ class Voyager(Base):
         if override and os.path.exists(path=self.embeddings_to_documents_ids_path):
             os.remove(path=self.embeddings_to_documents_ids_path)
 
-        # Create the SQLite databases
-        documents_ids_to_embeddings = self._load_documents_ids_to_embeddings()
-        documents_ids_to_embeddings.close()
-
-        embeddings_to_documents_ids = self._load_embeddings_to_documents_ids()
-        embeddings_to_documents_ids.close()
-
         return index
 
     def add_documents(
@@ -235,11 +245,7 @@ class Voyager(Base):
                 )
                 total += len(document_embeddings)
 
-        documents_ids_to_embeddings.commit()
-        documents_ids_to_embeddings.close()
-
-        embeddings_to_documents_ids.commit()
-        embeddings_to_documents_ids.close()
+        self._save_mappings(documents_ids_to_embeddings, embeddings_to_documents_ids)
         self.index.save(self.index_path)
         return self
 
@@ -262,11 +268,7 @@ class Voyager(Base):
                 self.index.mark_deleted(embedding_id)
             del documents_ids_to_embeddings[document_id]
 
-        documents_ids_to_embeddings.commit()
-        embeddings_to_documents_ids.commit()
-
-        documents_ids_to_embeddings.close()
-        embeddings_to_documents_ids.close()
+        self._save_mappings(documents_ids_to_embeddings, embeddings_to_documents_ids)
         self.index.save(self.index_path)
         return self
 
@@ -301,15 +303,13 @@ class Voyager(Base):
         documents = [
             [
                 [
-                    embeddings_to_documents_ids[str(token_indice)]
+                    embeddings_to_documents_ids[token_indice]
                     for token_indice in tokens_indices
                 ]
                 for tokens_indices in document_indices
             ]
             for document_indices in indices.reshape(n_queries, -1, k)
         ]
-
-        embeddings_to_documents_ids.close()
 
         return {
             "documents_ids": documents,
@@ -329,8 +329,6 @@ class Voyager(Base):
             [documents_ids_to_embeddings[doc_id] for doc_id in doc_group]
             for doc_group in document_ids
         ]
-
-        documents_ids_to_embeddings.close()
 
         # Flatten the embedding IDs for a single API call
         flattened_embedding_ids = list(

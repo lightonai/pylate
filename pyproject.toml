@@ -18,7 +18,6 @@ dependencies = [
     "sentence-transformers == 5.1.1",
     "datasets >= 2.20.0",
     "accelerate >= 0.31.0",
-    "sqlitedict >= 2.1.0",
     "pandas >= 2.2.1",
     "transformers >= 4.41.0, <= 4.56.2",
     "ujson == 5.10.0",
