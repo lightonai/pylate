@@ -813,47 +813,52 @@ class ColBERT(SentenceTransformer):
         -------
             A list of pooled embeddings for each document.
         """
-        device = torch.device(device="cuda" if torch.cuda.is_available() else "cpu")
         pooled_embeddings = []
 
         for document_embeddings in documents_embeddings:
-            document_embeddings = document_embeddings.to(device=device)
+            # Stay on CPU since scipy clustering requires CPU anyway
+            document_embeddings_cpu = document_embeddings.cpu()
 
             # Separate protected tokens from the rest
-            protected_embeddings = document_embeddings[:protected_tokens]
-            embeddings_to_pool = document_embeddings[protected_tokens:]
+            protected = document_embeddings_cpu[:protected_tokens]
+            to_pool = document_embeddings_cpu[protected_tokens:]
 
-            # Compute cosine similarity and convert to distance matrix
-            cosine_similarities = torch.mm(
-                input=embeddings_to_pool, mat2=embeddings_to_pool.t()
-            )
-            distance_matrix = 1 - cosine_similarities.cpu().numpy()
-
-            # Perform hierarchical clustering using Ward's method
-            clusters = hierarchy.linkage(distance_matrix, method="ward")
-            num_embeddings = len(embeddings_to_pool)
-
-            # Determine the number of clusters based on pool_factor
+            num_embeddings = len(to_pool)
             num_clusters = max(num_embeddings // pool_factor, 1)
-            cluster_labels = hierarchy.fcluster(
-                clusters, t=num_clusters, criterion="maxclust"
+
+            # Skip pooling if it wouldn't reduce anything
+            if num_clusters >= num_embeddings:
+                pooled_embeddings.append(document_embeddings_cpu)
+                continue
+
+            # Compute cosine similarity and convert to condensed distance matrix
+            cos_sim = torch.mm(to_pool, to_pool.t()).numpy()
+            dist_full = 1 - cos_sim
+            # Extract upper triangle as condensed form for scipy linkage
+            condensed = dist_full[np.triu_indices(num_embeddings, k=1)]
+
+            # Hierarchical clustering
+            linkage_matrix = hierarchy.linkage(condensed, method="ward")
+            labels = hierarchy.fcluster(linkage_matrix, t=num_clusters, criterion="maxclust")
+
+            # Vectorized cluster mean via scatter_add_
+            labels_tensor = torch.from_numpy(labels.astype(np.int64)) - 1  # 0-indexed
+            dim = to_pool.shape[1]
+            cluster_sums = torch.zeros(num_clusters, dim, dtype=to_pool.dtype)
+            cluster_counts = torch.zeros(num_clusters, dtype=torch.long)
+
+            expanded_labels = labels_tensor.unsqueeze(1).expand_as(to_pool)
+            cluster_sums.scatter_add_(0, expanded_labels, to_pool)
+            cluster_counts.scatter_add_(
+                0, labels_tensor, torch.ones(num_embeddings, dtype=torch.long)
             )
 
-            # Pool embeddings within each cluster
-            pooled_document_embeddings = []
-            for cluster_id in range(1, num_clusters + 1):
-                cluster_indices = torch.where(
-                    condition=torch.tensor(
-                        data=cluster_labels == cluster_id, device=device
-                    )
-                )[0]
-                if cluster_indices.numel() > 0:
-                    cluster_embedding = embeddings_to_pool[cluster_indices].mean(dim=0)
-                    pooled_document_embeddings.append(cluster_embedding)
+            # fcluster may return fewer clusters than num_clusters requested,
+            # leaving some rows in cluster_sums at zero. Filter those out.
+            mask = cluster_counts > 0
+            pooled = cluster_sums[mask] / cluster_counts[mask].unsqueeze(1)
 
-            # Re-append protected embeddings
-            pooled_document_embeddings.extend(protected_embeddings)
-            pooled_embeddings.append(torch.stack(tensors=pooled_document_embeddings))
+            pooled_embeddings.append(torch.cat([protected, pooled], dim=0))
 
         return pooled_embeddings
 
