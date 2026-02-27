@@ -839,7 +839,9 @@ class ColBERT(SentenceTransformer):
 
             # Hierarchical clustering
             linkage_matrix = hierarchy.linkage(condensed, method="ward")
-            labels = hierarchy.fcluster(linkage_matrix, t=num_clusters, criterion="maxclust")
+            labels = hierarchy.fcluster(
+                linkage_matrix, t=num_clusters, criterion="maxclust"
+            )
 
             # Vectorized cluster mean via scatter_add_
             labels_tensor = torch.from_numpy(labels.astype(np.int64)) - 1  # 0-indexed
