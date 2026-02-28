@@ -507,6 +507,22 @@ class MatryoshkaHierarchicalPoolingLoss(nn.Module):
 
         return loss
 
+    def get_doc_token_reducer(self):
+        """Return a callable that reduces document tokens via hierarchical pooling.
+
+        Returns a function ``(embeddings, n_tokens) -> pooled_embeddings``
+        that applies the trained ``HierarchicalPoolingStack`` to produce
+        pooled tokens. Suitable for passing as ``doc_token_reducer`` to
+        ``NanoBEIREvaluator``.
+        """
+        pool_stack = self.pool_stack
+
+        def reducer(embeddings: Tensor, n_tokens: int) -> Tensor:
+            pooled, _ = pool_stack(embeddings, mask=None, target_n_tokens=n_tokens)
+            return pooled
+
+        return reducer
+
     def get_config_dict(self) -> dict[str, Any]:
         return {
             "loss": self.loss.__class__.__name__,

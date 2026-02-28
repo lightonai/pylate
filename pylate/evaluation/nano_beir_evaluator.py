@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from typing import Literal
 
 from sentence_transformers.evaluation.NanoBEIREvaluator import (
     NanoBEIREvaluator as NanoBEIREvaluatorST,
 )
 from sentence_transformers.util import is_datasets_available
+from torch import Tensor
 
 from .pylate_information_retrieval_evaluator import PyLateInformationRetrievalEvaluator
 
@@ -78,9 +80,16 @@ class NanoBEIREvaluator(NanoBEIREvaluatorST):
     Parameters
     ----------
     truncate_doc_tokens
-        If set, truncate document embeddings to this many tokens before scoring.
+        If set, reduce document embeddings to this many tokens before scoring.
         This allows evaluating the model's retrieval quality when storing fewer
-        document token embeddings (as trained with MatryoshkaDocTokensLoss).
+        document token embeddings (as trained with matryoshka-style losses).
+    doc_token_reducer
+        Optional callable ``(embeddings, n_tokens) -> reduced_embeddings`` that
+        implements the token reduction strategy matching the training loss.
+        Each matryoshka loss provides this via its ``get_doc_token_reducer()``
+        method.  When ``None`` (the default), plain positional truncation
+        (``embeddings[:, :n_tokens, :]``) is used, which matches
+        ``MatryoshkaDocTokensLoss``.
 
     Examples
     --------
@@ -105,8 +114,15 @@ class NanoBEIREvaluator(NanoBEIREvaluatorST):
 
     """
 
-    def __init__(self, *args, truncate_doc_tokens: int | None = None, **kwargs):
+    def __init__(
+        self,
+        *args,
+        truncate_doc_tokens: int | None = None,
+        doc_token_reducer: Callable[[Tensor, int], Tensor] | None = None,
+        **kwargs,
+    ):
         self.truncate_doc_tokens = truncate_doc_tokens
+        self.doc_token_reducer = doc_token_reducer
         super().__init__(*args, **kwargs)
         if truncate_doc_tokens is not None:
             self.name += f"_{truncate_doc_tokens}tokens"
@@ -161,5 +177,6 @@ class NanoBEIREvaluator(NanoBEIREvaluatorST):
             relevant_docs=qrels_dict,
             name=human_readable_name,
             truncate_doc_tokens=self.truncate_doc_tokens,
+            doc_token_reducer=self.doc_token_reducer,
             **ir_evaluator_kwargs,
         )

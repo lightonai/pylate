@@ -417,6 +417,22 @@ class MatryoshkaSoftTopKLoss(nn.Module):
 
         return loss
 
+    def get_doc_token_reducer(self):
+        """Return a callable that reduces document tokens via hard top-k gating.
+
+        Returns a function ``(embeddings, n_tokens) -> selected_embeddings``
+        that applies the trained ``SoftTopKGate`` in hard mode to select the
+        top-k tokens by learned gate score. Suitable for passing as
+        ``doc_token_reducer`` to ``NanoBEIREvaluator``.
+        """
+        gate = self.gate
+
+        def reducer(embeddings: Tensor, n_tokens: int) -> Tensor:
+            selected, _ = gate(embeddings, mask=None, k=n_tokens, hard=True)
+            return selected
+
+        return reducer
+
     def get_config_dict(self) -> dict[str, Any]:
         return {
             "loss": self.loss.__class__.__name__,

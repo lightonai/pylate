@@ -86,6 +86,9 @@ args = SentenceTransformerTrainingArguments(
 base_loss = losses.Distillation(model=model)
 
 # Choose one of the following matryoshka doc token strategies:
+# NOTE: For losses with learned token reduction (Options 2-4), you must pass
+# doc_token_reducer=train_loss.get_doc_token_reducer() to NanoBEIREvaluator
+# so evaluation applies the learned reduction instead of positional truncation.
 
 # Option 1: Positional truncation (baseline) — simply keeps the first N tokens.
 train_loss = losses.MatryoshkaDocTokensLoss(
@@ -111,7 +114,7 @@ train_loss = losses.MatryoshkaDocTokensLoss(
 # )
 
 # Option 4: Learned Hierarchical Pooling — iteratively halves tokens via
-# learned attention-weighted pooling of consecutive pairs (N→N/2→N/4→...).
+# learned attention-weighted pooling of consecutive pairs (N->N/2->N/4->...).
 # Fully differentiable, preserves information from all tokens.
 # train_loss = losses.MatryoshkaHierarchicalPoolingLoss(
 #     model=model,

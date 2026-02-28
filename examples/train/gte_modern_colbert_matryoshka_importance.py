@@ -56,11 +56,26 @@ model = models.ColBERT(model_name_or_path=model_name, document_length=300)
 # Document token counts to train and evaluate at
 n_doc_tokens = [32, 64, 128, 256]
 
+# Learned Importance + STE: a linear head scores each token's importance.
+# Hard top-k selection in forward, straight-through estimator for backward.
+train_loss = losses.MatryoshkaImportanceLoss(
+    model=model,
+    loss=losses.Distillation(model=model),
+    n_doc_tokens=n_doc_tokens,
+)
+
 # Create a NanoBEIR evaluator for each document token cutoff.
-# The first evaluator (largest token count) determines the main score.
+# Use the loss's doc_token_reducer so evaluation applies the learned importance
+# head instead of naive positional truncation.
 evaluators = []
+doc_token_reducer = train_loss.get_doc_token_reducer()
 for n_tokens in sorted(n_doc_tokens, reverse=True):
-    evaluators.append(evaluation.NanoBEIREvaluator(truncate_doc_tokens=n_tokens))
+    evaluators.append(
+        evaluation.NanoBEIREvaluator(
+            truncate_doc_tokens=n_tokens,
+            doc_token_reducer=doc_token_reducer,
+        )
+    )
 dev_evaluator = SequentialEvaluator(
     evaluators, main_score_function=lambda scores: scores[0]
 )
@@ -79,17 +94,6 @@ args = SentenceTransformerTrainingArguments(
     run_name=run_name,
     learning_rate=lr,
     warmup_ratio=0.00,
-)
-
-# Use the Distillation loss as the base loss
-base_loss = losses.Distillation(model=model)
-
-# Learned Importance + STE: a linear head scores each token's importance.
-# Hard top-k selection in forward, straight-through estimator for backward.
-train_loss = losses.MatryoshkaImportanceLoss(
-    model=model,
-    loss=base_loss,
-    n_doc_tokens=n_doc_tokens,
 )
 
 # Initialize the trainer

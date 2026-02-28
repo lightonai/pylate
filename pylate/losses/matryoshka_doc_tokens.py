@@ -292,6 +292,18 @@ class MatryoshkaDocTokensLoss(nn.Module):
 
         return loss
 
+    def get_doc_token_reducer(self):
+        """Return a callable that reduces document tokens via positional truncation.
+
+        Returns a function ``(embeddings, n_tokens) -> embeddings[:, :n_tokens, :]``
+        suitable for passing as ``doc_token_reducer`` to ``NanoBEIREvaluator``.
+        """
+
+        def reducer(embeddings: Tensor, n_tokens: int) -> Tensor:
+            return embeddings[:, :n_tokens, :]
+
+        return reducer
+
     def get_config_dict(self) -> dict[str, Any]:
         return {
             "loss": self.loss.__class__.__name__,

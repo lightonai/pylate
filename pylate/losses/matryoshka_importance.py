@@ -375,6 +375,22 @@ class MatryoshkaImportanceLoss(nn.Module):
 
         return loss
 
+    def get_doc_token_reducer(self):
+        """Return a callable that reduces document tokens via learned importance scoring.
+
+        Returns a function ``(embeddings, n_tokens) -> selected_embeddings``
+        that applies the trained ``ImportanceScoreHead`` to select the top-k
+        most important tokens. Suitable for passing as ``doc_token_reducer``
+        to ``NanoBEIREvaluator``.
+        """
+        score_head = self.score_head
+
+        def reducer(embeddings: Tensor, n_tokens: int) -> Tensor:
+            selected, _ = score_head(embeddings, mask=None, k=n_tokens)
+            return selected
+
+        return reducer
+
     def get_config_dict(self) -> dict[str, Any]:
         return {
             "loss": self.loss.__class__.__name__,

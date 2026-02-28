@@ -55,11 +55,27 @@ model = models.ColBERT(model_name_or_path=model_name, document_length=300)
 # Document token counts to train and evaluate at
 n_doc_tokens = [32, 64, 128, 256]
 
+# Soft Top-K Gating: a sigmoid gate centered on the k-th score soft-weights
+# all tokens during training (fully differentiable, no STE). At inference,
+# hard top-k selection physically reduces the tensor.
+train_loss = losses.MatryoshkaSoftTopKLoss(
+    model=model,
+    loss=losses.Distillation(model=model),
+    n_doc_tokens=n_doc_tokens,
+)
+
 # Create a NanoBEIR evaluator for each document token cutoff.
-# The first evaluator (largest token count) determines the main score.
+# Use the loss's doc_token_reducer so evaluation applies the learned gate
+# in hard mode instead of naive positional truncation.
 evaluators = []
+doc_token_reducer = train_loss.get_doc_token_reducer()
 for n_tokens in sorted(n_doc_tokens, reverse=True):
-    evaluators.append(evaluation.NanoBEIREvaluator(truncate_doc_tokens=n_tokens))
+    evaluators.append(
+        evaluation.NanoBEIREvaluator(
+            truncate_doc_tokens=n_tokens,
+            doc_token_reducer=doc_token_reducer,
+        )
+    )
 dev_evaluator = SequentialEvaluator(
     evaluators, main_score_function=lambda scores: scores[0]
 )
@@ -78,18 +94,6 @@ args = SentenceTransformerTrainingArguments(
     run_name=run_name,
     learning_rate=lr,
     warmup_ratio=0.00,
-)
-
-# Use the Distillation loss as the base loss
-base_loss = losses.Distillation(model=model)
-
-# Soft Top-K Gating: a sigmoid gate centered on the k-th score soft-weights
-# all tokens during training (fully differentiable, no STE). At inference,
-# hard top-k selection physically reduces the tensor.
-train_loss = losses.MatryoshkaSoftTopKLoss(
-    model=model,
-    loss=base_loss,
-    n_doc_tokens=n_doc_tokens,
 )
 
 # Initialize the trainer
