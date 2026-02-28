@@ -23,6 +23,10 @@ class PyLateInformationRetrievalEvaluator(InformationRetrievalEvaluator):
     This class evaluates an Information Retrieval (IR) setting. This is a direct extension of the InformationRetrievalEvaluator from the sentence-transformers library, only override the compute_metrices method to be compilatible with PyLate models (define asymmetric encoding using is_query params and add padding).
     """
 
+    def __init__(self, *args, truncate_doc_tokens: int | None = None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.truncate_doc_tokens = truncate_doc_tokens
+
     def compute_metrices(
         self,
         model: ColBERT,
@@ -101,6 +105,12 @@ class PyLateInformationRetrievalEvaluator(InformationRetrievalEvaluator):
             else:
                 sub_corpus_embeddings = corpus_embeddings[
                     corpus_start_idx:corpus_end_idx
+                ]
+
+            # Truncate document tokens for matryoshka-style evaluation
+            if self.truncate_doc_tokens is not None:
+                sub_corpus_embeddings = sub_corpus_embeddings[
+                    :, : self.truncate_doc_tokens, :
                 ]
 
             # Compute cosine similarities

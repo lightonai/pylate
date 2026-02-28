@@ -75,6 +75,13 @@ class NanoBEIREvaluator(NanoBEIREvaluatorST):
     The Evaluator will return the same metrics as the InformationRetrievalEvaluator
     (i.e., MRR, nDCG, Recall@k), for each dataset and on average.
 
+    Parameters
+    ----------
+    truncate_doc_tokens
+        If set, truncate document embeddings to this many tokens before scoring.
+        This allows evaluating the model's retrieval quality when storing fewer
+        document token embeddings (as trained with MatryoshkaDocTokensLoss).
+
     Examples
     --------
     >>> from pylate import models, evaluation
@@ -97,6 +104,18 @@ class NanoBEIREvaluator(NanoBEIREvaluatorST):
     - [NanoBEIR](https://huggingface.co/collections/zeta-alpha-ai/nanobeir-66e1a0af21dfd93e620cd9f6)
 
     """
+
+    def __init__(self, *args, truncate_doc_tokens: int | None = None, **kwargs):
+        self.truncate_doc_tokens = truncate_doc_tokens
+        super().__init__(*args, **kwargs)
+        if truncate_doc_tokens is not None:
+            self.name += f"_{truncate_doc_tokens}tokens"
+
+    def _get_human_readable_name(self, dataset_name):
+        name = super()._get_human_readable_name(dataset_name)
+        if self.truncate_doc_tokens is not None:
+            name += f"_{self.truncate_doc_tokens}tokens"
+        return name
 
     def _load_dataset(
         self, dataset_name: DatasetNameType, **ir_evaluator_kwargs
@@ -141,5 +160,6 @@ class NanoBEIREvaluator(NanoBEIREvaluatorST):
             corpus=corpus_dict,
             relevant_docs=qrels_dict,
             name=human_readable_name,
+            truncate_doc_tokens=self.truncate_doc_tokens,
             **ir_evaluator_kwargs,
         )
