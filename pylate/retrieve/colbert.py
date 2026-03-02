@@ -5,7 +5,8 @@ import logging
 import numpy as np
 import torch
 
-from ..indexes import PLAID, Voyager
+from ..indexes.base import Base
+from ..indexes.plaid import PLAID
 from ..rank import RerankResult, rerank
 from ..utils import iter_batch
 
@@ -17,8 +18,9 @@ class ColBERT:
 
     Parameters
     ----------
-    index:
-        The index to use for retrieval.
+    index
+        The index to use for retrieval. Any index that extends ``Base``
+        (e.g. PLAID, Voyager, ScaNN).
 
     Examples
     --------
@@ -92,7 +94,7 @@ class ColBERT:
 
     """
 
-    def __init__(self, index: Voyager | PLAID) -> None:
+    def __init__(self, index: Base) -> None:
         self.index = index
 
     def retrieve(
@@ -113,21 +115,22 @@ class ColBERT:
         k
             The number of documents to retrieve.
         k_token
-            The number of documents to retrieve from the index. Defaults to `k`.
+            The number of token-level candidates to retrieve from the index
+            before reranking. Only used for non-PLAID indexes. Defaults to 100.
         device
-            The device to use for the embeddings. Defaults to queries_embeddings device.
+            The device to use for reranking. Defaults to queries_embeddings device.
         batch_size
-            The batch size to use for retrieval.
+            The batch size to use for retrieval. Only used for non-PLAID indexes.
         subset
             Optional subset of document IDs to restrict search to.
             Can be a single list (same filter for all queries) or
             list of lists (different filter per query).
             Document IDs should match the IDs used when adding documents.
-            Only supported with PLAID index.
+            Currently only supported with PLAID index.
 
         """
-        # PLAID index directly retrieves the documents
-        if isinstance(self.index, PLAID) or not isinstance(self.index, Voyager):
+        # PLAID handles reranking internally and returns RerankResult directly
+        if isinstance(self.index, PLAID):
             return self.index(
                 queries_embeddings=queries_embeddings,
                 k=k,

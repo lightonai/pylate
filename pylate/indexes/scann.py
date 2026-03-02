@@ -449,7 +449,7 @@ class ScaNN(Base):
         self,
         documents_ids: list[str],
         documents_embeddings: list[torch.Tensor | np.ndarray],
-        batch_size: int,
+        batch_size: int = 128,
     ) -> "ScaNN":
         """Add documents to the index.
 
