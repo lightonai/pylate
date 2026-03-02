@@ -40,7 +40,7 @@ class ScaNN(Base):
 
     Parameters
     ----------
-    name
+    index_name
         The name of the index collection.
     embedding_size
         The number of dimensions of the embeddings.
@@ -86,7 +86,7 @@ class ScaNN(Base):
 
     def __init__(
         self,
-        name: str | None = "ScaNN_index",
+        index_name: str | None = "ScaNN_index",
         embedding_size: int = 128,
         num_neighbors: int | None = 10,
         num_leaves: int | None = None,
@@ -101,7 +101,7 @@ class ScaNN(Base):
         override: bool = False,
         verbose_level: str | None = None,
     ) -> None:
-        self.name = name
+        self.index_name = index_name
         self.embedding_size = embedding_size
         self.num_neighbors = num_neighbors
         self.verbose_level = (
@@ -257,9 +257,9 @@ class ScaNN(Base):
 
     def _get_index_path(self) -> Path | None:
         """Get the path where the index should be saved/loaded."""
-        if self.index_folder is None or self.name is None:
+        if self.index_folder is None or self.index_name is None:
             return None
-        index_path = Path(self.index_folder) / self.name
+        index_path = Path(self.index_folder) / self.index_name
         return index_path
 
     def _load_index(self) -> None:
@@ -267,8 +267,8 @@ class ScaNN(Base):
         index_path = self._get_index_path()
         if index_path is None:
             raise ValueError(
-                f"Cannot load index: index_folder or name not set. "
-                f"index_folder={self.index_folder}, name={self.name}"
+                f"Cannot load index: index_folder or index_name not set. "
+                f"index_folder={self.index_folder}, index_name={self.index_name}"
             )
 
         metadata_path = index_path / "metadata.json"
@@ -390,7 +390,7 @@ class ScaNN(Base):
         if index_path is None:
             if self.verbose:
                 logger.warning(
-                    "[ScaNN] Cannot save index: index_folder or name not set"
+                    "[ScaNN] Cannot save index: index_folder or index_name not set"
                 )
             return
 
@@ -552,10 +552,7 @@ class ScaNN(Base):
                 )
 
             if isinstance(emb, torch.Tensor):
-                emb_np = emb.to(
-                    "cpu",
-                    dtype=torch.float16 if np_dtype == np.float16 else torch.float32,
-                ).numpy()
+                emb_np = emb.to("cpu").numpy()
             else:
                 emb_np = emb
 
