@@ -4,7 +4,7 @@ import gc
 import itertools
 import json
 import logging
-import time
+import pickle
 from pathlib import Path
 
 import numpy as np
@@ -12,7 +12,7 @@ import torch
 from tqdm.auto import tqdm
 
 from .base import Base
-from .utils import log_memory, reshape_embeddings
+from .utils import np_dtype_for, reshape_embeddings
 
 logger = logging.getLogger(__name__)
 
@@ -63,8 +63,7 @@ class ScaNN(Base):
     verbose
         Verbosity configuration:
         - ``False`` or ``"none"``: disable logs
-        - ``True`` or ``"init"``: log build/load/indexing only
-        - ``"all"``: log build/load/indexing and per-query retrieval
+        - ``True`` or ``"init"`` or ``"all"``: log build/load/indexing
     verbose_level
         Backward-compatible alias for verbosity scope (``"none"``, ``"init"``,
         ``"all"``). If set, it overrides ``verbose``.
@@ -152,12 +151,8 @@ class ScaNN(Base):
             return "init" if verbose else "none"
         return verbose
 
-    def _log_retrieve(self) -> bool:
-        return self.verbose_level == "all"
-
     def _build_searcher(self, embeddings: np.ndarray) -> None:
         """Build the ScaNN searcher from embeddings (in-memory only)."""
-        build_start = time.time()
         try:
             import scann
         except ImportError:
@@ -174,13 +169,9 @@ class ScaNN(Base):
         )
 
         if self.use_autopilot:
-            # When using autopilot, it will auto-tune all parameters
             if self.verbose:
                 logger.info(
                     f"[ScaNN] Building ScaNN searcher with {embeddings.shape[0]} vectors using autopilot()..."
-                )
-                logger.info(
-                    "[ScaNN]   NOTE: autopilot() overrides manual configuration (num_leaves, num_leaves_to_search, training_sample_size)"
                 )
                 if (
                     self.num_leaves is not None
@@ -188,7 +179,7 @@ class ScaNN(Base):
                     or self.training_sample_size is not None
                 ):
                     logger.warning(
-                        f"[ScaNN]   WARNING: Manual parameters provided but will be ignored: num_leaves={self.num_leaves}, num_leaves_to_search={self.num_leaves_to_search}, training_sample_size={self.training_sample_size}"
+                        "[ScaNN]   autopilot() overrides manual configuration (num_leaves, num_leaves_to_search, training_sample_size)"
                     )
         else:
             # Auto-tune parameters if not set
@@ -217,8 +208,6 @@ class ScaNN(Base):
                 )
 
         # Build ScaNN searcher
-        log_memory("Before scann.build()", self.verbose)
-        step_start = time.time()
         if self.use_autopilot:
             searcher = (
                 scann.scann_ops_pybind.builder(
@@ -244,16 +233,8 @@ class ScaNN(Base):
                 )
                 .build()
             )
-        step_time = time.time() - step_start
-        log_memory("After scann.build()", self.verbose)
-        if self.verbose:
-            logger.info(f"[ScaNN] ScaNN searcher built: {step_time:.4f}s")
 
         self.searcher = searcher
-
-        total_time = time.time() - build_start
-        if self.verbose:
-            logger.info(f"[ScaNN] Total searcher build time: {total_time:.4f}s")
 
     def _get_index_path(self) -> Path | None:
         """Get the path where the index should be saved/loaded."""
@@ -272,7 +253,7 @@ class ScaNN(Base):
             )
 
         metadata_path = index_path / "metadata.json"
-        doc_id_mapping_path = index_path / "doc_id_to_embedding_range.tsv"
+        doc_id_mapping_path = index_path / "doc_id_to_embedding_range.pkl"
         flattened_embeddings_path = index_path / "flattened_embeddings.npy"
 
         try:
@@ -311,16 +292,10 @@ class ScaNN(Base):
                     "store_embeddings", self.store_embeddings
                 )
 
-            # Load doc_id_to_embedding_range (saved as TSV)
+            # Load doc_id_to_embedding_range (pickle)
             if doc_id_mapping_path.exists():
-                self.doc_id_to_embedding_range = {}
-                with open(doc_id_mapping_path, "r") as f:
-                    for line in f:
-                        doc_id, start, length = line.strip().split("\t")
-                        self.doc_id_to_embedding_range[doc_id] = (
-                            int(start),
-                            int(length),
-                        )
+                with open(doc_id_mapping_path, "rb") as f:
+                    self.doc_id_to_embedding_range = pickle.load(f)
             else:
                 raise FileNotFoundError(
                     f"Document ID mapping not found at {doc_id_mapping_path}"
@@ -398,7 +373,7 @@ class ScaNN(Base):
         index_path.mkdir(parents=True, exist_ok=True)
 
         metadata_path = index_path / "metadata.json"
-        doc_id_mapping_path = index_path / "doc_id_to_embedding_range.tsv"
+        doc_id_mapping_path = index_path / "doc_id_to_embedding_range.pkl"
         flattened_embeddings_path = index_path / "flattened_embeddings.npy"
 
         try:
@@ -425,15 +400,10 @@ class ScaNN(Base):
             with open(metadata_path, "w") as f:
                 json.dump(metadata, f, indent=2)
 
-            # Save doc_id_to_embedding_range as TSV (simple text format)
+            # Save doc_id_to_embedding_range as pickle
             # position_to_doc_id can be reconstructed from this, so we don't save it separately
-            with open(doc_id_mapping_path, "w") as f:
-                for doc_id, (start, length) in tqdm(
-                    self.doc_id_to_embedding_range.items(),
-                    desc="Saving doc_id_to_embedding_range",
-                    disable=not self.verbose,
-                ):
-                    f.write(f"{doc_id}\t{start}\t{length}\n")
+            with open(doc_id_mapping_path, "wb") as f:
+                pickle.dump(self.doc_id_to_embedding_range, f)
 
             # Save flattened_embeddings if store_embeddings=True
             if self.store_embeddings and self.flattened_embeddings is not None:
@@ -464,15 +434,8 @@ class ScaNN(Base):
                 "Documents have already been added."
             )
 
-        add_start = time.time()
         if self.verbose:
             logger.info(f"[ScaNN] Adding {len(documents_ids)} documents to index...")
-
-        log_memory("Start of add_documents", self.verbose)
-
-        # Calculate total embeddings to pre-allocate array
-        # Assumes input is list of torch tensors (the standard pylate format)
-        step_start = time.time()
 
         if len(documents_embeddings) == 0:
             raise ValueError("Cannot add documents: documents_embeddings is empty.")
@@ -486,19 +449,12 @@ class ScaNN(Base):
         # copies (e.g., one fp16 and one fp32) in memory at the same time.
         first_emb = documents_embeddings[0]
 
-        def _to_np_dtype(dtype: object) -> type[np.float16] | type[np.float32] | None:
-            if dtype in (torch.float16, np.float16):
-                return np.float16
-            if dtype in (torch.float32, np.float32):
-                return np.float32
-            return None
-
         if not isinstance(first_emb, (torch.Tensor, np.ndarray)):
             raise ValueError(
                 "ScaNN expects document embeddings to be torch.Tensor or np.ndarray. "
                 f"Got type={type(first_emb)}."
             )
-        np_dtype = _to_np_dtype(first_emb.dtype)
+        np_dtype = np_dtype_for(first_emb.dtype)
         if np_dtype is None:
             raise ValueError(
                 "ScaNN expects document embeddings to be float16 or float32. "
@@ -519,12 +475,9 @@ class ScaNN(Base):
             (total_embeddings, embedding_dim), dtype=np_dtype
         )
 
-        log_memory("After pre-allocating flattened_embeddings array", self.verbose)
-
         # Fill array in-place, deleting each tensor after copying to free memory
         offset = 0
         num_docs = len(documents_embeddings)
-        log_interval = max(1, num_docs // 10)  # Log memory ~10 times during the loop
 
         iterator = tqdm(
             enumerate(documents_embeddings),
@@ -544,7 +497,7 @@ class ScaNN(Base):
                     "ScaNN expects document embeddings to be torch.Tensor or np.ndarray. "
                     f"Got type={type(emb)}."
                 )
-            emb_np_dtype = _to_np_dtype(emb.dtype)
+            emb_np_dtype = np_dtype_for(emb.dtype)
             if emb_np_dtype is None:
                 raise ValueError(
                     "ScaNN expects document embeddings to be float16 or float32. "
@@ -565,30 +518,11 @@ class ScaNN(Base):
             flattened_embeddings[offset : offset + n] = emb_np
             offset += n
 
-            # Log memory periodically
-            if self.verbose and (i + 1) % log_interval == 0:
-                log_memory(
-                    f"During fill loop ({i + 1}/{num_docs} docs, {offset}/{total_embeddings} embeddings)",
-                    self.verbose,
-                )
-
-        log_memory("After fill loop, before gc", self.verbose)
-
         # Clear the list and run gc
         del documents_embeddings
         gc.collect()
 
-        log_memory("After del documents_embeddings + gc.collect()", self.verbose)
-
-        step_time = time.time() - step_start
-        if self.verbose:
-            logger.info(
-                f"[ScaNN] Flattened {total_embeddings} embeddings to {np_dtype}: "
-                f"{step_time:.4f}s"
-            )
-
         # Build position->doc_id array and doc_id->embedding_range mapping
-        step_start = time.time()
         self.position_to_doc_id = np.empty(total_embeddings, dtype=object)
         offset = 0
         for doc_id, num_tokens in zip(documents_ids, doc_lengths):
@@ -598,12 +532,6 @@ class ScaNN(Base):
             self.position_to_doc_id[offset : offset + num_tokens] = doc_id
             offset += num_tokens
 
-        step_time = time.time() - step_start
-        if self.verbose:
-            logger.info(
-                f"[ScaNN] Built ID mappings and position->doc_id array: {step_time:.4f}s"
-            )
-
         # Build the ScaNN index with all embeddings
         if len(flattened_embeddings) > 0:
             if self.verbose:
@@ -611,25 +539,14 @@ class ScaNN(Base):
                     f"[ScaNN] Building index with {len(flattened_embeddings)} embeddings..."
                 )
 
-            log_memory("Before _build_searcher", self.verbose)
-
-            # Note: embedding_id == position (sequential), so no position mappings needed
-            # Build searcher (in-memory only)
             self._build_searcher(flattened_embeddings)
 
             # Store flattened embeddings if requested, otherwise free the array
             if self.store_embeddings:
                 self.flattened_embeddings = flattened_embeddings
-                log_memory(
-                    "After _build_searcher + storing flattened_embeddings reference",
-                    self.verbose,
-                )
             else:
                 del flattened_embeddings
                 gc.collect()
-                log_memory(
-                    "After _build_searcher + del flattened_embeddings", self.verbose
-                )
 
             # Mark that documents have been added
             self._documents_added = True
@@ -637,10 +554,6 @@ class ScaNN(Base):
             # Save index to disk if index_folder is set
             if self.index_folder is not None:
                 self.save()
-
-            total_time = time.time() - add_start
-            if self.verbose:
-                logger.info(f"[ScaNN] Total add_documents time: {total_time:.4f}s")
 
         return self
 
@@ -665,8 +578,7 @@ class ScaNN(Base):
     def __call__(
         self,
         queries_embeddings: list[list[int | float]],
-        k: int = 5,
-        subset: list[list[str]] | list[str] | None = None,
+        k: int = 10,
     ) -> dict:
         """Query the index for the nearest neighbors of the queries embeddings.
 
@@ -676,50 +588,23 @@ class ScaNN(Base):
             The queries embeddings.
         k
             The number of nearest neighbors to return.
-        subset
-            Optional subset of document IDs to restrict search to.
-            Not yet implemented for ScaNN index.
-
-        Raises
-        ------
-        NotImplementedError
-            If subset is provided (not yet implemented).
 
         """
-        if subset is not None:
-            raise NotImplementedError(
-                "Subset filtering is not yet implemented for ScaNN index."
-            )
-
         if self.searcher is None:
             raise ValueError("Index is empty, add documents before querying.")
 
-        total_start = time.time()
-
         # Reshape queries
-        step_start = time.time()
         queries_embeddings = reshape_embeddings(embeddings=queries_embeddings)
-        n_queries = len(queries_embeddings)
-        step_time = time.time() - step_start
-        if self._log_retrieve():
-            logger.info(f"[ScaNN] Reshaping {n_queries} queries: {step_time:.4f}s")
 
         # Flatten query embeddings (assume they are already normalized)
-        step_start = time.time()
         flattened_queries = np.array(list(itertools.chain(*queries_embeddings)))
-        n_tokens_total = len(flattened_queries)
-        step_time = time.time() - step_start
-        if self._log_retrieve():
-            logger.info(
-                f"[ScaNN] Flattening {n_tokens_total} query tokens: {step_time:.4f}s"
-            )
 
         # Query the index
-        step_start = time.time()
         neighbors, distances = self.searcher.search_batched_parallel(
             flattened_queries, final_num_neighbors=k
         )
-        # replace NaN values with 0
+        # ScaNN may return NaN distances when it cannot complete the full top-k
+        # (e.g. k exceeds the number of indexed documents). Replace with 0.
         if np.isnan(distances).any():
             logger.warning(
                 "[ScaNN] distances has %d NaN values out of %d total; replacing with 0",
@@ -727,21 +612,13 @@ class ScaNN(Base):
                 distances.size,
             )
             distances = np.nan_to_num(distances, nan=0.0)
-        step_time = time.time() - step_start
-        if self._log_retrieve():
-            logger.info(
-                f"[ScaNN] ScaNN search_batched for {n_tokens_total} tokens (k={k}): {step_time:.4f}s ({step_time / n_tokens_total * 1000:.2f}ms per token)"
-            )
 
         # Map embedding indices back to document IDs using fully vectorized numpy operations
-        step_start = time.time()
         n_tokens_per_query = [len(q) for q in queries_embeddings]
 
         # Vectorized lookup: process all tokens at once using numpy advanced indexing
         # neighbors shape: (n_tokens_total, k), distances shape: (n_tokens_total, k)
-        all_doc_ids = self.position_to_doc_id[
-            neighbors
-        ]  # Vectorized lookup for all tokens
+        all_doc_ids = self.position_to_doc_id[neighbors]
         all_distances = distances
 
         # Reshape back into nested structure (queries -> tokens -> neighbors)
@@ -749,16 +626,6 @@ class ScaNN(Base):
         splits = np.cumsum(n_tokens_per_query[:-1])
         documents = [list(chunk) for chunk in np.split(all_doc_ids, splits)]
         distances_list = [list(chunk) for chunk in np.split(all_distances, splits)]
-
-        step_time = time.time() - step_start
-        if self._log_retrieve():
-            logger.info(f"[ScaNN] Mapping results to document IDs: {step_time:.4f}s")
-
-        total_time = time.time() - total_start
-        if self._log_retrieve():
-            logger.info(
-                f"[ScaNN] Total retrieval time: {total_time:.4f}s ({total_time / n_queries * 1000:.2f}ms per query, {total_time / n_tokens_total * 1000:.2f}ms per token)"
-            )
 
         return {
             "documents_ids": documents,

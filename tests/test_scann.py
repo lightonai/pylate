@@ -178,3 +178,40 @@ def test_scann_get_documents_embeddings_missing_docid_raises() -> None:
 
     with pytest.raises(ValueError, match="not found in index"):
         index.get_documents_embeddings([["d3"]])
+
+
+def test_scann_save_and_load_roundtrip(tmp_path: object) -> None:
+    """Index saved to disk should be loadable and return identical results."""
+    docs = [
+        torch.randn(12, 8, dtype=torch.float32),
+        torch.randn(10, 8, dtype=torch.float32),
+    ]
+    doc_ids = ["d1", "d2"]
+
+    # Build and save
+    index = indexes.ScaNN(
+        store_embeddings=True,
+        index_folder=str(tmp_path),
+        index_name="test_roundtrip",
+    )
+    index.add_documents(documents_ids=doc_ids, documents_embeddings=docs, batch_size=2)
+
+    query = [torch.randn(2, 8, dtype=torch.float32)]
+    results_before = index(queries_embeddings=query, k=2)
+
+    # Load from disk
+    loaded = indexes.ScaNN(
+        store_embeddings=True,
+        index_folder=str(tmp_path),
+        index_name="test_roundtrip",
+    )
+
+    assert loaded._documents_added
+    assert set(loaded.doc_id_to_embedding_range.keys()) == {"d1", "d2"}
+
+    results_after = loaded(queries_embeddings=query, k=2)
+    for before_q, after_q in zip(
+        results_before["documents_ids"], results_after["documents_ids"]
+    ):
+        for before_tok, after_tok in zip(before_q, after_q):
+            assert np.array_equal(before_tok, after_tok)
