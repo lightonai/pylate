@@ -182,7 +182,7 @@ class ScaNN(Base):
                         "[ScaNN]   autopilot() overrides manual configuration (num_leaves, num_leaves_to_search, training_sample_size)"
                     )
         else:
-            # Auto-tune parameters if not set
+            # Use default if not set
             self.num_leaves = (
                 self.num_leaves
                 if self.num_leaves is not None
