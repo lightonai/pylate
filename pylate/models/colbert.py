@@ -85,7 +85,9 @@ class ColBERT(SentenceTransformer):
     document_prefix
         Prefix to add to the documents.
     add_special_tokens
-        Add the prefix to the inputs.
+        Whether to prepend query/document prefix tokens during tokenization. Set to False for
+        models that don't use ColBERT-style marker tokens (e.g. XTR). If None, uses the value
+        from the saved config or defaults to True.
     truncation
         Truncate the inputs to the encoder max lengths or use sliding window encoding.
     query_length
@@ -208,7 +210,7 @@ class ColBERT(SentenceTransformer):
         bias: bool = False,
         query_prefix: str | None = None,
         document_prefix: str | None = None,
-        add_special_tokens: bool = True,
+        add_special_tokens: bool | None = None,
         truncation: bool = True,
         query_length: int | None = None,
         document_length: int | None = None,
@@ -364,18 +366,12 @@ class ColBERT(SentenceTransformer):
         self.is_hpu_graph_enabled = False
         # Override the configuration values with the provided arguments, if any. If not set and values have not been read from configs, set to default values.
         self.query_prefix = (
-            query_prefix
-            if query_prefix is not None
-            else self.query_prefix
-            if self.query_prefix is not None
-            else "[Q] "
+            query_prefix if query_prefix is not None else self.query_prefix or "[Q] "
         )
         self.document_prefix = (
             document_prefix
             if document_prefix is not None
-            else self.document_prefix
-            if self.document_prefix is not None
-            else "[D] "
+            else self.document_prefix or "[D] "
         )
 
         # Try adding the prefixes to the tokenizer. We call resize_token_embeddings twice to ensure the tokens are added only if resize_token_embeddings works. There should be a better way to do this.
@@ -458,6 +454,14 @@ class ColBERT(SentenceTransformer):
         # If we do not do query expansion, we do not attend to the expansion tokens
         if not self.do_query_expansion:
             self.attend_to_expansion_tokens = False
+
+        self.add_special_tokens = (
+            add_special_tokens
+            if add_special_tokens is not None
+            else self.add_special_tokens
+            if hasattr(self, "add_special_tokens")
+            else True
+        )
 
     @staticmethod
     def load(input_path) -> "ColBERT":
@@ -1087,9 +1091,10 @@ class ColBERT(SentenceTransformer):
         """
         # Set max sequence length based on whether the input is a query or document
         max_length = self.query_length if is_query else self.document_length
+        use_prefix = self.add_special_tokens
         self._first_module().max_seq_length = (
-            max_length - 1
-        )  # Subtract 1 for the prefix token
+            max_length - 1 if use_prefix else max_length
+        )
 
         # Pad queries (if query expansion) and handle padding for documents if specified
         tokenize_args = (
@@ -1101,22 +1106,23 @@ class ColBERT(SentenceTransformer):
         # Tokenize the texts
         tokenized_outputs = self._first_module().tokenize(texts, **tokenize_args)
 
-        # Determine prefix ID based on input type
-        prefix_id = self.query_prefix_id if is_query else self.document_prefix_id
+        if use_prefix:
+            # Determine prefix ID based on input type
+            prefix_id = self.query_prefix_id if is_query else self.document_prefix_id
 
-        # Insert prefix token and update attention mask
-        tokenized_outputs["input_ids"] = self.insert_prefix_token(
-            tokenized_outputs["input_ids"], prefix_id
-        )
-        tokenized_outputs["attention_mask"] = self.insert_prefix_token(
-            tokenized_outputs["attention_mask"], 1
-        )
-
-        # Update token type IDs if they exist
-        if "token_type_ids" in tokenized_outputs:
-            tokenized_outputs["token_type_ids"] = self.insert_prefix_token(
-                tokenized_outputs["token_type_ids"], 0
+            # Insert prefix token and update attention mask
+            tokenized_outputs["input_ids"] = self.insert_prefix_token(
+                tokenized_outputs["input_ids"], prefix_id
             )
+            tokenized_outputs["attention_mask"] = self.insert_prefix_token(
+                tokenized_outputs["attention_mask"], 1
+            )
+
+            # Update token type IDs if they exist
+            if "token_type_ids" in tokenized_outputs:
+                tokenized_outputs["token_type_ids"] = self.insert_prefix_token(
+                    tokenized_outputs["token_type_ids"], 0
+                )
 
         # Adjust attention mask for expansion tokens if required
         if is_query and self.attend_to_expansion_tokens:
@@ -1164,6 +1170,7 @@ class ColBERT(SentenceTransformer):
             config["attend_to_expansion_tokens"] = self.attend_to_expansion_tokens
             config["skiplist_words"] = self.skiplist_words
             config["do_query_expansion"] = self.do_query_expansion
+            config["add_special_tokens"] = self.add_special_tokens
             json.dump(config, fOut, indent=2)
 
     def _load_auto_model(
@@ -1317,6 +1324,10 @@ class ColBERT(SentenceTransformer):
                 self.skiplist_words = self._model_config["skiplist_words"]
             if "do_query_expansion" in self._model_config:
                 self.do_query_expansion = self._model_config["do_query_expansion"]
+            if "add_special_tokens" in self._model_config:
+                self.add_special_tokens = self._model_config[
+                    "add_special_tokens"
+                ]
 
         return [
             module
