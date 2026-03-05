@@ -1325,9 +1325,7 @@ class ColBERT(SentenceTransformer):
             if "do_query_expansion" in self._model_config:
                 self.do_query_expansion = self._model_config["do_query_expansion"]
             if "add_special_tokens" in self._model_config:
-                self.add_special_tokens = self._model_config[
-                    "add_special_tokens"
-                ]
+                self.add_special_tokens = self._model_config["add_special_tokens"]
 
         return [
             module
