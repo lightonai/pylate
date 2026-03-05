@@ -2,11 +2,9 @@ from __future__ import annotations
 
 import json
 import os
-import shutil
 import tempfile
 
 import pytest
-import torch
 
 from pylate import models
 
