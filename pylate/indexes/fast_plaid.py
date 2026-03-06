@@ -87,6 +87,10 @@ class FastPlaid(Base):
         Can be a list of device strings (e.g., ["cuda:0", "cuda:1"]).
     use_triton
         Whether to use triton kernels when computing kmeans using fast-plaid. Triton kernels are faster, but yields some variance due to race condition, set to false to get 100% reproducible results. If unset, will use triton kernels if possible.
+    low_memory
+        If True, index tensors are kept on CPU and moved to the target device only when needed,
+        reducing VRAM usage at the cost of slower search. If False (default), tensors stay on GPU
+        for faster search but higher VRAM usage. No effect when device is "cpu".
 
     """
 
@@ -105,6 +109,7 @@ class FastPlaid(Base):
         show_progress: bool = True,
         device: str | list[str] | None = None,
         use_triton: bool | None = None,
+        low_memory: bool = False,
     ) -> None:
         self.index_folder = index_folder
         self.index_name = index_name
@@ -141,7 +146,7 @@ class FastPlaid(Base):
 
         # Initialize or load the fast-plaid index
         self.fast_plaid = search.FastPlaid(
-            index=self.fast_plaid_index_path, device=device
+            index=self.fast_plaid_index_path, device=device, low_memory=low_memory
         )
         # Check if index already exists
         self.is_indexed = os.path.exists(self.documents_ids_to_plaid_ids_path)
