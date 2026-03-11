@@ -65,18 +65,19 @@ def xtr_scores(
     queries_embeddings = convert_to_tensor(queries_embeddings)
     documents_embeddings = convert_to_tensor(documents_embeddings)
 
-    Q, N = documents_embeddings.shape[:2]
+    Dq, N = documents_embeddings.shape[:2]
+    Qb = queries_embeddings.shape[0]
 
-    # (Q, N, Dt, H) → (Q*N, Dt, H)
-    docs_flat = documents_embeddings.view(Q * N, *documents_embeddings.shape[2:])
+    # (Dq, N, Dt, H) → (Dq*N, Dt, H)
+    docs_flat = documents_embeddings.view(Dq * N, *documents_embeddings.shape[2:])
 
-    # All-pair token scores: (Q, Q*N, Qt, Dt)
+    # All-pair token scores: (Qb, Dq*N, Qt, Dt)
     scores = queries_embeddings.unsqueeze(1) @ docs_flat.transpose(1, 2).unsqueeze(0)
 
     if documents_mask is not None:
-        # (Q, N, Dt) → (Q*N, Dt), expand to (Q, Q*N, Dt) — broadcast over Qt via transpose trick
-        docs_mask_flat = documents_mask.view(Q * N, -1)
-        D_mask = docs_mask_flat.unsqueeze(0).expand(Q, -1, -1)  # (Q, Q*N, Dt)
+        # (Dq, N, Dt) → (Dq*N, Dt), expand to (Qb, Dq*N, Dt) — broadcast over Qt via transpose trick
+        docs_mask_flat = documents_mask.view(Dq * N, -1)
+        D_mask = docs_mask_flat.unsqueeze(0).expand(Qb, -1, -1)  # (Qb, Dq*N, Dt)
         scores.transpose(2, 3)[~D_mask.bool()] = -99999
 
     Qb, Db, Qt, Dt = scores.shape
