@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import math
 import time
 
 import numpy as np
@@ -44,6 +45,12 @@ class XTR:
     ...     override=True,
     ...     name="xtr_scann",
     ...     store_embeddings=False,
+    ... )
+
+    >>> index = index.add_documents(
+    ...     documents_ids=documents_ids,
+    ...     documents_embeddings=documents_embeddings,
+    ...     batch_size=1,
     ... )
 
     >>> retriever = retrieve.XTR(index=index)
@@ -160,7 +167,7 @@ class XTR:
             iter_batch(queries_embeddings, batch_size=batch_size, tqdm_bar=False),
             desc="Retrieving documents (XTR)",
             disable=not self.verbose,
-            total=len(queries_embeddings) // batch_size,
+            total=math.ceil(len(queries_embeddings) / batch_size),
         )
         for batch_queries_embeddings in progress_bar:
             # Initial retrieval from index

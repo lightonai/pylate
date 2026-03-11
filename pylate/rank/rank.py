@@ -220,9 +220,9 @@ def _compute_imputation_scores(
 
         ranks = np.arange(1, len(valid_scores) + 1, dtype=np.float64)
         try:
-            neg_b, log_a = np.polyfit(np.log(ranks), np.log(valid_scores), 1)
+            slope, log_a = np.polyfit(np.log(ranks), np.log(valid_scores), 1)
             extrapolate_rank = power_law_multiplier * len(sorted_scores)
-            log_imputed = log_a + neg_b * np.log(extrapolate_rank)
+            log_imputed = log_a + slope * np.log(extrapolate_rank)
             imputed = float(np.exp(log_imputed))
             # Keep imputed value in a stable range.
             return max(0.0, min(imputed, min_score))
@@ -470,7 +470,7 @@ def score_xtr(
     doc_scores = doc_scores_flat.reshape(num_docs, q_tok)
 
     # Step 2: Replace -inf (no retrieved score) with imputation scores
-    missing_mask = doc_scores == NEG_INF
+    missing_mask = torch.isinf(doc_scores) & (doc_scores < 0)
     doc_scores = torch.where(missing_mask, imputation_scores, doc_scores)
 
     # Sum across query tokens to get final document scores

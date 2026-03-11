@@ -10,7 +10,7 @@ pytest.importorskip("scann")
 
 def _build_tiny_scann_index() -> indexes.ScaNN:
     index = indexes.ScaNN(
-        name="xtr_test_index",
+        index_name="xtr_test_index",
         store_embeddings=False,
         override=True,
         verbose=False,
