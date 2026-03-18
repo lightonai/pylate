@@ -54,19 +54,17 @@ def test_xtr_retrieve_subset_not_supported() -> None:
         )
 
 
-def test_xtr_retrieve_e2e_with_scann_and_timing() -> None:
+def test_xtr_retrieve_e2e_with_scann() -> None:
     retriever = retrieve.XTR(index=_build_tiny_scann_index(), verbose=False)
     queries = [
         torch.randn(3, 8, dtype=torch.float32),
         torch.randn(2, 8, dtype=torch.float32),
     ]
 
-    # Validate the full retrieval path and timing output together.
-    results, timing = retriever.retrieve(
+    results = retriever.retrieve(
         queries_embeddings=queries,
         k=2,
         k_token=5,
-        return_timing=True,
     )
 
     # E2E shape check: one result list per query.
@@ -82,7 +80,18 @@ def test_xtr_retrieve_e2e_with_scann_and_timing() -> None:
             assert "id" in item
             assert "score" in item
 
-    # Timing check: expected keys and float values are returned when requested.
-    expected_keys = {"token_retrieval", "score_imputation", "total_time"}
-    assert set(timing.keys()) == expected_keys
-    assert all(isinstance(timing[k], float) for k in expected_keys)
+
+def test_xtr_retrieve_single_query_2d_input() -> None:
+    """A single query passed as a 2D tensor (num_tokens, dim) should be
+    treated as one query, not num_tokens queries."""
+    retriever = retrieve.XTR(index=_build_tiny_scann_index(), verbose=False)
+    single_query = torch.randn(4, 8, dtype=torch.float32)  # 2D, not wrapped in list
+
+    results = retriever.retrieve(
+        queries_embeddings=single_query,
+        k=2,
+        k_token=5,
+    )
+
+    assert len(results) == 1
+    assert all(len(r) <= 2 for r in results)

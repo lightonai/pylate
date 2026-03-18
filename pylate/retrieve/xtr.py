@@ -43,7 +43,7 @@ class XTR:
 
     >>> index = indexes.ScaNN(
     ...     override=True,
-    ...     name="xtr_scann",
+    ...     index_name="xtr_scann",
     ...     store_embeddings=False,
     ... )
 
@@ -136,6 +136,15 @@ class XTR:
             document IDs and scores sorted by score (descending).
 
         """
+        # Handle single query: if a 2D array/tensor is passed (num_tokens, dim),
+        # wrap it in a list so it's treated as one query, not num_tokens queries.
+        if isinstance(queries_embeddings, np.ndarray):
+            if queries_embeddings.ndim == 2:
+                queries_embeddings = [queries_embeddings]
+        elif isinstance(queries_embeddings, torch.Tensor):
+            if queries_embeddings.ndim == 2:
+                queries_embeddings = [queries_embeddings]
+
         if subset is not None:
             raise NotImplementedError(
                 "Subset filtering is not implemented for XTR retrieval yet."
@@ -193,7 +202,6 @@ class XTR:
             total_scoring_time += scoring_time
             num_batches += 1
 
-            
             if not progress_bar.disable:
                 batch_count = max(1, len(batch_queries_embeddings))
                 # seconds per query
@@ -209,7 +217,6 @@ class XTR:
                     }
                 )
 
-        
         # Log timing breakdown if verbose
         if self.verbose:
             total_time = total_retrieval_time + total_scoring_time

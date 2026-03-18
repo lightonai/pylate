@@ -335,6 +335,7 @@ def xtr_scores(
 
     return (1.0 / Z) * topk_scores_max.sum(dim=1)  # (Qb, Dq*N)
 
+
 def xtr_kd_scores(
     queries_embeddings: list | np.ndarray | torch.Tensor,
     documents_embeddings: list | np.ndarray | torch.Tensor,
