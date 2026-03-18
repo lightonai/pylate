@@ -81,13 +81,9 @@ class ColBERT(SentenceTransformer):
     embedding_size
         The output size of the projection layer. Default to 128.
     query_prefix
-        Prefix to add to the queries.
+        Prefix to add to the queries. If None, falls back to "[Q] " if not set in the config file. If "" is set, no prefix will be added.
     document_prefix
-        Prefix to add to the documents.
-    add_special_tokens
-        Whether to prepend query/document prefix tokens during tokenization. Set to False for
-        models that don't use ColBERT-style marker tokens (e.g. XTR). If None, uses the value
-        from the saved config or defaults to True.
+        Prefix to add to the documents. If None, falls back to "[D] " if not set in the config file. If "" is set, no prefix will be added.
     truncation
         Truncate the inputs to the encoder max lengths or use sliding window encoding.
     query_length
@@ -210,7 +206,6 @@ class ColBERT(SentenceTransformer):
         bias: bool = False,
         query_prefix: str | None = None,
         document_prefix: str | None = None,
-        add_special_tokens: bool | None = None,
         truncation: bool = True,
         query_length: int | None = None,
         document_length: int | None = None,
@@ -366,23 +361,35 @@ class ColBERT(SentenceTransformer):
         self.is_hpu_graph_enabled = False
         # Override the configuration values with the provided arguments, if any. If not set and values have not been read from configs, set to default values.
         self.query_prefix = (
-            query_prefix if query_prefix is not None else self.query_prefix or "[Q] "
+            query_prefix
+            if query_prefix is not None
+            else self.query_prefix
+            if self.query_prefix is not None
+            else "[Q] "
         )
         self.document_prefix = (
             document_prefix
             if document_prefix is not None
-            else self.document_prefix or "[D] "
+            else self.document_prefix
+            if self.document_prefix is not None
+            else "[D] "
         )
 
         # Try adding the prefixes to the tokenizer. We call resize_token_embeddings twice to ensure the tokens are added only if resize_token_embeddings works. There should be a better way to do this.
-        try:
-            self._first_module().auto_model.resize_token_embeddings(len(self.tokenizer))
-            self.tokenizer.add_tokens([self.query_prefix, self.document_prefix])
-            self._first_module().auto_model.resize_token_embeddings(len(self.tokenizer))
-        except NotImplementedError:
-            logger.warning(
-                "The tokenizer does not support resizing the token embeddings, the prefixes token have not been added to vocabulary."
-            )
+        prefix_tokens = [p for p in (self.query_prefix, self.document_prefix) if p]
+        if prefix_tokens:
+            try:
+                self._first_module().auto_model.resize_token_embeddings(
+                    len(self.tokenizer)
+                )
+                self.tokenizer.add_tokens(prefix_tokens)
+                self._first_module().auto_model.resize_token_embeddings(
+                    len(self.tokenizer)
+                )
+            except NotImplementedError:
+                logger.warning(
+                    "The tokenizer does not support resizing the token embeddings, the prefixes token have not been added to vocabulary."
+                )
 
         self.document_prefix_id = self.tokenizer.convert_tokens_to_ids(
             self.document_prefix
@@ -454,14 +461,6 @@ class ColBERT(SentenceTransformer):
         # If we do not do query expansion, we do not attend to the expansion tokens
         if not self.do_query_expansion:
             self.attend_to_expansion_tokens = False
-
-        self.add_special_tokens = (
-            add_special_tokens
-            if add_special_tokens is not None
-            else self.add_special_tokens
-            if hasattr(self, "add_special_tokens")
-            else True
-        )
 
     @staticmethod
     def load(input_path) -> "ColBERT":
@@ -1091,7 +1090,8 @@ class ColBERT(SentenceTransformer):
         """
         # Set max sequence length based on whether the input is a query or document
         max_length = self.query_length if is_query else self.document_length
-        use_prefix = self.add_special_tokens
+        prefix = self.query_prefix if is_query else self.document_prefix
+        use_prefix = bool(prefix)
         self._first_module().max_seq_length = (
             max_length - 1 if use_prefix else max_length
         )
@@ -1170,7 +1170,6 @@ class ColBERT(SentenceTransformer):
             config["attend_to_expansion_tokens"] = self.attend_to_expansion_tokens
             config["skiplist_words"] = self.skiplist_words
             config["do_query_expansion"] = self.do_query_expansion
-            config["add_special_tokens"] = self.add_special_tokens
             json.dump(config, fOut, indent=2)
 
     def _load_auto_model(
@@ -1324,8 +1323,6 @@ class ColBERT(SentenceTransformer):
                 self.skiplist_words = self._model_config["skiplist_words"]
             if "do_query_expansion" in self._model_config:
                 self.do_query_expansion = self._model_config["do_query_expansion"]
-            if "add_special_tokens" in self._model_config:
-                self.add_special_tokens = self._model_config["add_special_tokens"]
 
         return [
             module
