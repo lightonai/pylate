@@ -26,7 +26,9 @@ class TestXTRScoresMatchedBatch:
         # Mask out some tokens
         q_mask[:, -2:] = 0
         d_mask[:, :, -3:] = 0
-        result = xtr_scores(queries, docs, queries_mask=q_mask, documents_mask=d_mask, k=8)
+        result = xtr_scores(
+            queries, docs, queries_mask=q_mask, documents_mask=d_mask, k=8
+        )
         assert result.shape == (Q, Q * N)
 
 
@@ -55,7 +57,9 @@ class TestXTRScoresMismatchedBatch:
         d_mask = torch.ones(Dq, N, Dt)
         q_mask[:, -2:] = 0
         d_mask[:, :, -3:] = 0
-        result = xtr_scores(queries, docs, queries_mask=q_mask, documents_mask=d_mask, k=8)
+        result = xtr_scores(
+            queries, docs, queries_mask=q_mask, documents_mask=d_mask, k=8
+        )
         assert result.shape == (Qb, Dq * N)
 
     def test_single_query_against_full_batch(self) -> None:
@@ -74,9 +78,6 @@ class TestXTRScoresMismatchedBatch:
         torch.manual_seed(42)
         queries = torch.randn(Q, Qt, H)
         docs = torch.randn(Q, N, Dt, H)
-
-        # Full batch
-        full_scores = xtr_scores(queries, docs, k=k)
 
         # Chunked: first 4 queries against all docs
         chunk_scores = xtr_scores(queries[:4], docs, k=k)

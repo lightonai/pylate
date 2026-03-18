@@ -74,9 +74,7 @@ def run_single(args: argparse.Namespace) -> None:
             temperature=args.temperature,
         )
 
-    dataset = load_dataset(
-        "bclavie/msmarco-10m-triplets", split="train"
-    )
+    dataset = load_dataset("bclavie/msmarco-10m-triplets", split="train")
     splits = dataset.train_test_split(test_size=1000, seed=42)
     train_dataset = splits["train"]
     eval_dataset = splits["test"]
@@ -147,24 +145,35 @@ def run_sweep(args: argparse.Namespace) -> None:
             label += f"  mbs={mbs:<4d}"
         else:
             label += "  mbs= -  "
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"Running: {label}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
         cmd = [
-            sys.executable, __file__,
-            "--score", score,
-            "--loss", loss,
-            "--batch_size", str(bs),
-            "--mini_batch_size", str(mbs) if loss == "cached" else "1",
-            "--max_steps", str(args.max_steps),
-            "--temperature", str(args.temperature),
-            "--model_name", args.model_name,
+            sys.executable,
+            __file__,
+            "--score",
+            score,
+            "--loss",
+            loss,
+            "--batch_size",
+            str(bs),
+            "--mini_batch_size",
+            str(mbs) if loss == "cached" else "1",
+            "--max_steps",
+            str(args.max_steps),
+            "--temperature",
+            str(args.temperature),
+            "--model_name",
+            args.model_name,
         ]
 
         t0 = time.time()
         proc = subprocess.run(
-            cmd, capture_output=True, text=True, timeout=600,
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=600,
         )
         elapsed = time.time() - t0
 
@@ -183,19 +192,27 @@ def run_sweep(args: argparse.Namespace) -> None:
             for line in stderr_lines[-5:]:
                 print(f"  stderr: {line}")
 
-        results.append({
-            "score": score, "loss": loss, "bs": bs, "mbs": mbs,
-            "status": status, "peak_mem_gb": peak_mem,
-            "elapsed_s": round(elapsed, 1),
-        })
+        results.append(
+            {
+                "score": score,
+                "loss": loss,
+                "bs": bs,
+                "mbs": mbs,
+                "status": status,
+                "peak_mem_gb": peak_mem,
+                "elapsed_s": round(elapsed, 1),
+            }
+        )
         mem_str = f"{peak_mem:.2f}" if peak_mem else "-"
         print(f"  => {status}  peak={mem_str} GB  time={elapsed:.1f}s")
 
     # Summary table
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print("SWEEP SUMMARY")
-    print(f"{'='*80}")
-    print(f"{'score':>7s}  {'loss':>12s}  {'bs':>4s}  {'mbs':>4s}  {'status':>8s}  {'peak_GB':>8s}  {'time_s':>7s}")
+    print(f"{'=' * 80}")
+    print(
+        f"{'score':>7s}  {'loss':>12s}  {'bs':>4s}  {'mbs':>4s}  {'status':>8s}  {'peak_GB':>8s}  {'time_s':>7s}"
+    )
     print("-" * 80)
     for r in results:
         mbs_str = str(r["mbs"]) if r["loss"] == "cached" else "-"
@@ -209,15 +226,24 @@ def run_sweep(args: argparse.Namespace) -> None:
 def _run_subprocess(score, loss, bs, mbs, max_steps, temperature, model_name, seed):
     """Run a single config as a subprocess, return (losses, peak_mem, returncode)."""
     cmd = [
-        sys.executable, __file__,
-        "--score", score,
-        "--loss", loss,
-        "--batch_size", str(bs),
-        "--mini_batch_size", str(mbs),
-        "--max_steps", str(max_steps),
-        "--temperature", str(temperature),
-        "--model_name", model_name,
-        "--seed", str(seed),
+        sys.executable,
+        __file__,
+        "--score",
+        score,
+        "--loss",
+        loss,
+        "--batch_size",
+        str(bs),
+        "--mini_batch_size",
+        str(mbs),
+        "--max_steps",
+        str(max_steps),
+        "--temperature",
+        str(temperature),
+        "--model_name",
+        model_name,
+        "--seed",
+        str(seed),
     ]
     proc = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
     step_losses = None
@@ -247,9 +273,11 @@ def run_validate(args: argparse.Namespace) -> None:
     all_passed = True
 
     for score in args.validate_scores:
-        print(f"\n{'='*60}")
-        print(f"Validating: {score} scoring  (bs={bs}, steps={steps}, seed={seed}, tol={tol})")
-        print(f"{'='*60}")
+        print(f"\n{'=' * 60}")
+        print(
+            f"Validating: {score} scoring  (bs={bs}, steps={steps}, seed={seed}, tol={tol})"
+        )
+        print(f"{'=' * 60}")
 
         # Run contrastive as baseline (once per score type)
         print(f"\n  Running {score} contrastive (baseline)...")
@@ -270,7 +298,9 @@ def run_validate(args: argparse.Namespace) -> None:
                 score, "cached", bs, mbs, steps, args.temperature, args.model_name, seed
             )
             if rc_cc != 0:
-                print(f"  FAILED (cached mbs={mbs}): {stderr_cc.strip().splitlines()[-3:]}")
+                print(
+                    f"  FAILED (cached mbs={mbs}): {stderr_cc.strip().splitlines()[-3:]}"
+                )
                 all_passed = False
                 continue
 
@@ -281,9 +311,9 @@ def run_validate(args: argparse.Namespace) -> None:
                 all_passed = False
                 continue
 
-            header = f"  {'step':>4s}  {'contrastive':>14s}  {'cached(mbs='+str(mbs)+')':>14s}  {'diff':>12s}  {'status':>6s}"
+            header = f"  {'step':>4s}  {'contrastive':>14s}  {'cached(mbs=' + str(mbs) + ')':>14s}  {'diff':>12s}  {'status':>6s}"
             print(f"\n{header}")
-            print(f"  {'-'*len(header)}")
+            print(f"  {'-' * len(header)}")
             step_passed = True
             max_diff = 0.0
             for i in range(n):
@@ -294,24 +324,28 @@ def run_validate(args: argparse.Namespace) -> None:
                     step_passed = False
                 status = "OK" if ok else "FAIL"
                 print(
-                    f"  {i+1:>4d}  {losses_c[i]:>14.6f}  {losses_cc[i]:>14.6f}"
+                    f"  {i + 1:>4d}  {losses_c[i]:>14.6f}  {losses_cc[i]:>14.6f}"
                     f"  {diff:>12.2e}  {status:>6s}"
                 )
 
             if step_passed:
-                print(f"\n  PASSED (mbs={mbs}): All {n} steps match within tol={tol} (max_diff={max_diff:.2e})")
+                print(
+                    f"\n  PASSED (mbs={mbs}): All {n} steps match within tol={tol} (max_diff={max_diff:.2e})"
+                )
             else:
-                print(f"\n  FAILED (mbs={mbs}): max_diff={max_diff:.2e} exceeds tol={tol}")
+                print(
+                    f"\n  FAILED (mbs={mbs}): max_diff={max_diff:.2e} exceeds tol={tol}"
+                )
                 all_passed = False
 
     if all_passed:
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print("ALL VALIDATIONS PASSED")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
     else:
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print("SOME VALIDATIONS FAILED")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
         sys.exit(1)
 
 
@@ -319,7 +353,9 @@ def main():
     parser = argparse.ArgumentParser()
     # Single-run args
     parser.add_argument("--score", choices=["colbert", "xtr"], default="colbert")
-    parser.add_argument("--loss", choices=["contrastive", "cached"], default="contrastive")
+    parser.add_argument(
+        "--loss", choices=["contrastive", "cached"], default="contrastive"
+    )
     parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--mini_batch_size", type=int, default=16)
     parser.add_argument("--temperature", type=float, default=1.0)
@@ -333,13 +369,22 @@ def main():
     parser.add_argument("--sweep", action="store_true")
     parser.add_argument("--sweep_scores", nargs="+", default=["colbert", "xtr"])
     parser.add_argument("--sweep_losses", nargs="+", default=["contrastive", "cached"])
-    parser.add_argument("--sweep_batch_sizes", nargs="+", type=int, default=[128, 196, 256, 300, 384, 450, 512])
-    parser.add_argument("--sweep_mini_batch_sizes", nargs="+", type=int, default=[8, 16, 32])
+    parser.add_argument(
+        "--sweep_batch_sizes",
+        nargs="+",
+        type=int,
+        default=[128, 196, 256, 300, 384, 450, 512],
+    )
+    parser.add_argument(
+        "--sweep_mini_batch_sizes", nargs="+", type=int, default=[8, 16, 32]
+    )
     # Validate args
     parser.add_argument("--validate", action="store_true")
     parser.add_argument("--validate_scores", nargs="+", default=["colbert", "xtr"])
     parser.add_argument("--validate_batch_size", type=int, default=16)
-    parser.add_argument("--validate_mini_batch_sizes", nargs="+", type=int, default=[4, 8, 16])
+    parser.add_argument(
+        "--validate_mini_batch_sizes", nargs="+", type=int, default=[4, 8, 16]
+    )
     parser.add_argument("--validate_steps", type=int, default=10)
     parser.add_argument("--validate_tolerance", type=float, default=1e-4)
     args = parser.parse_args()
