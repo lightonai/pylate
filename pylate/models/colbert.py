@@ -81,11 +81,9 @@ class ColBERT(SentenceTransformer):
     embedding_size
         The output size of the projection layer. Default to 128.
     query_prefix
-        Prefix to add to the queries.
+        Prefix to add to the queries. If None, falls back to "[Q] " if not set in the config file. If "" is set, no prefix will be added.
     document_prefix
-        Prefix to add to the documents.
-    add_special_tokens
-        Add the prefix to the inputs.
+        Prefix to add to the documents. If None, falls back to "[D] " if not set in the config file. If "" is set, no prefix will be added.
     truncation
         Truncate the inputs to the encoder max lengths or use sliding window encoding.
     query_length
@@ -208,7 +206,6 @@ class ColBERT(SentenceTransformer):
         bias: bool = False,
         query_prefix: str | None = None,
         document_prefix: str | None = None,
-        add_special_tokens: bool = True,
         truncation: bool = True,
         query_length: int | None = None,
         document_length: int | None = None,
@@ -362,44 +359,44 @@ class ColBERT(SentenceTransformer):
 
         self.to(device)
         self.is_hpu_graph_enabled = False
-        # Override configuration values with provided arguments, if any.
-        # If prefixes are None, do not force default marker tokens.
+        # Override the configuration values with the provided arguments, if any. If not set and values have not been read from configs, set to default values.
         self.query_prefix = (
-            query_prefix if query_prefix is not None else self.query_prefix
+            query_prefix
+            if query_prefix is not None
+            else self.query_prefix
+            if self.query_prefix is not None
+            else "[Q] "
         )
         self.document_prefix = (
-            document_prefix if document_prefix is not None else self.document_prefix
+            document_prefix
+            if document_prefix is not None
+            else self.document_prefix
+            if self.document_prefix is not None
+            else "[D] "
         )
 
-        # Try adding prefixes to the tokenizer when defined.
-        try:
-            self._first_module().auto_model.resize_token_embeddings(len(self.tokenizer))
-            tokens_to_add = [
-                token
-                for token in [self.query_prefix, self.document_prefix]
-                if token is not None
-            ]
-            if tokens_to_add:
-                self.tokenizer.add_tokens(tokens_to_add)
+        # Try adding the prefixes to the tokenizer. We call resize_token_embeddings twice to ensure the tokens are added only if resize_token_embeddings works. There should be a better way to do this.
+        prefix_tokens = [p for p in (self.query_prefix, self.document_prefix) if p]
+        if prefix_tokens:
+            try:
                 self._first_module().auto_model.resize_token_embeddings(
                     len(self.tokenizer)
                 )
-        except NotImplementedError:
-            logger.warning(
-                "The tokenizer does not support resizing the token embeddings, prefix tokens have not been added to vocabulary."
-            )
+                self.tokenizer.add_tokens(prefix_tokens)
+                self._first_module().auto_model.resize_token_embeddings(
+                    len(self.tokenizer)
+                )
+            except NotImplementedError:
+                logger.warning(
+                    "The tokenizer does not support resizing the token embeddings, the prefixes token have not been added to vocabulary."
+                )
 
-        # Set prefix IDs using the tokenizer when prefixes are defined.
-        self.document_prefix_id = (
-            self.tokenizer.convert_tokens_to_ids(self.document_prefix)
-            if self.document_prefix is not None
-            else None
+        self.document_prefix_id = self.tokenizer.convert_tokens_to_ids(
+            self.document_prefix
         )
-        self.query_prefix_id = (
-            self.tokenizer.convert_tokens_to_ids(self.query_prefix)
-            if self.query_prefix is not None
-            else None
-        )
+
+        # Set the query prefix ID using the tokenizer.
+        self.query_prefix_id = self.tokenizer.convert_tokens_to_ids(self.query_prefix)
 
         # Set the padding token ID
         # If it is a MLM model, use the MASK token
@@ -819,54 +816,47 @@ class ColBERT(SentenceTransformer):
         -------
             A list of pooled embeddings for each document.
         """
+        device = torch.device(device="cuda" if torch.cuda.is_available() else "cpu")
         pooled_embeddings = []
 
         for document_embeddings in documents_embeddings:
-            # Stay on CPU since scipy clustering requires CPU anyway
-            document_embeddings_cpu = document_embeddings.cpu()
+            document_embeddings = document_embeddings.to(device=device)
 
             # Separate protected tokens from the rest
-            protected = document_embeddings_cpu[:protected_tokens]
-            to_pool = document_embeddings_cpu[protected_tokens:]
+            protected_embeddings = document_embeddings[:protected_tokens]
+            embeddings_to_pool = document_embeddings[protected_tokens:]
 
-            num_embeddings = len(to_pool)
+            # Compute cosine similarity and convert to distance matrix
+            cosine_similarities = torch.mm(
+                input=embeddings_to_pool, mat2=embeddings_to_pool.t()
+            )
+            distance_matrix = 1 - cosine_similarities.cpu().numpy()
+
+            # Perform hierarchical clustering using Ward's method
+            clusters = hierarchy.linkage(distance_matrix, method="ward")
+            num_embeddings = len(embeddings_to_pool)
+
+            # Determine the number of clusters based on pool_factor
             num_clusters = max(num_embeddings // pool_factor, 1)
-
-            # Skip pooling if it wouldn't reduce anything
-            if num_clusters >= num_embeddings:
-                pooled_embeddings.append(document_embeddings_cpu)
-                continue
-
-            # Compute cosine similarity and convert to condensed distance matrix
-            cos_sim = torch.mm(to_pool, to_pool.t()).numpy()
-            dist_full = 1 - cos_sim
-            # Extract upper triangle as condensed form for scipy linkage
-            condensed = dist_full[np.triu_indices(num_embeddings, k=1)]
-
-            # Hierarchical clustering
-            linkage_matrix = hierarchy.linkage(condensed, method="ward")
-            labels = hierarchy.fcluster(
-                linkage_matrix, t=num_clusters, criterion="maxclust"
+            cluster_labels = hierarchy.fcluster(
+                clusters, t=num_clusters, criterion="maxclust"
             )
 
-            # Vectorized cluster mean via scatter_add_
-            labels_tensor = torch.from_numpy(labels.astype(np.int64)) - 1  # 0-indexed
-            dim = to_pool.shape[1]
-            cluster_sums = torch.zeros(num_clusters, dim, dtype=to_pool.dtype)
-            cluster_counts = torch.zeros(num_clusters, dtype=torch.long)
+            # Pool embeddings within each cluster
+            pooled_document_embeddings = []
+            for cluster_id in range(1, num_clusters + 1):
+                cluster_indices = torch.where(
+                    condition=torch.tensor(
+                        data=cluster_labels == cluster_id, device=device
+                    )
+                )[0]
+                if cluster_indices.numel() > 0:
+                    cluster_embedding = embeddings_to_pool[cluster_indices].mean(dim=0)
+                    pooled_document_embeddings.append(cluster_embedding)
 
-            expanded_labels = labels_tensor.unsqueeze(1).expand_as(to_pool)
-            cluster_sums.scatter_add_(0, expanded_labels, to_pool)
-            cluster_counts.scatter_add_(
-                0, labels_tensor, torch.ones(num_embeddings, dtype=torch.long)
-            )
-
-            # fcluster may return fewer clusters than num_clusters requested,
-            # leaving some rows in cluster_sums at zero. Filter those out.
-            mask = cluster_counts > 0
-            pooled = cluster_sums[mask] / cluster_counts[mask].unsqueeze(1)
-
-            pooled_embeddings.append(torch.cat([protected, pooled], dim=0))
+            # Re-append protected embeddings
+            pooled_document_embeddings.extend(protected_embeddings)
+            pooled_embeddings.append(torch.stack(tensors=pooled_document_embeddings))
 
         return pooled_embeddings
 
@@ -1098,12 +1088,10 @@ class ColBERT(SentenceTransformer):
             dict[str, torch.Tensor]: A dictionary of tensors with the tokenized texts, including "input_ids",
                 "attention_mask", and optionally "token_type_ids".
         """
-        # Set max sequence length based on whether the input is a query or document.
-        # If a prefix token is used, leave room by subtracting one token.
+        # Set max sequence length based on whether the input is a query or document
         max_length = self.query_length if is_query else self.document_length
-        use_prefix = (is_query and self.query_prefix_id is not None) or (
-            not is_query and self.document_prefix_id is not None
-        )
+        prefix = self.query_prefix if is_query else self.document_prefix
+        use_prefix = bool(prefix)
         self._first_module().max_seq_length = (
             max_length - 1 if use_prefix else max_length
         )
@@ -1118,9 +1106,11 @@ class ColBERT(SentenceTransformer):
         # Tokenize the texts
         tokenized_outputs = self._first_module().tokenize(texts, **tokenize_args)
 
-        # Insert prefix token and update masks only when a prefix is configured.
         if use_prefix:
+            # Determine prefix ID based on input type
             prefix_id = self.query_prefix_id if is_query else self.document_prefix_id
+
+            # Insert prefix token and update attention mask
             tokenized_outputs["input_ids"] = self.insert_prefix_token(
                 tokenized_outputs["input_ids"], prefix_id
             )
@@ -1128,7 +1118,7 @@ class ColBERT(SentenceTransformer):
                 tokenized_outputs["attention_mask"], 1
             )
 
-            # Update token type IDs if they exist.
+            # Update token type IDs if they exist
             if "token_type_ids" in tokenized_outputs:
                 tokenized_outputs["token_type_ids"] = self.insert_prefix_token(
                     tokenized_outputs["token_type_ids"], 0
