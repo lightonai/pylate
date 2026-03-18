@@ -91,33 +91,14 @@ class TestScoreXTR:
         assert len(results) == 3
         assert results[0]["id"] == "doc2"
 
-    def test_score_imputation_min(self) -> None:
+    def test_min_imputation(self) -> None:
+        """Min imputation: missing docs get the minimum score for that query token."""
         query_doc_ids = [["doc1"], ["doc2"]]
         query_scores = [[0.9], [0.5]]
-        results = score_xtr(query_doc_ids, query_scores, k=2, imputation="min")
+        results = score_xtr(query_doc_ids, query_scores, k=2)
         assert len(results) == 2
         assert results[0]["score"] == pytest.approx(1.4, abs=1e-5)
         assert results[1]["score"] == pytest.approx(1.4, abs=1e-5)
-
-    def test_imputation_modes_execute(self) -> None:
-        query_doc_ids = [
-            ["doc1", "doc2", "doc3"],
-            ["doc2", "doc3", "doc4"],
-        ]
-        query_scores = [
-            [0.9, 0.7, 0.5],
-            [0.8, 0.6, 0.4],
-        ]
-        for imputation in ["zero", "mean", "percentile", "power_law"]:
-            results = score_xtr(
-                query_doc_ids=query_doc_ids,
-                query_scores=query_scores,
-                k=4,
-                imputation=imputation,
-                percentile=10.0,
-                power_law_multiplier=100.0,
-            )
-            assert len(results) == 4
 
     def test_many_query_tokens(self) -> None:
         n_tokens = 10

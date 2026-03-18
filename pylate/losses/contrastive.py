@@ -128,11 +128,6 @@ class Contrastive(nn.Module):
         self.gather_across_devices = gather_across_devices
         self.temperature = temperature
 
-        print(f"Score metric: {self.score_metric}")
-        print(
-            f"Score metric requires full batch: {getattr(self.score_metric, 'requires_full_batch', False)}"
-        )
-
     def forward(
         self,
         sentence_features: Iterable[dict[str, Tensor]],
@@ -169,8 +164,6 @@ class Contrastive(nn.Module):
             sentence_features=sentence_features, skiplist=skiplist
         )
         batch_size = embeddings[0].size(0)
-        # create corresponding labels
-        labels = torch.arange(0, batch_size, device=embeddings[0].device)
         # Possibly gather the embeddings across devices to have more in-batch negatives.
         if self.gather_across_devices:
             # Note that we only gather the documents embeddings and not the queries embeddings (embeddings[0]), but are keeping gradients. This is to lower the memory usage, see https://github.com/mlfoundations/open_clip/issues/616
@@ -187,9 +180,6 @@ class Contrastive(nn.Module):
                 masks[0],
                 *[torch.cat(all_gather(mask)) for mask in masks[1:]],
             ]
-            rank = get_rank()
-            # Adjust the labels to match the gathered embeddings positions
-            labels = labels + rank * batch_size
         # Note: the queries mask is not used, if added, take care that the expansion tokens are not masked from scoring (because they might be masked during encoding).
         # We might not need to compute the mask for queries but I let the logic there for now
         if getattr(self.score_metric, "requires_full_batch", False):
@@ -204,6 +194,8 @@ class Contrastive(nn.Module):
             )
             # Positive for query i is at column i*N (docs are interleaved per query)
             labels = torch.arange(batch_size, device=embeddings[0].device) * N
+            if self.gather_across_devices:
+                labels = labels + get_rank() * batch_size * N
         else:
             scores = torch.cat(
                 [
@@ -219,6 +211,10 @@ class Contrastive(nn.Module):
                 ],
                 dim=1,
             )
+            # Positive for query i is at column i (groups are concatenated)
+            labels = torch.arange(batch_size, device=embeddings[0].device)
+            if self.gather_across_devices:
+                labels = labels + get_rank() * batch_size
 
         # compute constrastive loss using cross-entropy over the scores
         loss = F.cross_entropy(

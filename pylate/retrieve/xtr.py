@@ -105,16 +105,12 @@ class XTR:
         device: str = "cpu",
         batch_size: int = 1,
         subset: list[list[str]] | list[str] | None = None,
-        imputation: str = "min",
-        percentile: float = 10.0,
-        power_law_multiplier: float = 100.0,
-        return_timing: bool = False,
-    ) -> list[list[RerankResult]] | tuple[list[list[RerankResult]], dict[str, float]]:
+    ) -> list[list[RerankResult]]:
         """Retrieve documents using XTR (eXact Token Retrieval) scoring.
 
         XTR differs from standard ColBERT retrieval in that it doesn't do a full
         reranking step. Instead, it only scores documents using initially retrieved
-        tokens and imputes missing scores based on the chosen imputation strategy.
+        tokens and imputes missing scores using min imputation.
 
         Parameters
         ----------
@@ -131,19 +127,7 @@ class XTR:
         subset
             Optional subset of document IDs to restrict search to.
             Only supported with certain index types.
-        imputation
-            Strategy for imputing missing scores. Options:
-            - "min": Use minimum retrieved score per query token (default, original XTR).
-            - "zero": Impute with zero (missing tokens contribute nothing).
-            - "mean": Use mean of retrieved scores per query token.
-            - "percentile": Use specified percentile of retrieved scores.
-            - "power_law": Fit power-law curve to retrieved scores and extrapolate.
-        percentile
-            Percentile value (0-100) for percentile imputation. Default is 10.0.
-        power_law_multiplier
-            Multiplier for k' when extrapolating power-law. Default is 100.0.
-        return_timing
-            If True, return tuple of (results, timing_dict) with per-stage timing data.
+
 
         Returns
         -------
@@ -171,7 +155,7 @@ class XTR:
         )
         for batch_queries_embeddings in progress_bar:
             # Initial retrieval from index
-            retrieval_start = time.time()
+            retrieval_start = time.perf_counter()
             index_results = self.index(batch_queries_embeddings, k=k_token)
             if not isinstance(index_results, dict):
                 raise ValueError(
@@ -190,11 +174,11 @@ class XTR:
                     "XTR retriever received invalid index output. "
                     "`documents_ids` and `distances` must have the same batch length."
                 )
-            retrieval_time = time.time() - retrieval_start
+            retrieval_time = time.perf_counter() - retrieval_start
             total_retrieval_time += retrieval_time
 
             # XTR scoring
-            scoring_start = time.time()
+            scoring_start = time.perf_counter()
             for query_doc_ids, query_scores in zip(token_doc_ids, token_distances):
                 # Use the score_xtr helper function to compute XTR scores
                 query_results = score_xtr(
@@ -202,23 +186,21 @@ class XTR:
                     query_scores=query_scores,
                     k=k,
                     device=device,
-                    imputation=imputation,
-                    percentile=percentile,
-                    power_law_multiplier=power_law_multiplier,
                 )
 
                 results.append(query_results)
-            scoring_time = time.time() - scoring_start
+            scoring_time = time.perf_counter() - scoring_start
             total_scoring_time += scoring_time
             num_batches += 1
 
-            batch_count = max(1, len(batch_queries_embeddings))
-            per_query_retrieval = retrieval_time / batch_count  # seconds per query
-            per_query_scoring = scoring_time / batch_count  # seconds per query
-            per_query_total = (
-                per_query_retrieval + per_query_scoring
-            )  # seconds per query
+            
             if not progress_bar.disable:
+                batch_count = max(1, len(batch_queries_embeddings))
+                # seconds per query
+                per_query_retrieval = retrieval_time / batch_count
+                per_query_scoring = scoring_time / batch_count
+                per_query_total = per_query_retrieval + per_query_scoring
+
                 progress_bar.set_postfix(
                     {
                         "per_query_retrieval (s)": f"{per_query_retrieval:.3f} ({per_query_retrieval / (per_query_total + 1e-12) * 100:.1f}%)",
@@ -227,9 +209,11 @@ class XTR:
                     }
                 )
 
-        total_time = total_retrieval_time + total_scoring_time
+        
         # Log timing breakdown if verbose
         if self.verbose:
+            total_time = total_retrieval_time + total_scoring_time
+
             denom = max(total_time, 1e-12)
             logger.info(
                 f"XTR retrieval timing breakdown (total: {total_time:.4f}s, {num_batches} batches of {batch_size} queries):"
@@ -245,16 +229,4 @@ class XTR:
                     f"  - Per query:        {total_time / len(queries_embeddings) * 1000:.2f}ms"
                 )
 
-        if return_timing:
-            num_queries = len(queries_embeddings)
-            timing_dict = {
-                "token_retrieval": total_retrieval_time / num_queries
-                if num_queries > 0
-                else 0.0,
-                "score_imputation": total_scoring_time / num_queries
-                if num_queries > 0
-                else 0.0,
-                "total_time": total_time / num_queries if num_queries > 0 else 0.0,
-            }
-            return results, timing_dict
         return results

@@ -157,134 +157,18 @@ def rerank(
     return results
 
 
-def _compute_imputation_scores(
-    query_scores: list[list[float]],
-    imputation: str,
-    percentile: float,
-    power_law_multiplier: float,
-    device: str,
-    is_rectangular: bool | None = None,
-) -> torch.Tensor:
-    """Compute imputation scores for each query token.
-
-    Parameters
-    ----------
-    query_scores
-        List of length q_tok, where each element is a list of scores.
-    imputation
-        Imputation strategy: "min", "zero", "mean", "percentile", or "power_law".
-    percentile
-        Percentile value (0-100) for percentile imputation.
-    power_law_multiplier
-        Multiplier for k' when extrapolating power-law (e.g., 100 means extrapolate to rank 100*k').
-    device
-        Device for tensor computation.
-    is_rectangular
-        If provided, skip the per-row length check and use the given value
-        to choose the rectangular fast-path (True) or ragged fallback (False).
-
-    Returns
-    -------
-    torch.Tensor
-        Imputation score for each query token, shape (q_tok,).
-    """
-    q_tok = len(query_scores)
-    allowed_imputations = {"min", "zero", "mean", "percentile", "power_law"}
-    if imputation not in allowed_imputations:
-        raise ValueError(
-            f"Unknown imputation strategy: {imputation}. "
-            f"Expected one of: 'min', 'zero', 'mean', 'percentile', 'power_law'."
-        )
-
-    if imputation == "zero":
-        return torch.zeros(q_tok, dtype=torch.float32, device=device)
-
-    def _to_tensor(values: np.ndarray | list[float]) -> torch.Tensor:
-        return torch.as_tensor(values, dtype=torch.float32, device=device)
-
-    def _power_law_row(scores: np.ndarray | list[float]) -> float:
-        """Compute per-token power-law imputation score with robust fallbacks."""
-        if len(scores) == 0:
-            return 0.0
-
-        scores_arr = np.asarray(scores, dtype=np.float64)
-        min_score = float(scores_arr.min())
-        if len(scores_arr) < 2:
-            return min_score
-
-        # Rank 1 corresponds to the highest score.
-        sorted_scores = np.sort(scores_arr)[::-1]
-        valid_scores = sorted_scores[sorted_scores > 0]
-        if len(valid_scores) < 2:
-            return min_score
-
-        ranks = np.arange(1, len(valid_scores) + 1, dtype=np.float64)
-        try:
-            slope, log_a = np.polyfit(np.log(ranks), np.log(valid_scores), 1)
-            extrapolate_rank = power_law_multiplier * len(sorted_scores)
-            log_imputed = log_a + slope * np.log(extrapolate_rank)
-            imputed = float(np.exp(log_imputed))
-            # Keep imputed value in a stable range.
-            return max(0.0, min(imputed, min_score))
-        except (np.linalg.LinAlgError, ValueError):
-            return min_score
-
-    # Rectangular fast path (common for fixed-k retrieval outputs).
-    if is_rectangular is None:
-        is_rectangular = q_tok > 0 and all(
-            len(scores) == len(query_scores[0]) for scores in query_scores
-        )
-    if is_rectangular:
-        # Avoid list-of-ndarray -> tensor conversion warnings by materializing
-        # a contiguous ndarray once.
-        scores_np = np.asarray(query_scores, dtype=np.float32)
-        if scores_np.shape[1] == 0:
-            return torch.zeros(q_tok, dtype=torch.float32, device=device)
-
-        if imputation == "min":
-            return _to_tensor(scores_np.min(axis=1))
-        if imputation == "mean":
-            return _to_tensor(scores_np.mean(axis=1))
-        if imputation == "percentile":
-            return _to_tensor(np.percentile(scores_np, percentile, axis=1))
-        return _to_tensor([_power_law_row(row) for row in scores_np])
-
-    # Ragged fallback.
-    if imputation == "min":
-        return _to_tensor(
-            [min(scores) if len(scores) > 0 else 0.0 for scores in query_scores]
-        )
-    if imputation == "mean":
-        return _to_tensor(
-            [
-                sum(scores) / len(scores) if len(scores) > 0 else 0.0
-                for scores in query_scores
-            ]
-        )
-    if imputation == "percentile":
-        return _to_tensor(
-            [
-                float(np.percentile(scores, percentile)) if len(scores) > 0 else 0.0
-                for scores in query_scores
-            ]
-        )
-    return _to_tensor([_power_law_row(scores) for scores in query_scores])
-
-
 def score_xtr(
     query_doc_ids: list[list[str | int]],
     query_scores: list[list[float]],
     k: int,
     device: str = "cpu",
-    imputation: str = "min",
-    percentile: float = 10.0,
-    power_law_multiplier: float = 100.0,
 ) -> list[RerankResult]:
     """Score documents using XTR (eXact Token Retrieval) scoring.
 
     XTR scoring differs from ColBERT in that it doesn't do full reranking.
     Instead, it only scores documents using initially retrieved tokens, and
-    imputes missing token scores based on the chosen imputation strategy.
+    imputes missing token scores using min imputation (the minimum retrieved
+    score per query token, as in the original XTR paper).
 
     Parameters
     ----------
@@ -298,19 +182,6 @@ def score_xtr(
         Number of top documents to return.
     device
         Device to use for computation ('cpu', 'cuda', etc.).
-    imputation
-        Strategy for imputing missing scores. Options:
-        - "min": Use minimum retrieved score per query token (default, original XTR).
-        - "zero": Impute with zero (missing tokens contribute nothing).
-        - "mean": Use mean of retrieved scores per query token.
-        - "percentile": Use specified percentile of retrieved scores.
-        - "power_law": Fit power-law curve to retrieved scores and extrapolate
-          to rank (power_law_multiplier * k') as per Lee et al., 2023.
-    percentile
-        Percentile value (0-100) for percentile imputation. Default is 10.0.
-    power_law_multiplier
-        Multiplier for k' when extrapolating power-law. Default is 100.0 (extrapolate
-        to rank 100*k' as in the original XTR paper).
 
     Returns
     -------
@@ -322,7 +193,7 @@ def score_xtr(
     The XTR scoring algorithm:
     1. For each document, sum scores across all query tokens
     2. If a document's token wasn't retrieved for a query token, use the
-       imputed score based on the chosen strategy
+       minimum retrieved score for that query token (min imputation)
     3. If multiple tokens from the same document were retrieved for a query token,
        use the maximum score
 
@@ -340,12 +211,6 @@ def score_xtr(
     >>> results = score_xtr(query_doc_ids, query_scores, k=3)
     >>> assert len(results) == 3
     >>> assert results[0]["id"] == "doc2"  # Has high scores for both tokens
-
-    >>> # Using zero imputation
-    >>> results_zero = score_xtr(query_doc_ids, query_scores, k=3, imputation="zero")
-
-    >>> # Using power-law imputation
-    >>> results_pl = score_xtr(query_doc_ids, query_scores, k=3, imputation="power_law")
 
     """
     if len(query_doc_ids) != len(query_scores):
@@ -439,16 +304,12 @@ def score_xtr(
     all_scores_t = torch.from_numpy(all_scores_np).to(device=device)
     q_tok_indices_t = torch.from_numpy(q_tok_indices_np).to(device=device)
 
-    # Compute imputation scores based on chosen strategy.
-    # We already know whether all token lists are the same length from `sizes`.
-    rect_hint = len(set(sizes)) <= 1
-    imputation_scores = _compute_imputation_scores(
-        query_scores=query_scores,
-        imputation=imputation,
-        percentile=percentile,
-        power_law_multiplier=power_law_multiplier,
+    # Min imputation: for each query token, use the minimum retrieved score
+    # as the imputed value for documents not retrieved by that token.
+    imputation_scores = torch.tensor(
+        [min(scores) if len(scores) > 0 else 0.0 for scores in query_scores],
+        dtype=torch.float32,
         device=device,
-        is_rectangular=rect_hint,
     )  # Shape: (q_tok,)
 
     # Step 1: Compute max actual score per (doc, query_token) pair

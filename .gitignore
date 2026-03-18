@@ -166,4 +166,3 @@ uv.lock
 indexes/*
 pylate-index/*
 /docs/api/
-logs

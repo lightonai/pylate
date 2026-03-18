@@ -6,6 +6,19 @@ import torch
 from ..utils.tensor import convert_to_tensor
 
 
+def full_batch_scoring(fn):
+    """Mark a scoring function as requiring all documents at once (no chunking).
+
+    Score functions decorated with this will receive documents as a single
+    ``(Q, N, Dt, H)`` tensor rather than being called in a per-group loop.
+    The ``Contrastive`` and ``CachedContrastive`` losses check for
+    ``getattr(score_metric, 'requires_full_batch', False)`` to decide
+    which path to take.
+    """
+    fn.requires_full_batch = True
+    return fn
+
+
 def colbert_scores(
     queries_embeddings: list | np.ndarray | torch.Tensor,
     documents_embeddings: list | np.ndarray | torch.Tensor,
@@ -224,6 +237,7 @@ def colbert_kd_scores(
 # - fixed a bug in the original implementation where the alignment mask was not being applied correctly.
 
 
+@full_batch_scoring
 def xtr_scores(
     queries_embeddings: list | np.ndarray | torch.Tensor,
     documents_embeddings: list | np.ndarray | torch.Tensor,
@@ -283,48 +297,43 @@ def xtr_scores(
     queries_embeddings = convert_to_tensor(queries_embeddings)
     documents_embeddings = convert_to_tensor(documents_embeddings)
 
-    Q, N = documents_embeddings.shape[:2]
+    Qb = queries_embeddings.shape[0]
+    Dq, N = documents_embeddings.shape[:2]
 
-    # (Q, N, Dt, H) → (Q*N, Dt, H)
-    docs_flat = documents_embeddings.view(Q * N, *documents_embeddings.shape[2:])
+    # (Dq, N, Dt, H) → (Dq*N, Dt, H)
+    docs_flat = documents_embeddings.view(Dq * N, *documents_embeddings.shape[2:])
 
-    # All-pair token scores: (Q, Q*N, Qt, Dt)
+    # All-pair token scores: (Qb, Dq*N, Qt, Dt)
     scores = queries_embeddings.unsqueeze(1) @ docs_flat.transpose(1, 2).unsqueeze(0)
 
     if documents_mask is not None:
-        # (Q, N, Dt) → (Q*N, Dt), expand to (Q, Q*N, Dt) — broadcast over Qt via transpose trick
-        docs_mask_flat = documents_mask.view(Q * N, -1)
-        D_mask = docs_mask_flat.unsqueeze(0).expand(Q, -1, -1)  # (Q, Q*N, Dt)
+        # (Dq, N, Dt) → (Dq*N, Dt), expand to (Qb, Dq*N, Dt)
+        docs_mask_flat = documents_mask.view(Dq * N, -1)
+        D_mask = docs_mask_flat.unsqueeze(0).expand(Qb, -1, -1)
         scores.transpose(2, 3)[~D_mask.bool()] = -99999
 
     Qb, Db, Qt, Dt = scores.shape
 
-    # (Q, Qt, Q*N*Dt) — club all doc tokens together per query token
+    # (Qb, Qt, Dq*N*Dt) — club all doc tokens together per query token
     clubbed = scores.permute(0, 2, 1, 3).flatten(2, 3)
 
-    _, topk_indices = clubbed.topk(k, dim=-1)  # (Q, Qt, k)
+    _, topk_indices = clubbed.topk(k, dim=-1)  # (Qb, Qt, k)
 
     # Zero out all non-top-k positions
     alignment_mask = torch.ones_like(clubbed, dtype=torch.bool)
     alignment_mask.scatter_(-1, topk_indices, False)
     masked = clubbed.masked_fill(alignment_mask, 0)
 
-    # (Q, Qt, Q*N, Dt) → max over Dt → (Q, Qt, Q*N)
+    # (Qb, Qt, Dq*N, Dt) → max over Dt → (Qb, Qt, Dq*N)
     topk_scores_max = masked.view(Qb, Qt, Db, Dt).max(dim=-1).values
 
     if queries_mask is not None:
         topk_scores_max = topk_scores_max * queries_mask.unsqueeze(-1)
 
     # Z: number of non-zero query-token contributions per doc, clamped for stability
-    Z = (topk_scores_max > 0.0).float().sum(dim=1).clamp(min=1e-3)  # (Q, Q*N)
+    Z = (topk_scores_max > 0.0).float().sum(dim=1).clamp(min=1e-3)  # (Qb, Dq*N)
 
-    return (1.0 / Z) * topk_scores_max.sum(dim=1)  # (Q, Q*N)
-
-
-# Flag consumed by Contrastive to call this score metric once over all grouped docs
-# rather than in a per-group loop, since the global top-k requires seeing all docs at once.
-xtr_scores.requires_full_batch = True
-
+    return (1.0 / Z) * topk_scores_max.sum(dim=1)  # (Qb, Dq*N)
 
 def xtr_kd_scores(
     queries_embeddings: list | np.ndarray | torch.Tensor,
