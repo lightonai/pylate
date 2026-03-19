@@ -11,7 +11,7 @@ from __future__ import annotations
 import pytest
 import torch
 
-from pylate.scores import xtr_kd_scores, xtr_scores
+from pylate.scores import XTRKDScores, XTRScores, xtr_scores
 
 # ---------------------------------------------------------------------------
 # 1. Shape tests
@@ -21,22 +21,22 @@ from pylate.scores import xtr_kd_scores, xtr_scores
 class TestXTRScoresShapes:
     def test_q1_n1(self) -> None:
         Q, N, Qt, Dt, H = 1, 1, 4, 5, 8
-        scores = xtr_scores(torch.randn(Q, Qt, H), torch.randn(Q, N, Dt, H), k=3)
+        scores = XTRScores(k=3)(torch.randn(Q, Qt, H), torch.randn(Q, N, Dt, H))
         assert scores.shape == (Q, Q * N)
 
     def test_q2_n1(self) -> None:
         Q, N, Qt, Dt, H = 2, 1, 4, 5, 8
-        scores = xtr_scores(torch.randn(Q, Qt, H), torch.randn(Q, N, Dt, H), k=3)
+        scores = XTRScores(k=3)(torch.randn(Q, Qt, H), torch.randn(Q, N, Dt, H))
         assert scores.shape == (Q, Q * N)
 
     def test_q2_n2(self) -> None:
         Q, N, Qt, Dt, H = 2, 2, 4, 5, 8
-        scores = xtr_scores(torch.randn(Q, Qt, H), torch.randn(Q, N, Dt, H), k=3)
+        scores = XTRScores(k=3)(torch.randn(Q, Qt, H), torch.randn(Q, N, Dt, H))
         assert scores.shape == (Q, Q * N)
 
     def test_q4_n3(self) -> None:
         Q, N, Qt, Dt, H = 4, 3, 4, 5, 8
-        scores = xtr_scores(torch.randn(Q, Qt, H), torch.randn(Q, N, Dt, H), k=3)
+        scores = XTRScores(k=3)(torch.randn(Q, Qt, H), torch.randn(Q, N, Dt, H))
         assert scores.shape == (Q, Q * N)
 
     def test_requires_full_batch_flag(self) -> None:
@@ -61,7 +61,7 @@ class TestXTRScoresMismatchedBatch:
         Qb, Dq, N, Qt, Dt, H = 4, 16, 2, 8, 12, 16
         queries = torch.randn(Qb, Qt, H)
         docs = torch.randn(Dq, N, Dt, H)
-        result = xtr_scores(queries, docs, k=8)
+        result = XTRScores(k=8)(queries, docs)
         assert result.shape == (Qb, Dq * N)
 
     def test_fewer_queries_with_masks(self) -> None:
@@ -73,8 +73,8 @@ class TestXTRScoresMismatchedBatch:
         d_mask = torch.ones(Dq, N, Dt)
         q_mask[:, -2:] = 0
         d_mask[:, :, -3:] = 0
-        result = xtr_scores(
-            queries, docs, queries_mask=q_mask, documents_mask=d_mask, k=8
+        result = XTRScores(k=8)(
+            queries, docs, queries_mask=q_mask, documents_mask=d_mask
         )
         assert result.shape == (Qb, Dq * N)
 
@@ -83,7 +83,7 @@ class TestXTRScoresMismatchedBatch:
         Dq, N, Qt, Dt, H = 8, 2, 6, 10, 16
         queries = torch.randn(1, Qt, H)
         docs = torch.randn(Dq, N, Dt, H)
-        result = xtr_scores(queries, docs, k=8)
+        result = XTRScores(k=8)(queries, docs)
         assert result.shape == (1, Dq * N)
 
     def test_scores_consistent_with_matched_batch(self) -> None:
@@ -96,7 +96,7 @@ class TestXTRScoresMismatchedBatch:
         docs = torch.randn(Q, N, Dt, H)
 
         # Chunked: first 4 queries against all docs
-        chunk_scores = xtr_scores(queries[:4], docs, k=k)
+        chunk_scores = XTRScores(k=k)(queries[:4], docs)
 
         # The chunk result should match the first 4 rows of the full result.
         # They won't be identical because the global top-k pool differs
@@ -150,7 +150,7 @@ class TestXTRScoresHandcrafted:
     def test_n1_scores_are_1_0_and_0_1(self, orthogonal_n1) -> None:
         """Each query should score its own doc 1.0 and the other's doc 0.0."""
         queries, docs = orthogonal_n1
-        scores = xtr_scores(queries, docs, k=1)
+        scores = XTRScores(k=1)(queries, docs)
 
         assert scores.shape == (2, 2)
         assert scores[0, 0] == pytest.approx(1.0)
@@ -161,7 +161,7 @@ class TestXTRScoresHandcrafted:
     def test_n1_argmax_at_column_i_times_n(self, orthogonal_n1) -> None:
         """With N=1, argmax for query i should be at column i*1 = i."""
         queries, docs = orthogonal_n1
-        scores = xtr_scores(queries, docs, k=1)
+        scores = XTRScores(k=1)(queries, docs)
 
         assert scores[0].argmax().item() == 0  # 0 * 1
         assert scores[1].argmax().item() == 1  # 1 * 1
@@ -198,7 +198,7 @@ class TestXTRScoresHandcrafted:
             ]
         )  # (2, 2, 2, 4)
 
-        scores = xtr_scores(queries, docs, k=1)
+        scores = XTRScores(k=1)(queries, docs)
 
         assert scores.shape == (2, 4)
         assert scores[0].argmax().item() == 0  # 0 * 2
@@ -255,7 +255,7 @@ class TestXTRScoresMasks:
     def test_no_masks_baseline(self, base_q1n2) -> None:
         """Baseline without any masks: doc0=0.6, doc1=0.5."""
         queries, docs = base_q1n2
-        scores = xtr_scores(queries, docs, k=1)
+        scores = XTRScores(k=1)(queries, docs)
 
         # Q=1 so Q*N=2; row 0 has [doc0_score, doc1_score]
         # but the full matrix is (1, 1*2) = (1, 2)
@@ -284,8 +284,8 @@ class TestXTRScoresMasks:
         # doc0 mask: token 1 is padding; doc1 mask: all real
         doc_mask = torch.tensor([[[1, 0], [1, 1]]])  # (1, 2, 2)
 
-        scores_no_mask = xtr_scores(queries, docs, k=1)
-        scores_masked = xtr_scores(queries, docs, documents_mask=doc_mask, k=1)
+        scores_no_mask = XTRScores(k=1)(queries, docs)
+        scores_masked = XTRScores(k=1)(queries, docs, documents_mask=doc_mask)
 
         # Without mask: doc0 score comes from the pad token (0.9)
         assert scores_no_mask[0, 0] == pytest.approx(0.9)
@@ -301,8 +301,8 @@ class TestXTRScoresMasks:
         queries, docs = base_q1n2
         query_mask = torch.tensor([[1.0, 0.0]])  # (1, 2) — token 1 is pad
 
-        scores_no_mask = xtr_scores(queries, docs, k=1)
-        scores_masked = xtr_scores(queries, docs, queries_mask=query_mask, k=1)
+        scores_no_mask = XTRScores(k=1)(queries, docs)
+        scores_masked = XTRScores(k=1)(queries, docs, queries_mask=query_mask)
 
         # Without mask: doc1 receives contribution from q0t1 (score 0.5)
         assert scores_no_mask[0, 1] == pytest.approx(0.5)
@@ -329,7 +329,7 @@ class TestXTRScoresZNormalization:
         queries = torch.tensor([[[1.0, 0.0], [1.0, 0.0]]])  # (1, 2, 2)
         docs = torch.tensor([[[[0.6, 0.0]], [[0.0, 0.1]]]])  # (1, 2, 1, 2)
 
-        scores = xtr_scores(queries, docs, k=1)
+        scores = XTRScores(k=1)(queries, docs)
 
         assert scores.shape == (1, 2)
         assert scores[0, 0] == pytest.approx(0.6)
@@ -347,7 +347,7 @@ class TestXTRScoresZNormalization:
         queries = torch.tensor([[[1.0, 0.0], [1.0, 0.0], [1.0, 0.0]]])  # (1, 3, 2)
         docs = torch.tensor([[[[0.8, 0.0]]]])  # (1, 1, 1, 2)
 
-        scores = xtr_scores(queries, docs, k=1)
+        scores = XTRScores(k=1)(queries, docs)
 
         assert scores.shape == (1, 1)
         assert scores[0, 0] == pytest.approx(0.8)
@@ -366,7 +366,7 @@ class TestXTRScoresZNormalization:
         queries = torch.tensor([[[1.0, 0.0], [1.0, 0.0], [0.0, 1.0]]])  # (1, 3, 2)
         docs = torch.tensor([[[[0.8, 0.0]], [[0.0, 0.7]]]])  # (1, 2, 1, 2)
 
-        scores = xtr_scores(queries, docs, k=1)
+        scores = XTRScores(k=1)(queries, docs)
 
         assert scores.shape == (1, 2)
         assert scores[0, 0] == pytest.approx(0.8)
@@ -389,8 +389,8 @@ class TestXTRScoresZNormalization:
         queries = torch.tensor([[[1.0, 0.0]]])  # (1, 1, 2)
         docs = torch.tensor([[[[0.9, 0.0], [0.7, 0.0], [0.5, 0.0]]]])  # (1, 1, 3, 2)
 
-        scores_k1 = xtr_scores(queries, docs, k=1)
-        scores_k3 = xtr_scores(queries, docs, k=3)
+        scores_k1 = XTRScores(k=1)(queries, docs)
+        scores_k3 = XTRScores(k=3)(queries, docs)
 
         assert scores_k1[0, 0] == pytest.approx(0.9)
         assert scores_k3[0, 0] == pytest.approx(0.9)
@@ -419,8 +419,8 @@ class TestXTRScoresZNormalization:
             ]
         )  # (1, 2, 2, 2)
 
-        scores_k1 = xtr_scores(queries, docs, k=1)
-        scores_k3 = xtr_scores(queries, docs, k=3)
+        scores_k1 = XTRScores(k=1)(queries, docs)
+        scores_k3 = XTRScores(k=3)(queries, docs)
 
         # k=1: only doc0 has non-zero score
         assert scores_k1[0, 0] == pytest.approx(0.9)
@@ -440,7 +440,7 @@ class TestXTRKDScoresSlicing:
     def test_shape_is_q_n(self) -> None:
         """xtr_kd_scores returns (Q, N), not (Q, Q*N)."""
         Q, N, Qt, Dt, H = 3, 4, 6, 5, 8
-        kd = xtr_kd_scores(torch.randn(Q, Qt, H), torch.randn(Q, N, Dt, H), k=3)
+        kd = XTRKDScores(k=3)(torch.randn(Q, Qt, H), torch.randn(Q, N, Dt, H))
         assert kd.shape == (Q, N)
 
     def test_slicing_matches_xtr_scores_diagonal(self) -> None:
@@ -453,8 +453,9 @@ class TestXTRKDScoresSlicing:
         queries = torch.randn(Q, Qt, H)
         docs = torch.randn(Q, N, Dt, H)
 
-        full = xtr_scores(queries, docs, k=5)  # (Q, Q*N)
-        kd = xtr_kd_scores(queries, docs, k=5)  # (Q, N)
+        scorer = XTRScores(k=5)
+        full = scorer(queries, docs)  # (Q, Q*N)
+        kd = XTRKDScores(k=5)(queries, docs)  # (Q, N)
 
         for i in range(Q):
             expected = full[i, i * N : (i + 1) * N]
@@ -487,8 +488,8 @@ class TestXTRKDScoresSlicing:
             ]
         )  # (2, 2, 2, 4)
 
-        full = xtr_scores(queries, docs, k=1)  # (2, 4)
-        kd = xtr_kd_scores(queries, docs, k=1)  # (2, 2)
+        full = XTRScores(k=1)(queries, docs)  # (2, 4)
+        kd = XTRKDScores(k=1)(queries, docs)  # (2, 2)
 
         # query 0 should get columns 0,1 from full
         torch.testing.assert_close(kd[0], full[0, 0:2])
