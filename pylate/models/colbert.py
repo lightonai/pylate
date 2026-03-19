@@ -284,19 +284,24 @@ class ColBERT(SentenceTransformer):
                         metadata = json.load(f)
                         # If the user do not override the values, read from config file
                         meta_query_token_id = metadata.get("query_token_id", None)
-                        if self.query_prefix is None and meta_query_token_id:
-                            self.query_prefix = meta_query_token_id
-
+                        if self.query_prefix is None:
+                            if meta_query_token_id is not None:
+                                self.query_prefix = meta_query_token_id
+                            else:
+                                self.query_prefix = "[unused0]"
                         meta_doc_token_id = metadata.get("doc_token_id", None)
-                        if self.document_prefix is None and meta_doc_token_id:
-                            self.document_prefix = meta_doc_token_id
+                        if self.document_prefix is None:
+                            if meta_doc_token_id is not None:
+                                self.document_prefix = meta_doc_token_id
+                            else:
+                                self.document_prefix = "[unused1]"
 
                         meta_query_maxlen = metadata.get("query_maxlen", None)
-                        if self.query_length is None and meta_query_maxlen:
+                        if self.query_length is None and meta_query_maxlen is not None:
                             self.query_length = meta_query_maxlen
 
                         meta_doc_maxlen = metadata.get("doc_maxlen", None)
-                        if self.document_length is None and meta_doc_maxlen:
+                        if self.document_length is None and meta_doc_maxlen is not None:
                             self.document_length = meta_doc_maxlen
 
                         meta_attend_to_mask_tokens = metadata.get(
@@ -304,7 +309,7 @@ class ColBERT(SentenceTransformer):
                         )
                         if (
                             self.attend_to_expansion_tokens is None
-                            and meta_attend_to_mask_tokens
+                            and meta_attend_to_mask_tokens is not None
                         ):
                             self.attend_to_expansion_tokens = meta_attend_to_mask_tokens
 
@@ -359,12 +364,18 @@ class ColBERT(SentenceTransformer):
         self.is_hpu_graph_enabled = False
         # Override the configuration values with the provided arguments, if any. If not set and values have not been read from configs, set to default values.
         self.query_prefix = (
-            query_prefix if query_prefix is not None else self.query_prefix or "[Q] "
+            query_prefix
+            if query_prefix is not None
+            else self.query_prefix
+            if self.query_prefix is not None
+            else "[Q] "
         )
         self.document_prefix = (
             document_prefix
             if document_prefix is not None
-            else self.document_prefix or "[D] "
+            else self.document_prefix
+            if self.document_prefix is not None
+            else "[D] "
         )
 
         # Try adding the prefixes to the tokenizer. We call resize_token_embeddings twice to ensure the tokens are added only if resize_token_embeddings works. There should be a better way to do this.
@@ -403,17 +414,25 @@ class ColBERT(SentenceTransformer):
         self.document_length = (
             document_length
             if document_length is not None
-            else self.document_length or 180
+            else self.document_length
+            if self.document_length is not None
+            else 180
         )
 
         self.query_length = (
-            query_length if query_length is not None else self.query_length or 32
+            query_length
+            if query_length is not None
+            else self.query_length
+            if self.query_length is not None
+            else 32
         )
 
         self.skiplist_words = (
             skiplist_words
             if skiplist_words is not None
-            else self.skiplist_words or list(string.punctuation)
+            else self.skiplist_words
+            if self.skiplist_words is not None
+            else list(string.punctuation)
         )
 
         # Convert skiplist words to their corresponding token IDs.
@@ -794,47 +813,54 @@ class ColBERT(SentenceTransformer):
         -------
             A list of pooled embeddings for each document.
         """
-        device = torch.device(device="cuda" if torch.cuda.is_available() else "cpu")
         pooled_embeddings = []
 
         for document_embeddings in documents_embeddings:
-            document_embeddings = document_embeddings.to(device=device)
+            # Stay on CPU since scipy clustering requires CPU anyway
+            document_embeddings_cpu = document_embeddings.cpu()
 
             # Separate protected tokens from the rest
-            protected_embeddings = document_embeddings[:protected_tokens]
-            embeddings_to_pool = document_embeddings[protected_tokens:]
+            protected = document_embeddings_cpu[:protected_tokens]
+            to_pool = document_embeddings_cpu[protected_tokens:]
 
-            # Compute cosine similarity and convert to distance matrix
-            cosine_similarities = torch.mm(
-                input=embeddings_to_pool, mat2=embeddings_to_pool.t()
-            )
-            distance_matrix = 1 - cosine_similarities.cpu().numpy()
-
-            # Perform hierarchical clustering using Ward's method
-            clusters = hierarchy.linkage(distance_matrix, method="ward")
-            num_embeddings = len(embeddings_to_pool)
-
-            # Determine the number of clusters based on pool_factor
+            num_embeddings = len(to_pool)
             num_clusters = max(num_embeddings // pool_factor, 1)
-            cluster_labels = hierarchy.fcluster(
-                clusters, t=num_clusters, criterion="maxclust"
+
+            # Skip pooling if it wouldn't reduce anything
+            if num_clusters >= num_embeddings:
+                pooled_embeddings.append(document_embeddings_cpu)
+                continue
+
+            # Compute cosine similarity and convert to condensed distance matrix
+            cos_sim = torch.mm(to_pool, to_pool.t()).numpy()
+            dist_full = 1 - cos_sim
+            # Extract upper triangle as condensed form for scipy linkage
+            condensed = dist_full[np.triu_indices(num_embeddings, k=1)]
+
+            # Hierarchical clustering
+            linkage_matrix = hierarchy.linkage(condensed, method="ward")
+            labels = hierarchy.fcluster(
+                linkage_matrix, t=num_clusters, criterion="maxclust"
             )
 
-            # Pool embeddings within each cluster
-            pooled_document_embeddings = []
-            for cluster_id in range(1, num_clusters + 1):
-                cluster_indices = torch.where(
-                    condition=torch.tensor(
-                        data=cluster_labels == cluster_id, device=device
-                    )
-                )[0]
-                if cluster_indices.numel() > 0:
-                    cluster_embedding = embeddings_to_pool[cluster_indices].mean(dim=0)
-                    pooled_document_embeddings.append(cluster_embedding)
+            # Vectorized cluster mean via scatter_add_
+            labels_tensor = torch.from_numpy(labels.astype(np.int64)) - 1  # 0-indexed
+            dim = to_pool.shape[1]
+            cluster_sums = torch.zeros(num_clusters, dim, dtype=to_pool.dtype)
+            cluster_counts = torch.zeros(num_clusters, dtype=torch.long)
 
-            # Re-append protected embeddings
-            pooled_document_embeddings.extend(protected_embeddings)
-            pooled_embeddings.append(torch.stack(tensors=pooled_document_embeddings))
+            expanded_labels = labels_tensor.unsqueeze(1).expand_as(to_pool)
+            cluster_sums.scatter_add_(0, expanded_labels, to_pool)
+            cluster_counts.scatter_add_(
+                0, labels_tensor, torch.ones(num_embeddings, dtype=torch.long)
+            )
+
+            # fcluster may return fewer clusters than num_clusters requested,
+            # leaving some rows in cluster_sums at zero. Filter those out.
+            mask = cluster_counts > 0
+            pooled = cluster_sums[mask] / cluster_counts[mask].unsqueeze(1)
+
+            pooled_embeddings.append(torch.cat([protected, pooled], dim=0))
 
         return pooled_embeddings
 
@@ -1051,6 +1077,8 @@ class ColBERT(SentenceTransformer):
         texts: list[str] | list[dict] | list[tuple[str, str]],
         is_query: bool = True,
         pad: bool = False,
+        task: str
+        | None = None,  # this is to be compatible with the new collator that supports "task". It isn't used here, only if the model is a router, but I find it cleaner than kwargs
     ) -> dict[str, torch.Tensor]:
         """
         Tokenizes the input texts.
