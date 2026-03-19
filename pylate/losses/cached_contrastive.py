@@ -268,6 +268,17 @@ class CachedContrastive(nn.Module):
             if hasattr(self.model, "do_query_expansion")
             else self.model.module.do_query_expansion
         )
+        requires_full_batch = getattr(self.score_metric, "requires_full_batch", False)
+        if requires_full_batch:
+            # Score metrics like xtr_scores need all documents at once for
+            # global top-k selection. Stack groups into (batch, N, Dt, H).
+            N = len(embeddings_other)
+            all_docs = torch.stack(embeddings_other, dim=1)
+            all_docs_mask = torch.stack(masks[1:], dim=1)
+            labels = torch.arange(batch_size, device=reps[0][0].device) * N
+            if self.gather_across_devices:
+                rank = get_rank()
+                labels = labels + rank * batch_size * N
         for begin in tqdm.trange(
             0,
             batch_size,
@@ -276,41 +287,51 @@ class CachedContrastive(nn.Module):
             disable=not self.show_progress_bar,
         ):
             end = begin + self.mini_batch_size
-            # We chunk the scores computation to avoid OOM because MaxSim can get expensive with large batch sizes/long documents
-            scores = torch.cat(
-                [
-                    torch.cat(
-                        [
-                            self.score_metric(
-                                embeddings_anchor[begin:end],
-                                group_embeddings[
-                                    g_start : min(
-                                        g_start + self.mini_batch_size,
-                                        len(group_embeddings),
-                                    )
-                                ],
-                                queries_mask=masks[0][begin:end]
-                                if not do_query_expansion
-                                else None,
-                                documents_mask=documents_mask[
-                                    g_start : min(
-                                        g_start + self.mini_batch_size,
-                                        len(group_embeddings),
-                                    )
-                                ],
-                            )
-                            for g_start in range(
-                                0, len(group_embeddings), self.mini_batch_size
-                            )
-                        ],
-                        dim=1,
-                    )
-                    for group_embeddings, documents_mask in zip(
-                        embeddings_other, masks[1:]
-                    )
-                ],
-                dim=1,
-            )
+            if requires_full_batch:
+                scores = self.score_metric(
+                    embeddings_anchor[begin:end],
+                    all_docs,
+                    queries_mask=masks[0][begin:end]
+                    if not do_query_expansion
+                    else None,
+                    documents_mask=all_docs_mask,
+                )
+            else:
+                # Chunk scores over document groups to avoid OOM with large batch sizes
+                scores = torch.cat(
+                    [
+                        torch.cat(
+                            [
+                                self.score_metric(
+                                    embeddings_anchor[begin:end],
+                                    group_embeddings[
+                                        g_start : min(
+                                            g_start + self.mini_batch_size,
+                                            len(group_embeddings),
+                                        )
+                                    ],
+                                    queries_mask=masks[0][begin:end]
+                                    if not do_query_expansion
+                                    else None,
+                                    documents_mask=documents_mask[
+                                        g_start : min(
+                                            g_start + self.mini_batch_size,
+                                            len(group_embeddings),
+                                        )
+                                    ],
+                                )
+                                for g_start in range(
+                                    0, len(group_embeddings), self.mini_batch_size
+                                )
+                            ],
+                            dim=1,
+                        )
+                        for group_embeddings, documents_mask in zip(
+                            embeddings_other, masks[1:]
+                        )
+                    ],
+                    dim=1,
+                )
             # We don't want to average the loss across the mini-batch as mini-batch sizes can vary, which would create an issue similar to this one: https://huggingface.co/blog/gradient_accumulation#where-does-it-stem-from
             loss_mbatch = F.cross_entropy(
                 input=scores / self.temperature,

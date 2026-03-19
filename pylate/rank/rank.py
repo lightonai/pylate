@@ -155,3 +155,207 @@ def rerank(
         )
 
     return results
+
+
+def score_xtr(
+    query_doc_ids: list[list[str | int]],
+    query_scores: list[list[float]],
+    k: int,
+    device: str = "cpu",
+) -> list[RerankResult]:
+    """Score documents using XTR (eXact Token Retrieval) scoring.
+
+    XTR scoring differs from ColBERT in that it doesn't do full reranking.
+    Instead, it only scores documents using initially retrieved tokens, and
+    imputes missing token scores using min imputation (the minimum retrieved
+    score per query token, as in the original XTR paper).
+
+    Parameters
+    ----------
+    query_doc_ids
+        List of length q_tok, where each element is a list of k_token document IDs
+        retrieved for that query token. Document IDs can be strings or integers.
+    query_scores
+        List of length q_tok, where each element is a list of k_token scores
+        corresponding to the retrieved document IDs.
+    k
+        Number of top documents to return.
+    device
+        Device to use for computation ('cpu', 'cuda', etc.).
+
+    Returns
+    -------
+    list[RerankResult]
+        Top-k documents sorted by score (descending).
+
+    Notes
+    -----
+    The XTR scoring algorithm:
+    1. For each document, sum scores across all query tokens
+    2. If a document's token wasn't retrieved for a query token, use the
+       minimum retrieved score for that query token (min imputation)
+    3. If multiple tokens from the same document were retrieved for a query token,
+       use the maximum score
+
+    Examples
+    --------
+    >>> from pylate.rank import score_xtr
+    >>> query_doc_ids = [
+    ...     ["doc1", "doc2", "doc3"],  # Retrieved for query token 0
+    ...     ["doc2", "doc3", "doc4"],  # Retrieved for query token 1
+    ... ]
+    >>> query_scores = [
+    ...     [0.9, 0.7, 0.5],  # Scores for query token 0
+    ...     [0.8, 0.6, 0.4],  # Scores for query token 1
+    ... ]
+    >>> results = score_xtr(query_doc_ids, query_scores, k=3)
+    >>> assert len(results) == 3
+    >>> assert results[0]["id"] == "doc2"  # Has high scores for both tokens
+
+    """
+    if len(query_doc_ids) != len(query_scores):
+        raise ValueError(
+            "query_doc_ids and query_scores must have the same number of query tokens. "
+            f"Got {len(query_doc_ids)} and {len(query_scores)}."
+        )
+
+    q_tok = len(query_doc_ids)
+
+    if q_tok == 0:
+        return []
+
+    # Validate lengths and compute total size for pre-allocation.
+    sizes = []
+    for q_idx, (token_docs, token_scores) in enumerate(
+        zip(query_doc_ids, query_scores)
+    ):
+        if len(token_docs) != len(token_scores):
+            raise ValueError(
+                "Each query token must have matching document IDs and scores lengths. "
+                f"Token {q_idx} has {len(token_docs)} IDs and {len(token_scores)} scores."
+            )
+        sizes.append(len(token_docs))
+
+    total = sum(sizes)
+    if total == 0:
+        return []
+
+    # Pre-allocate flat numpy arrays and fill via slice assignment (avoids
+    # repeated list resizing and gives faster torch.from_numpy conversion).
+    all_scores_np = np.empty(total, dtype=np.float32)
+    q_tok_indices_np = np.empty(total, dtype=np.int64)
+
+    # Determine doc-ID type from the first non-empty token list.
+    doc_id_is_string = isinstance(
+        query_doc_ids[0][0]
+        if sizes[0] > 0
+        else query_doc_ids[next(i for i, s in enumerate(sizes) if s > 0)][0],
+        str,
+    )
+
+    if doc_id_is_string:
+        # Build string→int mapping while filling the flat arrays in one pass.
+        # Preserves insertion order for deterministic tie handling.
+        doc_id_to_int: dict[str, int] = {}
+        all_doc_ids_np = np.empty(total, dtype=np.int64)
+        offset = 0
+        for q_idx, (token_docs, token_scores) in enumerate(
+            zip(query_doc_ids, query_scores)
+        ):
+            n = sizes[q_idx]
+            if n == 0:
+                continue
+            for i, did in enumerate(token_docs):
+                if did not in doc_id_to_int:
+                    doc_id_to_int[did] = len(doc_id_to_int)
+                all_doc_ids_np[offset + i] = doc_id_to_int[did]
+            all_scores_np[offset : offset + n] = token_scores
+            q_tok_indices_np[offset : offset + n] = q_idx
+            offset += n
+
+        # Invert the mapping for final output.
+        unique_doc_id_strings = list(doc_id_to_int.keys())
+        num_docs = len(unique_doc_id_strings)
+
+        # The integer IDs are already in [0, num_docs), so inverse_indices
+        # IS the doc-id tensor — no torch.unique() needed.
+        inverse_indices = torch.from_numpy(all_doc_ids_np).to(device=device)
+    else:
+        # Integer doc IDs — need torch.unique to discover the unique set.
+        all_doc_ids_list: list[int] = []
+        offset = 0
+        for q_idx, (token_docs, token_scores) in enumerate(
+            zip(query_doc_ids, query_scores)
+        ):
+            n = sizes[q_idx]
+            if n == 0:
+                continue
+            all_doc_ids_list.extend(token_docs)
+            all_scores_np[offset : offset + n] = token_scores
+            q_tok_indices_np[offset : offset + n] = q_idx
+            offset += n
+
+        all_doc_ids_t = torch.tensor(all_doc_ids_list, dtype=torch.long, device=device)
+        unique_doc_ids, inverse_indices = torch.unique(
+            all_doc_ids_t, return_inverse=True, sorted=False
+        )
+        num_docs = len(unique_doc_ids)
+
+    all_scores_t = torch.from_numpy(all_scores_np).to(device=device)
+    q_tok_indices_t = torch.from_numpy(q_tok_indices_np).to(device=device)
+
+    # Min imputation: for each query token, use the minimum retrieved score
+    # as the imputed value for documents not retrieved by that token.
+    imputation_scores = torch.tensor(
+        [min(scores) if len(scores) > 0 else 0.0 for scores in query_scores],
+        dtype=torch.float32,
+        device=device,
+    )  # Shape: (q_tok,)
+
+    # Step 1: Compute max actual score per (doc, query_token) pair
+    # Initialize with -inf so we can detect which pairs have no retrieved score
+    NEG_INF = float("-inf")
+    doc_scores = torch.full(
+        (num_docs, q_tok), NEG_INF, dtype=torch.float32, device=device
+    )
+
+    # Flatten for 1D scatter, then reshape
+    doc_scores_flat = doc_scores.reshape(-1)
+    flat_indices = inverse_indices * q_tok + q_tok_indices_t
+
+    # Use scatter_reduce with reduce='amax' to keep max score when multiple tokens
+    # from the same document are retrieved for a single query token
+    doc_scores_flat.scatter_reduce_(
+        0, flat_indices, all_scores_t, reduce="amax", include_self=False
+    )
+    doc_scores = doc_scores_flat.reshape(num_docs, q_tok)
+
+    # Step 2: Replace -inf (no retrieved score) with imputation scores
+    missing_mask = torch.isinf(doc_scores) & (doc_scores < 0)
+    doc_scores = torch.where(missing_mask, imputation_scores, doc_scores)
+
+    # Sum across query tokens to get final document scores
+    final_scores = doc_scores.sum(dim=1)
+
+    # Get top k documents
+    top_k_scores, top_k_indices = torch.topk(
+        final_scores, k=min(k, num_docs), largest=True
+    )
+
+    # Bulk-convert to Python lists (single C-to-Python transition).
+    top_k_scores_list = top_k_scores.tolist()
+
+    if doc_id_is_string:
+        # top_k_indices index into [0, num_docs) which maps directly to
+        # unique_doc_id_strings -- no intermediate tensor lookup needed.
+        top_k_idx_list = top_k_indices.tolist()
+        return [
+            RerankResult(id=unique_doc_id_strings[idx], score=score)
+            for idx, score in zip(top_k_idx_list, top_k_scores_list)
+        ]
+
+    top_k_doc_ids_list = unique_doc_ids[top_k_indices].tolist()
+    return [
+        RerankResult(id=doc_id, score=score)
+        for doc_id, score in zip(top_k_doc_ids_list, top_k_scores_list)
+    ]
