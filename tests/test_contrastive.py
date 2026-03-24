@@ -42,7 +42,6 @@ def test_contrastive_training() -> None:
 
     args = SentenceTransformerTrainingArguments(
         output_dir="tests/contrastive",
-        overwrite_output_dir=True,
         num_train_epochs=1,
         per_device_train_batch_size=1,
         per_device_eval_batch_size=1,
