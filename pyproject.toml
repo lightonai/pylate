@@ -15,11 +15,11 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "sentence-transformers >= 5.1.1",
+    "sentence-transformers == 5.3.0",
     "datasets >= 2.20.0",
     "accelerate >= 0.31.0",
     "pandas >= 2.2.1",
-    "transformers >= 4.48.0",
+    "transformers >= 4.41.0",
     "ujson == 5.10.0",
     "ninja == 1.11.1.4",
     "fastkmeans == 0.5.0",
