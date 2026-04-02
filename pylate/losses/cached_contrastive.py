@@ -95,7 +95,8 @@ class CachedContrastive(nn.Module):
         Whether to gather the embeddings across devices to have more in batch negatives. We recommend making sure the sampling across GPUs use the same dataset in case of multi-dataset training to make sure the negatives are plausible.
     show_progress_bar
         Whether to show a TQDM progress bar for the embedding steps.
-
+    score_mini_batch_size
+        Chunk size for the score calculation step. You can keep this small to avoid OOM on large batch sizes, especially if your score metric creates large intermediate tensors (e.g. xtr_scores). Defaults is None (a.k.a. equal to the mini_batch_size).
     Examples
     --------
     >>> from pylate import models, losses
@@ -133,6 +134,7 @@ class CachedContrastive(nn.Module):
         gather_across_devices: bool = False,
         show_progress_bar: bool = False,
         temperature: float = 1.0,
+        score_mini_batch_size: int | None = None,
     ) -> None:
         super(CachedContrastive, self).__init__()
         self.model = model
@@ -147,6 +149,7 @@ class CachedContrastive(nn.Module):
         self.cache: list[list[Tensor]] | None = None
         # Will hold random states for each chunk, so we can re-run the embedding pass with grads
         self.random_states: list[list[RandContext]] | None = None
+        self.score_mini_batch_size = score_mini_batch_size if score_mini_batch_size is not None else mini_batch_size
 
     def embed_minibatch(
         self,
@@ -279,14 +282,15 @@ class CachedContrastive(nn.Module):
             if self.gather_across_devices:
                 rank = get_rank()
                 labels = labels + rank * batch_size * N
+                
         for begin in tqdm.trange(
             0,
             batch_size,
-            self.mini_batch_size,
+            self.score_mini_batch_size,
             desc="Preparing caches",
             disable=not self.show_progress_bar,
         ):
-            end = begin + self.mini_batch_size
+            end = begin + self.score_mini_batch_size
             if requires_full_batch:
                 scores = self.score_metric(
                     embeddings_anchor[begin:end],
@@ -306,7 +310,7 @@ class CachedContrastive(nn.Module):
                                     embeddings_anchor[begin:end],
                                     group_embeddings[
                                         g_start : min(
-                                            g_start + self.mini_batch_size,
+                                            g_start + self.score_mini_batch_size,
                                             len(group_embeddings),
                                         )
                                     ],
@@ -315,13 +319,13 @@ class CachedContrastive(nn.Module):
                                     else None,
                                     documents_mask=documents_mask[
                                         g_start : min(
-                                            g_start + self.mini_batch_size,
+                                            g_start + self.score_mini_batch_size,
                                             len(group_embeddings),
                                         )
                                     ],
                                 )
                                 for g_start in range(
-                                    0, len(group_embeddings), self.mini_batch_size
+                                    0, len(group_embeddings), self.score_mini_batch_size
                                 )
                             ],
                             dim=1,
