@@ -56,6 +56,7 @@ eval = ["ranx >= 0.3.16", "beir >= 2.0.0"]
 api = ["fastapi >= 0.114.1", "uvicorn >= 0.30.6", "batched >= 0.1.2"]
 voyager = ["voyager >= 2.0.9"]
 scann = ["scann >= 1.4.2"]
+warp = ["xtr-warp-rs >= 1.1.1"]
 
 
 [dependency-groups]
