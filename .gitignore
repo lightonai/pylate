@@ -166,8 +166,3 @@ uv.lock
 indexes/*
 pylate-index/*
 /docs/api/
-
-# Agent config (generated/local)
-.memsearch/
-AGENTS.md
-CLAUDE.md
