@@ -3,7 +3,11 @@
 import shutil
 import uuid
 
+import pytest
+
 from pylate import indexes, models
+
+pytest.importorskip("xtr_warp")
 
 
 def _make_index(**kwargs):
@@ -16,11 +20,9 @@ def _make_index(**kwargs):
         index_folder=f"test_indexes_{random_hash}",
         index_name=f"warp_{random_hash}",
         override=True,
-        nbits=2,
-        kmeans_niters=1,
         device="cpu",
-        nprobe=32,
-        centroid_score_threshold=0.0,
+        search=indexes.WARPSearchConfig(nprobe=32, centroid_score_threshold=0.0),
+        indexing=indexes.WARPIndexingConfig(nbits=2, kmeans_niters=1),
     )
     defaults.update(kwargs)
     return indexes.WARP(**defaults), defaults["index_folder"]
@@ -47,8 +49,9 @@ def test_warp_add_and_search():
         "Document about elderberries and immune support.",
     ]
     embeddings = model.encode(documents, is_query=False)
-    index.add_documents(documents_ids=["0", "1", "2", "3", "4"],
-                        documents_embeddings=embeddings)
+    index.add_documents(
+        documents_ids=["0", "1", "2", "3", "4"], documents_embeddings=embeddings
+    )
 
     query_embedding = model.encode(["fruits and nutrition"], is_query=True)
     matches = index(query_embedding, k=10)
@@ -73,8 +76,9 @@ def test_warp_delete_single():
         "Document about elderberries and immune support.",
     ]
     embeddings = model.encode(documents, is_query=False)
-    index.add_documents(documents_ids=["0", "1", "2", "3", "4"],
-                        documents_embeddings=embeddings)
+    index.add_documents(
+        documents_ids=["0", "1", "2", "3", "4"], documents_embeddings=embeddings
+    )
 
     index.remove_documents(["1"])
 
@@ -101,8 +105,9 @@ def test_warp_delete_multiple_at_once():
         "Document E about diet.",
     ]
     embeddings = model.encode(documents, is_query=False)
-    index.add_documents(documents_ids=["A", "B", "C", "D", "E"],
-                        documents_embeddings=embeddings)
+    index.add_documents(
+        documents_ids=["A", "B", "C", "D", "E"], documents_embeddings=embeddings
+    )
 
     index.remove_documents(["B", "D"])
 
@@ -129,8 +134,9 @@ def test_warp_delete_sequential():
         "Document about elderberries and immune support.",
     ]
     embeddings = model.encode(documents, is_query=False)
-    index.add_documents(documents_ids=["0", "1", "2", "3", "4"],
-                        documents_embeddings=embeddings)
+    index.add_documents(
+        documents_ids=["0", "1", "2", "3", "4"], documents_embeddings=embeddings
+    )
 
     query_embedding = model.encode(["fruits and nutrition"], is_query=True)
 
@@ -160,8 +166,7 @@ def test_warp_delete_and_add():
         "Third document about grains.",
     ]
     embeddings = model.encode(documents, is_query=False)
-    index.add_documents(documents_ids=["1", "2", "3"],
-                        documents_embeddings=embeddings)
+    index.add_documents(documents_ids=["1", "2", "3"], documents_embeddings=embeddings)
 
     index.remove_documents(["2"])
 
@@ -186,8 +191,7 @@ def test_warp_delete_nonexistent():
 
     documents = ["Document 1", "Document 2"]
     embeddings = model.encode(documents, is_query=False)
-    index.add_documents(documents_ids=["1", "2"],
-                        documents_embeddings=embeddings)
+    index.add_documents(documents_ids=["1", "2"], documents_embeddings=embeddings)
 
     index.remove_documents(["999"])
 
@@ -206,9 +210,12 @@ def test_warp_reload_after_delete():
     name = f"warp_{random_hash}"
 
     index = indexes.WARP(
-        index_folder=folder, index_name=name, override=True,
-        nbits=2, kmeans_niters=1, device="cpu",
-        nprobe=32, centroid_score_threshold=0.0,
+        index_folder=folder,
+        index_name=name,
+        override=True,
+        device="cpu",
+        search=indexes.WARPSearchConfig(nprobe=32, centroid_score_threshold=0.0),
+        indexing=indexes.WARPIndexingConfig(nbits=2, kmeans_niters=1),
     )
     model = _make_model()
 
@@ -218,17 +225,19 @@ def test_warp_reload_after_delete():
         "Document Z about deep learning.",
     ]
     embeddings = model.encode(documents, is_query=False)
-    index.add_documents(documents_ids=["X", "Y", "Z"],
-                        documents_embeddings=embeddings)
+    index.add_documents(documents_ids=["X", "Y", "Z"], documents_embeddings=embeddings)
 
     index.remove_documents(["Y"])
     del index
 
     # Reload from disk
     index = indexes.WARP(
-        index_folder=folder, index_name=name, override=False,
-        nbits=2, kmeans_niters=1, device="cpu",
-        nprobe=32, centroid_score_threshold=0.0,
+        index_folder=folder,
+        index_name=name,
+        override=False,
+        device="cpu",
+        search=indexes.WARPSearchConfig(nprobe=32, centroid_score_threshold=0.0),
+        indexing=indexes.WARPIndexingConfig(nbits=2, kmeans_niters=1),
     )
 
     query_embedding = model.encode(["AI and ML"], is_query=True)
@@ -253,8 +262,9 @@ def test_warp_subset_search():
         "Document about dates.",
     ]
     embeddings = model.encode(documents, is_query=False)
-    index.add_documents(documents_ids=["A", "B", "C", "D"],
-                        documents_embeddings=embeddings)
+    index.add_documents(
+        documents_ids=["A", "B", "C", "D"], documents_embeddings=embeddings
+    )
 
     query_embedding = model.encode(["fruit"], is_query=True)
 
@@ -268,6 +278,119 @@ def test_warp_subset_search():
     shutil.rmtree(folder)
 
 
+def test_warp_update_documents():
+    """Test updating document embeddings in-place."""
+    index, folder = _make_index()
+    model = _make_model()
+
+    documents = [
+        "Document about apples and their nutritional benefits.",
+        "Document about bananas and their vitamin content.",
+        "Document about cherries and antioxidants.",
+    ]
+    embeddings = model.encode(documents, is_query=False)
+    index.add_documents(
+        documents_ids=["A", "B", "C"], documents_embeddings=embeddings
+    )
+
+    # Replace B's embedding with something about space
+    new_embedding = model.encode(
+        ["Document about rockets and space exploration."], is_query=False
+    )
+    index.update_documents(documents_ids=["B"], documents_embeddings=new_embedding)
+
+    # B should now rank higher for a space query than a fruit query
+    space_query = model.encode(["rockets and space"], is_query=True)
+    matches = index(space_query, k=3)
+    returned_ids = [m["id"] for m in matches[0]]
+    assert "B" in returned_ids
+
+    # All three documents should still be present
+    fruit_query = model.encode(["fruits and nutrition"], is_query=True)
+    matches = index(fruit_query, k=10)
+    assert {m["id"] for m in matches[0]} == {"A", "B", "C"}
+
+    shutil.rmtree(folder)
+
+
+def test_warp_compact():
+    """Test that compact works after deletions."""
+    index, folder = _make_index()
+    model = _make_model()
+
+    documents = [
+        "Document about apples.",
+        "Document about bananas.",
+        "Document about cherries.",
+        "Document about dates.",
+        "Document about elderberries.",
+    ]
+    embeddings = model.encode(documents, is_query=False)
+    index.add_documents(
+        documents_ids=["A", "B", "C", "D", "E"], documents_embeddings=embeddings
+    )
+
+    index.remove_documents(["B", "D"])
+    index.compact()
+
+    query_embedding = model.encode(["fruit"], is_query=True)
+    matches = index(query_embedding, k=10)
+    returned_ids = {m["id"] for m in matches[0]}
+    assert returned_ids == {"A", "C", "E"}
+
+    shutil.rmtree(folder)
+
+
+def test_warp_per_query_subset():
+    """Test searching with per-query subset filters."""
+    index, folder = _make_index()
+    model = _make_model()
+
+    documents = [
+        "Document about apples.",
+        "Document about bananas.",
+        "Document about cherries.",
+        "Document about dates.",
+    ]
+    embeddings = model.encode(documents, is_query=False)
+    index.add_documents(
+        documents_ids=["A", "B", "C", "D"], documents_embeddings=embeddings
+    )
+
+    queries = model.encode(["apples", "dates"], is_query=True)
+
+    # Each query gets its own subset
+    matches = index(queries, k=10, subset=[["A", "B"], ["C", "D"]])
+    assert {m["id"] for m in matches[0]} <= {"A", "B"}
+    assert {m["id"] for m in matches[1]} <= {"C", "D"}
+
+    shutil.rmtree(folder)
+
+
+def test_warp_dtype_and_mmap():
+    """Test that dtype and mmap parameters are accepted and work."""
+    import torch
+
+    index, folder = _make_index(dtype=torch.float32, mmap=True)
+    model = _make_model()
+
+    documents = [
+        "Document about apples.",
+        "Document about bananas.",
+        "Document about cherries.",
+    ]
+    embeddings = model.encode(documents, is_query=False)
+    index.add_documents(
+        documents_ids=["A", "B", "C"], documents_embeddings=embeddings
+    )
+
+    query_embedding = model.encode(["fruit"], is_query=True)
+    matches = index(query_embedding, k=10)
+    assert {m["id"] for m in matches[0]} == {"A", "B", "C"}
+
+    shutil.rmtree(folder)
+
+
 if __name__ == "__main__":
     test_warp_add_and_search()
     test_warp_delete_single()
@@ -277,3 +400,7 @@ if __name__ == "__main__":
     test_warp_delete_nonexistent()
     test_warp_reload_after_delete()
     test_warp_subset_search()
+    test_warp_update_documents()
+    test_warp_compact()
+    test_warp_per_query_subset()
+    test_warp_dtype_and_mmap()
