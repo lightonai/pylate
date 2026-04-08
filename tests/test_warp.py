@@ -10,22 +10,29 @@ from pylate import indexes, models
 pytest.importorskip("xtr_warp")
 
 
-def _make_index(**kwargs):
-    """Create a WARP index with test-friendly defaults.
+@pytest.fixture()
+def warp_index(request):
+    """Create a WARP index with test-friendly defaults and clean up afterwards.
 
-    Uses aggressive search parameters to ensure full recall on tiny test indexes.
+    Pass extra kwargs via ``@pytest.mark.parametrize`` indirect or
+    ``request.param``; otherwise uses aggressive search parameters to
+    ensure full recall on tiny test indexes.
     """
+    extra = getattr(request, "param", {}) or {}
     random_hash = uuid.uuid4().hex
+    folder = f"test_indexes_{random_hash}"
     defaults = dict(
-        index_folder=f"test_indexes_{random_hash}",
+        index_folder=folder,
         index_name=f"warp_{random_hash}",
         override=True,
         device="cpu",
         search=indexes.WARPSearchConfig(nprobe=32, centroid_score_threshold=0.0),
         indexing=indexes.WARPIndexingConfig(nbits=2, kmeans_niters=1),
     )
-    defaults.update(kwargs)
-    return indexes.WARP(**defaults), defaults["index_folder"]
+    defaults.update(extra)
+    index = indexes.WARP(**defaults)
+    yield index, folder
+    shutil.rmtree(folder, ignore_errors=True)
 
 
 def _make_model():
@@ -36,9 +43,9 @@ def _make_model():
     )
 
 
-def test_warp_add_and_search():
+def test_warp_add_and_search(warp_index):
     """Test basic add + search workflow."""
-    index, folder = _make_index()
+    index, _ = warp_index
     model = _make_model()
 
     documents = [
@@ -60,12 +67,10 @@ def test_warp_add_and_search():
     returned_ids = {m["id"] for m in matches[0]}
     assert returned_ids == {"0", "1", "2", "3", "4"}
 
-    shutil.rmtree(folder)
 
-
-def test_warp_delete_single():
+def test_warp_delete_single(warp_index):
     """Test deleting a single document."""
-    index, folder = _make_index()
+    index, _ = warp_index
     model = _make_model()
 
     documents = [
@@ -89,12 +94,10 @@ def test_warp_delete_single():
     returned_ids = {m["id"] for m in matches[0]}
     assert returned_ids == {"0", "2", "3", "4"}
 
-    shutil.rmtree(folder)
 
-
-def test_warp_delete_multiple_at_once():
+def test_warp_delete_multiple_at_once(warp_index):
     """Test deleting multiple documents in one call."""
-    index, folder = _make_index()
+    index, _ = warp_index
     model = _make_model()
 
     documents = [
@@ -118,12 +121,10 @@ def test_warp_delete_multiple_at_once():
     returned_ids = {m["id"] for m in matches[0]}
     assert returned_ids == {"A", "C", "E"}
 
-    shutil.rmtree(folder)
 
-
-def test_warp_delete_sequential():
+def test_warp_delete_sequential(warp_index):
     """Test multiple sequential deletions."""
-    index, folder = _make_index()
+    index, _ = warp_index
     model = _make_model()
 
     documents = [
@@ -152,12 +153,10 @@ def test_warp_delete_sequential():
     matches = index(query_embedding, k=10)
     assert {m["id"] for m in matches[0]} == {"2", "4"}
 
-    shutil.rmtree(folder)
 
-
-def test_warp_delete_and_add():
+def test_warp_delete_and_add(warp_index):
     """Test that adding documents after deletion works correctly."""
-    index, folder = _make_index()
+    index, _ = warp_index
     model = _make_model()
 
     documents = [
@@ -181,12 +180,10 @@ def test_warp_delete_and_add():
     returned_ids = {m["id"] for m in matches[0]}
     assert returned_ids == {"1", "3", "4"}
 
-    shutil.rmtree(folder)
 
-
-def test_warp_delete_nonexistent():
+def test_warp_delete_nonexistent(warp_index):
     """Test that deleting a non-existent document doesn't cause errors."""
-    index, folder = _make_index()
+    index, _ = warp_index
     model = _make_model()
 
     documents = ["Document 1", "Document 2"]
@@ -200,8 +197,6 @@ def test_warp_delete_nonexistent():
     returned_ids = {m["id"] for m in matches[0]}
     assert returned_ids == {"1", "2"}
 
-    shutil.rmtree(folder)
-
 
 def test_warp_reload_after_delete():
     """Test that a fresh WARP instance correctly loads state after deletion."""
@@ -209,50 +204,57 @@ def test_warp_reload_after_delete():
     folder = f"test_indexes_{random_hash}"
     name = f"warp_{random_hash}"
 
-    index = indexes.WARP(
-        index_folder=folder,
-        index_name=name,
-        override=True,
-        device="cpu",
-        search=indexes.WARPSearchConfig(nprobe=32, centroid_score_threshold=0.0),
-        indexing=indexes.WARPIndexingConfig(nbits=2, kmeans_niters=1),
-    )
-    model = _make_model()
+    search_cfg = indexes.WARPSearchConfig(nprobe=32, centroid_score_threshold=0.0)
+    indexing_cfg = indexes.WARPIndexingConfig(nbits=2, kmeans_niters=1)
 
-    documents = [
-        "Document X about machine learning.",
-        "Document Y about artificial intelligence.",
-        "Document Z about deep learning.",
-    ]
-    embeddings = model.encode(documents, is_query=False)
-    index.add_documents(documents_ids=["X", "Y", "Z"], documents_embeddings=embeddings)
+    try:
+        index = indexes.WARP(
+            index_folder=folder,
+            index_name=name,
+            override=True,
+            device="cpu",
+            search=search_cfg,
+            indexing=indexing_cfg,
+        )
+        model = _make_model()
 
-    index.remove_documents(["Y"])
-    del index
+        documents = [
+            "Document X about machine learning.",
+            "Document Y about artificial intelligence.",
+            "Document Z about deep learning.",
+        ]
+        embeddings = model.encode(documents, is_query=False)
+        index.add_documents(
+            documents_ids=["X", "Y", "Z"], documents_embeddings=embeddings
+        )
 
-    # Reload from disk
-    index = indexes.WARP(
-        index_folder=folder,
-        index_name=name,
-        override=False,
-        device="cpu",
-        search=indexes.WARPSearchConfig(nprobe=32, centroid_score_threshold=0.0),
-        indexing=indexes.WARPIndexingConfig(nbits=2, kmeans_niters=1),
-    )
+        index.remove_documents(["Y"])
+        del index
 
-    query_embedding = model.encode(["AI and ML"], is_query=True)
-    matches = index(query_embedding, k=10)
+        # Reload from disk
+        index = indexes.WARP(
+            index_folder=folder,
+            index_name=name,
+            override=False,
+            device="cpu",
+            search=search_cfg,
+            indexing=indexing_cfg,
+        )
 
-    returned_ids = {m["id"] for m in matches[0]}
-    assert returned_ids == {"X", "Z"}
+        query_embedding = model.encode(["AI and ML"], is_query=True)
+        matches = index(query_embedding, k=10)
 
-    del index
-    shutil.rmtree(folder)
+        returned_ids = {m["id"] for m in matches[0]}
+        assert returned_ids == {"X", "Z"}
+
+        del index
+    finally:
+        shutil.rmtree(folder, ignore_errors=True)
 
 
-def test_warp_subset_search():
+def test_warp_subset_search(warp_index):
     """Test searching with a subset filter."""
-    index, folder = _make_index()
+    index, _ = warp_index
     model = _make_model()
 
     documents = [
@@ -275,12 +277,10 @@ def test_warp_subset_search():
         f"Results should only contain subset documents, got {returned_ids}"
     )
 
-    shutil.rmtree(folder)
 
-
-def test_warp_update_documents():
+def test_warp_update_documents(warp_index):
     """Test updating document embeddings in-place."""
-    index, folder = _make_index()
+    index, _ = warp_index
     model = _make_model()
 
     documents = [
@@ -310,12 +310,10 @@ def test_warp_update_documents():
     matches = index(fruit_query, k=10)
     assert {m["id"] for m in matches[0]} == {"A", "B", "C"}
 
-    shutil.rmtree(folder)
 
-
-def test_warp_compact():
+def test_warp_compact(warp_index):
     """Test that compact works after deletions."""
-    index, folder = _make_index()
+    index, _ = warp_index
     model = _make_model()
 
     documents = [
@@ -338,12 +336,10 @@ def test_warp_compact():
     returned_ids = {m["id"] for m in matches[0]}
     assert returned_ids == {"A", "C", "E"}
 
-    shutil.rmtree(folder)
 
-
-def test_warp_per_query_subset():
+def test_warp_per_query_subset(warp_index):
     """Test searching with per-query subset filters."""
-    index, folder = _make_index()
+    index, _ = warp_index
     model = _make_model()
 
     documents = [
@@ -364,14 +360,15 @@ def test_warp_per_query_subset():
     assert {m["id"] for m in matches[0]} <= {"A", "B"}
     assert {m["id"] for m in matches[1]} <= {"C", "D"}
 
-    shutil.rmtree(folder)
 
-
-def test_warp_dtype_and_mmap():
+@pytest.mark.parametrize(
+    "warp_index",
+    [{"dtype": __import__("torch").float32, "mmap": True}],
+    indirect=True,
+)
+def test_warp_dtype_and_mmap(warp_index):
     """Test that dtype and mmap parameters are accepted and work."""
-    import torch
-
-    index, folder = _make_index(dtype=torch.float32, mmap=True)
+    index, _ = warp_index
     model = _make_model()
 
     documents = [
@@ -387,20 +384,3 @@ def test_warp_dtype_and_mmap():
     query_embedding = model.encode(["fruit"], is_query=True)
     matches = index(query_embedding, k=10)
     assert {m["id"] for m in matches[0]} == {"A", "B", "C"}
-
-    shutil.rmtree(folder)
-
-
-if __name__ == "__main__":
-    test_warp_add_and_search()
-    test_warp_delete_single()
-    test_warp_delete_multiple_at_once()
-    test_warp_delete_sequential()
-    test_warp_delete_and_add()
-    test_warp_delete_nonexistent()
-    test_warp_reload_after_delete()
-    test_warp_subset_search()
-    test_warp_update_documents()
-    test_warp_compact()
-    test_warp_per_query_subset()
-    test_warp_dtype_and_mmap()
