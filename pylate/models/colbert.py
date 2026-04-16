@@ -1362,6 +1362,23 @@ class ColBERT(SentenceTransformer):
 
         return [transformer_model], None
 
+    @staticmethod
+    def _filter_non_colbert_modules(
+        modules: list[nn.Module] | OrderedDict[str, nn.Module],
+    ) -> list[nn.Module] | OrderedDict[str, nn.Module]:
+        """Filter modules to only keep Transformer and Dense modules (remove Pooling, etc.)."""
+        if isinstance(modules, OrderedDict):
+            return OrderedDict(
+                (name, module)
+                for name, module in modules.items()
+                if isinstance(module, (Transformer, DenseSentenceTransformer))
+            )
+        return [
+            module
+            for module in modules
+            if isinstance(module, (Transformer, DenseSentenceTransformer))
+        ]
+
     def _load_config_modules(
         self,
         model_name_or_path: str,
@@ -1386,21 +1403,7 @@ class ColBERT(SentenceTransformer):
             processor_kwargs=processor_kwargs,
             config_kwargs=config_kwargs,
         )
-
-        # Filter to only Transformer + Dense modules (no Pooling)
-        if isinstance(modules, OrderedDict):
-            filtered = OrderedDict()
-            for name, module in modules.items():
-                if isinstance(module, (Transformer, DenseSentenceTransformer)):
-                    filtered[name] = module
-            return filtered, module_kwargs
-        else:
-            filtered = [
-                module
-                for module in modules
-                if isinstance(module, (Transformer, DenseSentenceTransformer))
-            ]
-            return filtered, module_kwargs
+        return self._filter_non_colbert_modules(modules), module_kwargs
 
     def _load_converted_modules(
         self,
@@ -1428,21 +1431,7 @@ class ColBERT(SentenceTransformer):
             processor_kwargs=processor_kwargs,
             config_kwargs=config_kwargs,
         )
-
-        # Filter to only Transformer + Dense modules (no Pooling)
-        if isinstance(modules, OrderedDict):
-            filtered = OrderedDict()
-            for name, module in modules.items():
-                if isinstance(module, (Transformer, DenseSentenceTransformer)):
-                    filtered[name] = module
-            return filtered, module_kwargs
-        else:
-            filtered = [
-                module
-                for module in modules
-                if isinstance(module, (Transformer, DenseSentenceTransformer))
-            ]
-            return filtered, module_kwargs
+        return self._filter_non_colbert_modules(modules), module_kwargs
 
     def _get_model_type(
         self,
