@@ -627,22 +627,7 @@ class ColBERT(SentenceTransformer):
             sentences = [sentences]
             input_was_string = True
 
-        if prompt is not None and prompt_name is not None:
-            logger.warning(
-                "Provide either a `prompt` or a `prompt_name`, not both. "
-                "Ignoring the `prompt_name` in favor of the provided `prompt`."
-            )
-
-        elif prompt is None:
-            if prompt_name is not None:
-                prompt = self.prompts.get(prompt_name)
-                if prompt is None:
-                    raise ValueError(
-                        f"Prompt name '{prompt_name}' not found in the configured prompts dictionary. "
-                        f"Available keys are: {list(self.prompts.keys())!r}."
-                    )
-            else:
-                prompt = self.prompts.get(self.default_prompt_name)
+        prompt = self._resolve_prompt(prompt, prompt_name)
 
         extra_features = {}
         if prompt is not None:
