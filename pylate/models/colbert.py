@@ -674,47 +674,7 @@ class ColBERT(SentenceTransformer):
                 features = self._preprocess_multimodal(sentences_batch)
 
             if self.device.type == "hpu":
-                if "input_ids" in features:
-                    curr_tokenize_len = features["input_ids"].shape
-
-                    additional_pad_len = (
-                        2 ** math.ceil(math.log2(curr_tokenize_len[1]))
-                        - curr_tokenize_len[1]
-                    )
-
-                    features["input_ids"] = torch.cat(
-                        tensors=(
-                            features["input_ids"],
-                            torch.ones(
-                                size=(curr_tokenize_len[0], additional_pad_len),
-                                dtype=torch.int8,
-                            ),
-                        ),
-                        dim=-1,
-                    )
-
-                    features["attention_mask"] = torch.cat(
-                        tensors=(
-                            features["attention_mask"],
-                            torch.zeros(
-                                size=(curr_tokenize_len[0], additional_pad_len),
-                                dtype=torch.int8,
-                            ),
-                        ),
-                        dim=-1,
-                    )
-
-                    if "token_type_ids" in features:
-                        features["token_type_ids"] = torch.cat(
-                            tensors=(
-                                features["token_type_ids"],
-                                torch.zeros(
-                                    size=(curr_tokenize_len[0], additional_pad_len),
-                                    dtype=torch.int8,
-                                ),
-                            ),
-                            dim=-1,
-                        )
+                features = self._pad_features_for_hpu(features)
 
             features = batch_to_device(batch=features, target_device=device)
             features.update(extra_features)
