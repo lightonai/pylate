@@ -14,8 +14,11 @@ class ColBERTCollator:
 
     Parameters
     ----------
+    preprocess_fn
+        The function to preprocess/tokenize the input text. This should be
+        ``model.preprocess`` (or the deprecated ``model.tokenize``).
     tokenize_fn
-        The function to tokenize the input text.
+        Deprecated alias for ``preprocess_fn``. Use ``preprocess_fn`` instead.
     valid_label_columns
         The name of the columns that contain the labels: scores or labels.
     router_mapping
@@ -36,7 +39,7 @@ class ColBERTCollator:
     ... )
 
     >>> collator = utils.ColBERTCollator(
-    ...     tokenize_fn=model.tokenize,
+    ...     preprocess_fn=model.preprocess,
     ... )
 
     >>> features = [
@@ -71,7 +74,8 @@ class ColBERTCollator:
 
     def __init__(
         self,
-        tokenize_fn: Callable,
+        preprocess_fn: Callable | None = None,
+        tokenize_fn: Callable | None = None,
         valid_label_columns: list[str] | None = None,
         router_mapping: dict[str, str] | dict[str, dict[str, str]] | None = None,
         prompts: dict[str, str] | dict[str, dict[str, str]] | None = None,
@@ -80,7 +84,17 @@ class ColBERTCollator:
         _prompt_length_mapping: dict[str, int] | None = None,
         _warned_columns: set[tuple[str]] | None = None,
     ):
-        self.tokenize_fn = tokenize_fn
+        # Support both preprocess_fn and deprecated tokenize_fn
+        if preprocess_fn is not None:
+            self.preprocess_fn = preprocess_fn
+        elif tokenize_fn is not None:
+            self.preprocess_fn = tokenize_fn
+        else:
+            raise ValueError("Either `preprocess_fn` or `tokenize_fn` must be provided.")
+
+        # Keep backward compat alias
+        self.tokenize_fn = self.preprocess_fn
+
         self.router_mapping = router_mapping if router_mapping is not None else {}
         self.prompts = prompts if prompts is not None else {}
         self.all_special_ids = all_special_ids if all_special_ids is not None else set()
@@ -171,6 +185,9 @@ class ColBERTCollator:
             if isinstance(texts[0], list):
                 texts = list(itertools.chain(*texts))
 
+            # Detect if inputs are multimodal (non-text)
+            is_multimodal = not self._is_text_column(texts)
+
             # Get the string prompt for the column, if it exists.
             prompt = None
             if isinstance(prompts, str):
@@ -180,7 +197,7 @@ class ColBERTCollator:
 
             # If a prompt is provided, we prepend it to the column values. Some Pooling setups require removing the
             # prompt tokens from the pooled embeddings, so we also store the prompt length which can be used for that.
-            if prompt:
+            if prompt and not is_multimodal:
                 if self.include_prompt_lengths:
                     prompt_length = self._get_prompt_length(prompt, task=task)
                     if prompt_length is not None:
@@ -188,19 +205,28 @@ class ColBERTCollator:
                             [prompt_length] * len(features), dtype=torch.int
                         )
                 texts = [prompt + text for text in texts]
+
             is_query = "query" in column_name or "anchor" in column_name
-            tokenized = self.tokenize_fn(texts, is_query=is_query, pad=True, task=task)
+            tokenized = self.preprocess_fn(texts, is_query=is_query, pad=True, task=task)
 
             for key, value in tokenized.items():
                 batch[f"{column_name}_{key}"] = value
 
         return batch
 
+    @staticmethod
+    def _is_text_column(values: list) -> bool:
+        """Check if column values are text strings."""
+        if not values:
+            return True
+        first = values[0]
+        return isinstance(first, str)
+
     def _get_prompt_length(self, prompt: str, task: str | None = None) -> int:
         if (prompt, task) in self._prompt_length_mapping:
             return self._prompt_length_mapping[(prompt, task)]
 
-        tokenized_prompt = self.tokenize_fn([prompt], task=task)
+        tokenized_prompt = self.preprocess_fn([prompt], task=task)
         if "input_ids" not in tokenized_prompt:
             # If the tokenizer does not return input_ids, we cannot determine the prompt length.
             # This can happen with some tokenizers that do not use input_ids.
