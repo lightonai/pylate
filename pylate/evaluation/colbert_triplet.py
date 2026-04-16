@@ -5,7 +5,7 @@ import logging
 import os
 from contextlib import nullcontext
 
-from sentence_transformers.evaluation import TripletEvaluator
+from sentence_transformers.sentence_transformer.evaluation import TripletEvaluator
 
 from ..models import ColBERT
 from ..scores import colbert_scores_pairwise
