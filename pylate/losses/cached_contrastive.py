@@ -208,8 +208,7 @@ class CachedContrastive(nn.Module):
         """Yields chunks of embeddings (and corresponding RandContext) for the given
         sentence_feature, respecting the mini_batch_size limit.
         """
-        input_ids = sentence_feature["input_ids"]
-        bsz = input_ids.size(0)
+        bsz = next(iter(sentence_feature.values())).size(0)
         for i, b in enumerate(
             tqdm.trange(
                 0,

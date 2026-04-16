@@ -699,9 +699,12 @@ class ColBERT(SentenceTransformer):
                 else:
                     if self.do_query_expansion:
                         # We keep all tokens in the query (no skiplist) and we do not want to prune expansion tokens in queries even if we do not attend to them in attention layers
-                        masks = torch.ones_like(
-                            input=out_features["input_ids"], dtype=torch.bool
-                        )
+                        if "input_ids" in out_features:
+                            masks = torch.ones_like(
+                                input=out_features["input_ids"], dtype=torch.bool
+                            )
+                        else:
+                            masks = out_features["attention_mask"].bool()
                     else:
                         # We only keep the original tokens and prune padding tokens
                         masks = out_features["attention_mask"].bool()
