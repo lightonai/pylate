@@ -18,6 +18,7 @@ from sentence_transformers import SentenceTransformer
 from sentence_transformers.base.modules import Dense as DenseSentenceTransformer
 from sentence_transformers.base.modules import Transformer
 from sentence_transformers.util import batch_to_device, load_file_path
+from sentence_transformers.util.decorators import deprecated_kwargs
 from sentence_transformers.util.quantization import quantize_embeddings
 from torch import nn
 from tqdm.autonotebook import trange
@@ -506,9 +507,10 @@ class ColBERT(SentenceTransformer):
                 return isinstance(first, tuple) and all(isinstance(s, str) for s in first)
         return False
 
+    @deprecated_kwargs(sentences="inputs")
     def encode(
         self,
-        sentences: str | list[str],
+        inputs: str | list[str] = None,
         prompt_name: str | None = None,
         prompt: str | None = None,
         batch_size: int = 32,
@@ -528,8 +530,8 @@ class ColBERT(SentenceTransformer):
 
         Parameters
         ----------
-        sentences
-            The sentences to embed.
+        inputs
+            The inputs to embed.
         prompt_name
             The name of the prompt to use for encoding. Must be a key in the `prompts` dictionary, which is either set in
             the constructor or loaded from the model configuration. For example, if `prompt_name` is "query" and the
@@ -571,14 +573,14 @@ class ColBERT(SentenceTransformer):
             The number of tokens at the beginning of the sequence that should not be pooled. Defaults to 1 (CLS token).
 
         """
-        if isinstance(sentences, list):
-            # If we have a list of list of sentences, we encode each list separately.
-            if isinstance(sentences[0], list):
+        if isinstance(inputs, list):
+            # If we have a list of list of inputs, we encode each list separately.
+            if isinstance(inputs[0], list):
                 embeddings = []
 
-                for batch in sentences:
+                for batch in inputs:
                     batch_embeddings = self.encode(
-                        sentences=batch,
+                        inputs=batch,
                         prompt_name=prompt_name,
                         prompt=prompt,
                         batch_size=batch_size,
@@ -623,15 +625,15 @@ class ColBERT(SentenceTransformer):
         convert_to_numpy = not convert_to_tensor
 
         input_was_string = False
-        if isinstance(sentences, str) or not hasattr(sentences, "__len__"):
-            sentences = [sentences]
+        if isinstance(inputs, str) or not hasattr(inputs, "__len__"):
+            inputs = [inputs]
             input_was_string = True
 
         prompt = self._resolve_prompt(prompt, prompt_name)
 
         extra_features = {}
         if prompt is not None:
-            sentences = [prompt + sentence for sentence in sentences]
+            inputs = [prompt + inp for inp in inputs]
 
             # Some models require removing the prompt before pooling (e.g. Instructor, Grit).
             # Tracking the prompt length allow us to remove the prompt during pooling.
@@ -648,30 +650,30 @@ class ColBERT(SentenceTransformer):
 
         all_embeddings = []
         # Detect if inputs are text for length-based sorting
-        is_text = self._is_text_input(sentences)
+        is_text = self._is_text_input(inputs)
         if is_text:
-            length_sorted_idx = np.argsort([-self._input_length(sen) for sen in sentences])
+            length_sorted_idx = np.argsort([-self._input_length(inp) for inp in inputs])
         else:
-            length_sorted_idx = np.arange(len(sentences))
-        sentences_sorted = [sentences[int(idx)] for idx in length_sorted_idx]
+            length_sorted_idx = np.arange(len(inputs))
+        inputs_sorted = [inputs[int(idx)] for idx in length_sorted_idx]
 
         for start_index in trange(
             0,
-            len(sentences),
+            len(inputs),
             batch_size,
             desc=f"Encoding queries (bs={batch_size})"
             if is_query
             else f"Encoding documents (bs={batch_size})",
             disable=not show_progress_bar,
         ):
-            sentences_batch = sentences_sorted[start_index : start_index + batch_size]
+            inputs_batch = inputs_sorted[start_index : start_index + batch_size]
 
             # Use preprocess for both text and multimodal inputs
             if is_text:
-                features = self.preprocess(inputs=sentences_batch, is_query=is_query)
+                features = self.preprocess(inputs=inputs_batch, is_query=is_query)
             else:
                 # Multimodal path: use the base transformer's preprocess directly
-                features = self._preprocess_multimodal(sentences_batch)
+                features = self._preprocess_multimodal(inputs_batch, is_query=is_query)
 
             if self.device.type == "hpu":
                 features = self._pad_features_for_hpu(features)
@@ -776,19 +778,19 @@ class ColBERT(SentenceTransformer):
 
     def encode_query(
         self,
-        sentences: str | list[str],
+        inputs: str | list[str],
         **kwargs,
     ) -> list[torch.Tensor] | ndarray | torch.Tensor:
         """Convenience method to encode queries (sets is_query=True)."""
-        return self.encode(sentences, is_query=True, **kwargs)
+        return self.encode(inputs, is_query=True, **kwargs)
 
     def encode_document(
         self,
-        sentences: str | list[str],
+        inputs: str | list[str],
         **kwargs,
     ) -> list[torch.Tensor] | ndarray | torch.Tensor:
         """Convenience method to encode documents (sets is_query=False)."""
-        return self.encode(sentences, is_query=False, **kwargs)
+        return self.encode(inputs, is_query=False, **kwargs)
 
     def pool_embeddings_hierarchical(
         self,
