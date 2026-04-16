@@ -189,7 +189,7 @@ def main():
         loss=train_loss,
         evaluator=dev_evaluator,
         data_collator=utils.ColBERTCollator(
-            tokenize_fn=model.tokenize,
+            preprocess_fn=model.preprocess,
             prompts=(
                 {
                     "query": QUERY_PROMPT,
