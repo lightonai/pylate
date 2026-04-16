@@ -80,7 +80,7 @@ trainer = SentenceTransformerTrainer(
     eval_dataset=eval_dataset,
     loss=train_loss,
     evaluator=dev_evaluator,
-    data_collator=utils.ColBERTCollator(model.tokenize),
+    data_collator=utils.ColBERTCollator(model.preprocess),
 )
 # Start the training process
 trainer.train()
@@ -182,7 +182,7 @@ trainer = SentenceTransformerTrainer(
     args=args,
     train_dataset=train,
     loss=train_loss,
-    data_collator=utils.ColBERTCollator(tokenize_fn=model.tokenize),
+    data_collator=utils.ColBERTCollator(preprocess_fn=model.preprocess),
 )
 
 # Start the training process
