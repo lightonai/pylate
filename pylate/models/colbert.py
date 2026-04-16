@@ -665,7 +665,7 @@ class ColBERT(SentenceTransformer):
         # Detect if inputs are text for length-based sorting
         is_text = self._is_text_input(sentences)
         if is_text:
-            length_sorted_idx = np.argsort([-self._text_length(sen) for sen in sentences])
+            length_sorted_idx = np.argsort([-self._input_length(sen) for sen in sentences])
         else:
             length_sorted_idx = np.arange(len(sentences))
         sentences_sorted = [sentences[int(idx)] for idx in length_sorted_idx]
