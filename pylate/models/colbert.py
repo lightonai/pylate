@@ -1110,7 +1110,7 @@ class ColBERT(SentenceTransformer):
 
         # For multimodal inputs, delegate to the multimodal preprocessing path
         if not self._is_text_input(inputs):
-            return self._preprocess_multimodal(inputs)
+            return self._preprocess_multimodal(inputs, is_query=is_query)
 
         # Set max sequence length based on whether the input is a query or document
         max_length = self.query_length if is_query else self.document_length
@@ -1171,21 +1171,23 @@ class ColBERT(SentenceTransformer):
     def _preprocess_multimodal(
         self,
         inputs: list,
+        is_query: bool = True,
     ) -> dict[str, torch.Tensor]:
         """Preprocess multimodal inputs (images, etc.) by delegating to the base transformer's preprocessor.
 
         For multimodal inputs, we skip prefix token insertion and query expansion
         since the VLM processor handles special tokens natively.
+
+        Parameters
+        ----------
+        inputs
+            A list of multimodal inputs to preprocess.
+        is_query
+            Whether the inputs are queries. Can be used to set different max lengths
+            or add metadata for downstream processing.
         """
         first_module = self._first_module()
-        if hasattr(first_module, "preprocess"):
-            return first_module.preprocess(inputs)
-        elif hasattr(first_module, "tokenize"):
-            return first_module.tokenize(inputs)
-        raise NotImplementedError(
-            "The first module does not support multimodal preprocessing. "
-            "Ensure the transformer module has a `preprocess` method."
-        )
+        return first_module.preprocess(inputs)
 
     def save(
         self,
