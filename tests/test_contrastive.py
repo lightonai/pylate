@@ -64,7 +64,7 @@ def test_contrastive_training() -> None:
         eval_dataset=eval_dataset,
         loss=train_loss,
         evaluator=dev_evaluation,
-        data_collator=utils.ColBERTCollator(tokenize_fn=model.tokenize),
+        data_collator=utils.ColBERTCollator(preprocess_fn=model.preprocess),
     )
 
     trainer.train()
