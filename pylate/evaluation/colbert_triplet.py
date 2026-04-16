@@ -201,7 +201,7 @@ class ColBERTTripletEvaluator(TripletEvaluator):
         with (
             nullcontext()
             if self.truncate_dim is None
-            else model.truncate_sentence_embeddings(truncate_dim=self.truncate_dim)
+            else model.truncate_embeddings(truncate_dim=self.truncate_dim)
         ):
             embeddings_anchors = model.encode(
                 sentences=self.anchors,
