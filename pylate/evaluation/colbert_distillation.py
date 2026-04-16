@@ -139,7 +139,7 @@ class ColBERTDistillationEvaluator(SentenceEvaluator):
         with (
             nullcontext()
             if self.truncate_dim is None
-            else model.truncate_sentence_embeddings(self.truncate_dim)
+            else model.truncate_embeddings(self.truncate_dim)
         ):
             queries_embeddings = torch.nn.utils.rnn.pad_sequence(
                 model.encode(

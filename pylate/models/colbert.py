@@ -250,7 +250,7 @@ class ColBERT(SentenceTransformer):
             model_card_data=model_card_data,
             backend=backend,
         )
-        hidden_size = self[0].get_word_embedding_dimension()
+        hidden_size = self[0].get_embedding_dimension()
 
         # Add a linear projection layer to the model in order to project the embeddings to the desired size.
         if len(self) < 2:
