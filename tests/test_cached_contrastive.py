@@ -11,7 +11,7 @@ from sentence_transformers import (
     SentenceTransformerTrainer,
     SentenceTransformerTrainingArguments,
 )
-from sentence_transformers.training_args import BatchSamplers
+from sentence_transformers.sentence_transformer.training_args import BatchSamplers
 
 from pylate import evaluation, losses, models, utils
 
