@@ -6,17 +6,19 @@ import logging
 import math
 import os
 import string
-from typing import Iterable, Literal, Optional
+import warnings
+from collections import OrderedDict
+from typing import Any, Iterable, Literal, Optional
 
 import numpy as np
 import torch
 from numpy import ndarray
 from scipy.cluster import hierarchy
 from sentence_transformers import SentenceTransformer
-from sentence_transformers.models import Dense as DenseSentenceTransformer
-from sentence_transformers.models import Transformer
-from sentence_transformers.quantization import quantize_embeddings
+from sentence_transformers.base.modules import Dense as DenseSentenceTransformer
+from sentence_transformers.base.modules import Transformer
 from sentence_transformers.util import batch_to_device, load_file_path
+from sentence_transformers.util.quantization import quantize_embeddings
 from torch import nn
 from tqdm.autonotebook import trange
 from transformers.utils import cached_file
@@ -73,8 +75,6 @@ class ColBERT(SentenceTransformer):
         Whether or not to only look at local files (i.e., do not try to download the model).
     token
         Hugging Face authentication token to download private models.
-    use_auth_token
-        Deprecated argument. Please use `token` instead.
     truncate_dim
         The dimension to truncate sentence embeddings to. `None` does no truncation. Truncation is only applicable
         during inference when :meth:`SentenceTransformer.encode` is called.
@@ -99,41 +99,12 @@ class ColBERT(SentenceTransformer):
     skiplist_words
         A list of words to skip from the documents scoring (note that these tokens are used for encoding and are only skipped during the scoring). Default is the list of string.punctuation.
     model_kwargs : dict, optional
-        Additional model configuration parameters to be passed to the Huggingface Transformers model. Particularly
-        useful options are:
-
-        - ``torch_dtype``: Override the default `torch.dtype` and load the model under a specific `dtype`. The
-            different options are:
-
-                1. ``torch.float16``, ``torch.bfloat16`` or ``torch.float``: load in a specified ``dtype``,
-                ignoring the model's ``config.torch_dtype`` if one exists. If not specified - the model will get
-                loaded in ``torch.float`` (fp32).
-
-                2. ``"auto"`` - A ``torch_dtype`` entry in the ``config.json`` file of the model will be attempted
-                to be used. If this entry isn't found then next check the ``dtype`` of the first weight in the
-                checkpoint that's of a floating point type and use that as ``dtype``. This will load the model using
-                the ``dtype`` it was saved in at the end of the training. It can't be used as an indicator of how the
-                model was trained. Since it could be trained in one of half precision dtypes, but saved in fp32.
-        - ``attn_implementation``: The attention implementation to use in the model (if relevant). Can be any of
-            `"eager"` (manual implementation of the attention), `"sdpa"` (using `F.scaled_dot_product_attention
-            <https://pytorch.org/docs/master/generated/torch.nn.functional.scaled_dot_product_attention.html>`_),
-            or `"flash_attention_2"` (using `Dao-AILab/flash-attention
-            <https://github.com/Dao-AILab/flash-attention>`_). By default, if available, SDPA will be used for
-            torch>=2.1.1. The default is otherwise the manual `"eager"` implementation.
-
-        See the `PreTrainedModel.from_pretrained
-        <https://huggingface.co/docs/transformers/en/main_classes/model#transformers.PreTrainedModel.from_pretrained>`_
-        documentation for more details.
-    tokenizer_kwargs
-        Additional tokenizer configuration parameters to be passed to the Huggingface Transformers tokenizer. See the
-        `AutoTokenizer.from_pretrained
-        <https://huggingface.co/docs/transformers/en/model_doc/auto#transformers.AutoTokenizer.from_pretrained>`_
-        documentation for more details.
+        Additional model configuration parameters to be passed to the Huggingface Transformers model.
+    processor_kwargs
+        Additional processor/tokenizer configuration parameters to be passed to the Huggingface Transformers
+        processor/tokenizer.
     config_kwargs
-        Additional model configuration parameters to be passed to the Huggingface Transformers config. See the
-        `AutoConfig.from_pretrained
-        <https://huggingface.co/docs/transformers/en/model_doc/auto#transformers.AutoConfig.from_pretrained>`_
-        documentation for more details.
+        Additional model configuration parameters to be passed to the Huggingface Transformers config.
     model_card_data
         A model card data object that contains information about the model. This is used to generate a model card when
         saving the model. If not set, a default model card data object is created.
@@ -190,6 +161,7 @@ class ColBERT(SentenceTransformer):
     def __init__(
         self,
         model_name_or_path: str | None = None,
+        *,
         modules: Optional[Iterable[nn.Module]] = None,
         device: str | None = None,
         prompts: dict[str, str] | None = None,
@@ -213,10 +185,26 @@ class ColBERT(SentenceTransformer):
         attend_to_expansion_tokens: bool | None = None,
         skiplist_words: list[str] | None = None,
         model_kwargs: dict | None = None,
+        processor_kwargs: dict | None = None,
         tokenizer_kwargs: dict | None = None,
         config_kwargs: dict | None = None,
         model_card_data: PylateModelCardData | None = None,
+        backend: Literal["torch", "onnx", "openvino"] = "torch",
     ) -> None:
+        # Handle deprecated tokenizer_kwargs
+        if tokenizer_kwargs is not None:
+            warnings.warn(
+                "The `tokenizer_kwargs` argument is deprecated. Use `processor_kwargs` instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            if processor_kwargs is not None:
+                raise ValueError(
+                    "Both `processor_kwargs` and `tokenizer_kwargs` are specified. "
+                    "Please only specify `processor_kwargs`."
+                )
+            processor_kwargs = tokenizer_kwargs
+
         self.query_prefix = query_prefix
         self.document_prefix = document_prefix
         self.query_length = query_length
@@ -224,9 +212,24 @@ class ColBERT(SentenceTransformer):
         self.do_query_expansion = do_query_expansion
         self.attend_to_expansion_tokens = attend_to_expansion_tokens
         self.skiplist_words = skiplist_words
+        self._embedding_size = embedding_size
+        self._bias = bias
         model_card_data = model_card_data or PylateModelCardData()
         if similarity_fn_name is None:
             similarity_fn_name = "MaxSim"
+
+        # Handle deprecated use_auth_token
+        if use_auth_token is not None:
+            warnings.warn(
+                "The `use_auth_token` argument is deprecated. Use `token` instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            if token is not None:
+                raise ValueError(
+                    "Both `token` and `use_auth_token` are specified. Please only specify `token`."
+                )
+            token = use_auth_token
 
         super(ColBERT, self).__init__(
             model_name_or_path=model_name_or_path,
@@ -240,12 +243,12 @@ class ColBERT(SentenceTransformer):
             revision=revision,
             local_files_only=local_files_only,
             token=token,
-            use_auth_token=use_auth_token,
             truncate_dim=truncate_dim,
             model_kwargs=model_kwargs,
-            tokenizer_kwargs=tokenizer_kwargs,
+            processor_kwargs=processor_kwargs,
             config_kwargs=config_kwargs,
             model_card_data=model_card_data,
+            backend=backend,
         )
         hidden_size = self[0].get_word_embedding_dimension()
 
@@ -263,7 +266,6 @@ class ColBERT(SentenceTransformer):
                         revision,
                         local_files_only,
                         token,
-                        use_auth_token,
                     )
                 )
                 logger.info("Loaded the weights from Stanford NLP model.")
@@ -275,7 +277,6 @@ class ColBERT(SentenceTransformer):
                         revision=revision,
                         local_files_only=local_files_only,
                         token=token,
-                        use_auth_token=use_auth_token,
                     )
                     with open(metadata, "r") as f:
                         metadata = json.load(f)
@@ -491,6 +492,20 @@ class ColBERT(SentenceTransformer):
             tensors=[input_ids[:, :1], prefix_tensor, input_ids[:, 1:]], dim=1
         )
 
+    @staticmethod
+    def _is_text_input(inputs) -> bool:
+        """Check whether inputs are text (strings) vs multimodal (images, etc)."""
+        if isinstance(inputs, str):
+            return True
+        if isinstance(inputs, (list, tuple)) and len(inputs) > 0:
+            first = inputs[0]
+            if isinstance(first, str):
+                return True
+            # list of dicts or tuples of strings are text inputs
+            if isinstance(first, (dict, tuple)):
+                return isinstance(first, tuple) and all(isinstance(s, str) for s in first)
+        return False
+
     def encode(
         self,
         sentences: str | list[str],
@@ -607,11 +622,6 @@ class ColBERT(SentenceTransformer):
             convert_to_tensor = True
         convert_to_numpy = not convert_to_tensor
 
-        # TODO: We cannot convert to tensor/numpy for token embeddings as they are not the same size
-        # if output_value != "sentence_embedding":
-        # convert_to_tensor = False
-        # convert_to_numpy = False
-
         input_was_string = False
         if isinstance(sentences, str) or not hasattr(sentences, "__len__"):
             sentences = [sentences]
@@ -640,7 +650,7 @@ class ColBERT(SentenceTransformer):
 
             # Some models require removing the prompt before pooling (e.g. Instructor, Grit).
             # Tracking the prompt length allow us to remove the prompt during pooling.
-            tokenized_prompt = self.tokenize([prompt])
+            tokenized_prompt = self.preprocess([prompt])
             if "input_ids" in tokenized_prompt:
                 extra_features["prompt_length"] = (
                     tokenized_prompt["input_ids"].shape[-1] - 1
@@ -652,7 +662,12 @@ class ColBERT(SentenceTransformer):
         self.to(device)
 
         all_embeddings = []
-        length_sorted_idx = np.argsort([-self._text_length(sen) for sen in sentences])
+        # Detect if inputs are text for length-based sorting
+        is_text = self._is_text_input(sentences)
+        if is_text:
+            length_sorted_idx = np.argsort([-self._text_length(sen) for sen in sentences])
+        else:
+            length_sorted_idx = np.arange(len(sentences))
         sentences_sorted = [sentences[int(idx)] for idx in length_sorted_idx]
 
         for start_index in trange(
@@ -665,7 +680,13 @@ class ColBERT(SentenceTransformer):
             disable=not show_progress_bar,
         ):
             sentences_batch = sentences_sorted[start_index : start_index + batch_size]
-            features = self.tokenize(texts=sentences_batch, is_query=is_query)
+
+            # Use preprocess for both text and multimodal inputs
+            if is_text:
+                features = self.preprocess(inputs=sentences_batch, is_query=is_query)
+            else:
+                # Multimodal path: use the base transformer's preprocess directly
+                features = self._preprocess_multimodal(sentences_batch)
 
             if self.device.type == "hpu":
                 if "input_ids" in features:
@@ -714,19 +735,22 @@ class ColBERT(SentenceTransformer):
             features.update(extra_features)
 
             with torch.no_grad():
-                # TODO: add the truncate/sliding window logic here
                 out_features = self.forward(input=features)
                 if self.device.type == "hpu":
                     out_features = copy.deepcopy(out_features)
 
                 if not is_query:
                     # Compute the mask for the skiplist (punctuation symbols)
-                    skiplist_mask = self.skiplist_mask(
-                        input_ids=features["input_ids"], skiplist=self.skiplist
-                    )
-                    masks = torch.logical_and(
-                        input=skiplist_mask, other=out_features["attention_mask"]
-                    )
+                    if "input_ids" in features:
+                        skiplist_mask = self.skiplist_mask(
+                            input_ids=features["input_ids"], skiplist=self.skiplist
+                        )
+                        masks = torch.logical_and(
+                            input=skiplist_mask, other=out_features["attention_mask"]
+                        )
+                    else:
+                        # Multimodal: no skiplist, use attention mask directly
+                        masks = out_features["attention_mask"].bool()
                 else:
                     if self.do_query_expansion:
                         # We keep all tokens in the query (no skiplist) and we do not want to prune expansion tokens in queries even if we do not attend to them in attention layers
@@ -801,6 +825,22 @@ class ColBERT(SentenceTransformer):
             ]
 
         return all_embeddings[0] if input_was_string else all_embeddings
+
+    def encode_query(
+        self,
+        sentences: str | list[str],
+        **kwargs,
+    ) -> list[torch.Tensor] | ndarray | torch.Tensor:
+        """Convenience method to encode queries (sets is_query=True)."""
+        return self.encode(sentences, is_query=True, **kwargs)
+
+    def encode_document(
+        self,
+        sentences: str | list[str],
+        **kwargs,
+    ) -> list[torch.Tensor] | ndarray | torch.Tensor:
+        """Convenience method to encode documents (sets is_query=False)."""
+        return self.encode(sentences, is_query=False, **kwargs)
 
     def pool_embeddings_hierarchical(
         self,
@@ -1083,26 +1123,47 @@ class ColBERT(SentenceTransformer):
         )
         return [np.concatenate(result[1]) for result in results_list]
 
-    def tokenize(
+    def preprocess(
         self,
-        texts: list[str] | list[dict] | list[tuple[str, str]],
+        inputs: list[str] | list[dict] | list[tuple[str, str]] | None = None,
         is_query: bool = True,
         pad: bool = False,
-        task: str
-        | None = None,  # this is to be compatible with the new collator that supports "task". It isn't used here, only if the model is a router, but I find it cleaner than kwargs
+        task: str | None = None,
+        # Backward compat: accept 'texts' as alias for 'inputs'
+        texts: list[str] | list[dict] | list[tuple[str, str]] | None = None,
+        **kwargs,
     ) -> dict[str, torch.Tensor]:
         """
-        Tokenizes the input texts.
+        Preprocesses/tokenizes the input texts.
 
-        Args:
-            texts (Union[list[str], list[dict], list[tuple[str, str]]]): A list of texts to be tokenized.
-            is_query (bool): Flag to indicate if the texts are queries. Defaults to True.
-            pad (bool): Flag to indicate if elements should be padded to max length. Defaults to False.
+        Parameters
+        ----------
+        inputs
+            A list of texts to be tokenized.
+        is_query
+            Flag to indicate if the texts are queries. Defaults to True.
+        pad
+            Flag to indicate if elements should be padded to max length. Defaults to False.
+        task
+            Task identifier (for compatibility with Router-based models). Defaults to None.
+        texts
+            Deprecated alias for `inputs`. Use `inputs` instead.
 
-        Returns:
-            dict[str, torch.Tensor]: A dictionary of tensors with the tokenized texts, including "input_ids",
-                "attention_mask", and optionally "token_type_ids".
+        Returns
+        -------
+        dict[str, torch.Tensor]
+            A dictionary of tensors with the tokenized texts.
         """
+        # Handle backward compatibility: 'texts' -> 'inputs'
+        if texts is not None and inputs is None:
+            inputs = texts
+        if inputs is None:
+            raise ValueError("Either `inputs` or `texts` must be provided.")
+
+        # For multimodal inputs, delegate to the multimodal preprocessing path
+        if not self._is_text_input(inputs):
+            return self._preprocess_multimodal(inputs)
+
         # Set max sequence length based on whether the input is a query or document
         max_length = self.query_length if is_query else self.document_length
         prefix_id = self.query_prefix_id if is_query else self.document_prefix_id
@@ -1119,8 +1180,12 @@ class ColBERT(SentenceTransformer):
             else {}
         )
 
-        # Tokenize the texts
-        tokenized_outputs = self._first_module().tokenize(texts, **tokenize_args)
+        # Tokenize the texts using the transformer module's tokenize/preprocess
+        first_module = self._first_module()
+        if hasattr(first_module, "tokenize"):
+            tokenized_outputs = first_module.tokenize(inputs, **tokenize_args)
+        else:
+            tokenized_outputs = first_module.preprocess(inputs, **tokenize_args)
 
         if use_prefix:
             # Insert prefix token and update attention mask
@@ -1142,6 +1207,40 @@ class ColBERT(SentenceTransformer):
             tokenized_outputs["attention_mask"].fill_(1)
 
         return tokenized_outputs
+
+    def tokenize(
+        self,
+        texts: list[str] | list[dict] | list[tuple[str, str]],
+        is_query: bool = True,
+        pad: bool = False,
+        task: str | None = None,
+    ) -> dict[str, torch.Tensor]:
+        """
+        Backward-compatible wrapper around :meth:`preprocess`.
+
+        .. deprecated::
+            Use :meth:`preprocess` instead.
+        """
+        return self.preprocess(inputs=texts, is_query=is_query, pad=pad, task=task)
+
+    def _preprocess_multimodal(
+        self,
+        inputs: list,
+    ) -> dict[str, torch.Tensor]:
+        """Preprocess multimodal inputs (images, etc.) by delegating to the base transformer's preprocessor.
+
+        For multimodal inputs, we skip prefix token insertion and query expansion
+        since the VLM processor handles special tokens natively.
+        """
+        first_module = self._first_module()
+        if hasattr(first_module, "preprocess"):
+            return first_module.preprocess(inputs)
+        elif hasattr(first_module, "tokenize"):
+            return first_module.tokenize(inputs)
+        raise NotImplementedError(
+            "The first module does not support multimodal preprocessing. "
+            "Ensure the transformer module has a `preprocess` method."
+        )
 
     def save(
         self,
@@ -1171,21 +1270,58 @@ class ColBERT(SentenceTransformer):
             safe_serialization=safe_serialization,
         )
 
-        with open(os.path.join(path, "config_sentence_transformers.json"), "w") as fOut:
-            config = self._model_config.copy()
-            config["prompts"] = self.prompts
-            config["default_prompt_name"] = self.default_prompt_name
-            config["similarity_fn_name"] = self.similarity_fn_name
-            config["query_prefix"] = self.query_prefix
-            config["document_prefix"] = self.document_prefix
-            config["query_length"] = self.query_length
-            config["document_length"] = self.document_length
-            config["attend_to_expansion_tokens"] = self.attend_to_expansion_tokens
-            config["skiplist_words"] = self.skiplist_words
-            config["do_query_expansion"] = self.do_query_expansion
+        # Write PyLate-specific config on top of the base config
+        config_path = os.path.join(path, "config_sentence_transformers.json")
+        if os.path.exists(config_path):
+            with open(config_path, "r") as fIn:
+                config = json.load(fIn)
+        else:
+            config = {}
+
+        config["query_prefix"] = self.query_prefix
+        config["document_prefix"] = self.document_prefix
+        config["query_length"] = self.query_length
+        config["document_length"] = self.document_length
+        config["attend_to_expansion_tokens"] = self.attend_to_expansion_tokens
+        config["skiplist_words"] = self.skiplist_words
+        config["do_query_expansion"] = self.do_query_expansion
+
+        with open(config_path, "w") as fOut:
             json.dump(config, fOut, indent=2)
 
-    def _load_auto_model(
+    def _get_model_config(self) -> dict[str, Any]:
+        """Return the model configuration dictionary for saving."""
+        config = super()._get_model_config()
+        config["query_prefix"] = self.query_prefix
+        config["document_prefix"] = self.document_prefix
+        config["query_length"] = self.query_length
+        config["document_length"] = self.document_length
+        config["attend_to_expansion_tokens"] = self.attend_to_expansion_tokens
+        config["skiplist_words"] = self.skiplist_words
+        config["do_query_expansion"] = self.do_query_expansion
+        return config
+
+    def _parse_model_config(self, model_config: dict[str, Any]) -> None:
+        """Parse model config and load PyLate-specific parameters."""
+        super()._parse_model_config(model_config)
+
+        # Loading the query/document prefixes and query_length from config
+        if "query_prefix" in model_config and self.query_prefix is None:
+            self.query_prefix = model_config["query_prefix"]
+        if "document_prefix" in model_config and self.document_prefix is None:
+            self.document_prefix = model_config["document_prefix"]
+        if "query_length" in model_config and self.query_length is None:
+            self.query_length = model_config["query_length"]
+        if "document_length" in model_config and self.document_length is None:
+            self.document_length = model_config["document_length"]
+        if "attend_to_expansion_tokens" in model_config and self.attend_to_expansion_tokens is None:
+            self.attend_to_expansion_tokens = model_config["attend_to_expansion_tokens"]
+        if "skiplist_words" in model_config and self.skiplist_words is None:
+            self.skiplist_words = model_config["skiplist_words"]
+        if "do_query_expansion" in model_config and self.do_query_expansion is None:
+            self.do_query_expansion = model_config["do_query_expansion"]
+
+    def _load_default_modules(
         self,
         model_name_or_path: str,
         token: bool | str | None,
@@ -1193,53 +1329,15 @@ class ColBERT(SentenceTransformer):
         revision: str | None = None,
         trust_remote_code: bool = False,
         local_files_only: bool = False,
-        model_kwargs: dict | None = None,
-        tokenizer_kwargs: dict | None = None,
-        config_kwargs: dict | None = None,
-        has_modules: bool = False,
-    ) -> list[nn.Module]:
-        """Create a Transformer model from a model name or path. This module is distinct
-        from SentenceTransformer as it do not set the pooling layer.
+        model_kwargs: dict[str, Any] | None = None,
+        processor_kwargs: dict[str, Any] | None = None,
+        config_kwargs: dict[str, Any] | None = None,
+    ) -> tuple[list[nn.Module], dict[str, Any]]:
+        """Create a Transformer model from a model name or path.
 
-        Parameters
-        ----------
-        model_name_or_path
-            The name or path of the pre-trained model.
-        token
-            The token to use for the model.
-        cache_folder
-            The folder to cache the model.
-        revision
-            The revision of the model. Defaults to None.
-        trust_remote_code
-            Whether to trust remote code. Defaults to False.
-        local_files_only
-            Whether to use only local files. Defaults to False.
-        model_kwargs
-            Additional keyword arguments for the model. Defaults to None.
-        tokenizer_kwargs
-            Additional keyword arguments for the tokenizer. Defaults to None.
-        config_kwargs
-            Additional keyword arguments for the config. Defaults to None.
-        has_modules
-            Whether the model has modules.json. Defaults to False.
-
+        This module is distinct from SentenceTransformer as it does not set the pooling layer.
+        Called when no modules.json is found (creating a new ColBERT from a base model).
         """
-        # Due to a change in ST, load_sbert is now only call by default for PyLate models directly (because the class name match the config name). However, ST models needs to be called with load_sbert to load the modules, so if the model has modules, we load it with load_sbert even if the class name is not ColBERT (it is a ST model)
-        if has_modules:
-            model, module_kwargs = self._load_sbert_model(
-                model_name_or_path=model_name_or_path,
-                token=token,
-                cache_folder=cache_folder,
-                revision=revision,
-                trust_remote_code=trust_remote_code,
-                local_files_only=local_files_only,
-                model_kwargs=model_kwargs,
-                tokenizer_kwargs=tokenizer_kwargs,
-                config_kwargs=config_kwargs,
-            )
-            return model
-
         logger.warning(
             f"No sentence-transformers model found with name {model_name_or_path}."
         )
@@ -1255,13 +1353,13 @@ class ColBERT(SentenceTransformer):
             shared_kwargs if model_kwargs is None else {**shared_kwargs, **model_kwargs}
         )
 
-        tokenizer_kwargs = (
+        processor_kwargs_merged = (
             shared_kwargs
-            if tokenizer_kwargs is None
-            else {**shared_kwargs, **tokenizer_kwargs}
+            if processor_kwargs is None
+            else {**shared_kwargs, **processor_kwargs}
         )
 
-        config_kwargs = (
+        config_kwargs_merged = (
             shared_kwargs
             if config_kwargs is None
             else {**shared_kwargs, **config_kwargs}
@@ -1270,18 +1368,18 @@ class ColBERT(SentenceTransformer):
         transformer_model = Transformer(
             model_name_or_path=model_name_or_path,
             cache_dir=cache_folder,
-            model_args=model_kwargs,
-            tokenizer_args=tokenizer_kwargs,
-            config_args=config_kwargs,
+            model_kwargs=model_kwargs,
+            processor_kwargs=processor_kwargs_merged,
+            config_kwargs=config_kwargs_merged,
         )
 
         self.model_card_data.set_base_model(
             model_id=model_name_or_path, revision=revision
         )
 
-        return [transformer_model]
+        return [transformer_model], None
 
-    def _load_sbert_model(
+    def _load_config_modules(
         self,
         model_name_or_path: str,
         token: bool | str | None,
@@ -1289,12 +1387,12 @@ class ColBERT(SentenceTransformer):
         revision: str | None = None,
         trust_remote_code: bool = False,
         local_files_only: bool = False,
-        model_kwargs: dict | None = None,
-        tokenizer_kwargs: dict | None = None,
-        config_kwargs: dict | None = None,
-    ) -> list[nn.Module]:
-        """Create a Sentence Transformer model from a model name or path."""
-        modules, module_kwargs = super()._load_sbert_model(
+        model_kwargs: dict[str, Any] | None = None,
+        processor_kwargs: dict[str, Any] | None = None,
+        config_kwargs: dict[str, Any] | None = None,
+    ) -> tuple[OrderedDict[str, nn.Module], dict[str, Any]]:
+        """Load a ColBERT model from a model name or path (has modules.json)."""
+        modules, module_kwargs = super()._load_config_modules(
             model_name_or_path=model_name_or_path,
             token=token,
             cache_folder=cache_folder,
@@ -1302,47 +1400,66 @@ class ColBERT(SentenceTransformer):
             trust_remote_code=trust_remote_code,
             local_files_only=local_files_only,
             model_kwargs=model_kwargs,
-            tokenizer_kwargs=tokenizer_kwargs,
+            processor_kwargs=processor_kwargs,
             config_kwargs=config_kwargs,
         )
 
-        config_sentence_transformers_json_path = load_file_path(
+        # Filter to only Transformer + Dense modules (no Pooling)
+        if isinstance(modules, OrderedDict):
+            filtered = OrderedDict()
+            for name, module in modules.items():
+                if isinstance(module, (Transformer, DenseSentenceTransformer)):
+                    filtered[name] = module
+            return filtered, module_kwargs
+        else:
+            filtered = [
+                module
+                for module in modules
+                if isinstance(module, (Transformer, DenseSentenceTransformer))
+            ]
+            return filtered, module_kwargs
+
+    def _load_converted_modules(
+        self,
+        model_name_or_path: str,
+        token: bool | str | None,
+        cache_folder: str | None,
+        revision: str | None = None,
+        trust_remote_code: bool = False,
+        local_files_only: bool = False,
+        model_kwargs: dict[str, Any] | None = None,
+        processor_kwargs: dict[str, Any] | None = None,
+        config_kwargs: dict[str, Any] | None = None,
+        model_type: str | None = None,
+    ) -> tuple[list[nn.Module] | OrderedDict[str, nn.Module], dict[str, Any]]:
+        """Convert a non-ColBERT model (e.g. SentenceTransformer) to ColBERT modules."""
+        # For SentenceTransformer models, load them via _load_config_modules and filter out Pooling
+        modules, module_kwargs = super()._load_config_modules(
             model_name_or_path=model_name_or_path,
-            filename="config_sentence_transformers.json",
             token=token,
             cache_folder=cache_folder,
             revision=revision,
+            trust_remote_code=trust_remote_code,
             local_files_only=local_files_only,
+            model_kwargs=model_kwargs,
+            processor_kwargs=processor_kwargs,
+            config_kwargs=config_kwargs,
         )
 
-        if config_sentence_transformers_json_path is not None:
-            with open(file=config_sentence_transformers_json_path) as fIn:
-                self._model_config = json.load(fp=fIn)
-
-            # Loading the query/document prefixes and query_length
-            if "query_prefix" in self._model_config:
-                self.query_prefix = self._model_config["query_prefix"]
-            if "document_prefix" in self._model_config:
-                self.document_prefix = self._model_config["document_prefix"]
-            if "query_length" in self._model_config:
-                self.query_length = self._model_config["query_length"]
-            if "document_length" in self._model_config:
-                self.document_length = self._model_config["document_length"]
-            if "attend_to_expansion_tokens" in self._model_config:
-                self.attend_to_expansion_tokens = self._model_config[
-                    "attend_to_expansion_tokens"
-                ]
-            if "skiplist_words" in self._model_config:
-                self.skiplist_words = self._model_config["skiplist_words"]
-            if "do_query_expansion" in self._model_config:
-                self.do_query_expansion = self._model_config["do_query_expansion"]
-
-        return [
-            module
-            for module in modules.values()
-            if isinstance(module, Transformer)
-            or isinstance(module, DenseSentenceTransformer)
-        ], module_kwargs
+        # Filter to only Transformer + Dense modules (no Pooling)
+        if isinstance(modules, OrderedDict):
+            filtered = OrderedDict()
+            for name, module in modules.items():
+                if isinstance(module, (Transformer, DenseSentenceTransformer)):
+                    filtered[name] = module
+            return filtered, module_kwargs
+        else:
+            filtered = [
+                module
+                for module in modules
+                if isinstance(module, (Transformer, DenseSentenceTransformer))
+            ]
+            return filtered, module_kwargs
 
     def _get_model_type(
         self,
@@ -1351,9 +1468,9 @@ class ColBERT(SentenceTransformer):
         cache_folder: str | None,
         revision: str | None = None,
         local_files_only: bool = False,
-    ) -> str | None:
+    ) -> str:
         """
-        Overwrite the _get_model_type method to return the model type from the config_sentence_transformers.json file and default to "ColBERT". This is because, ST only use load_sbert_model if the model_type is equals to the class name, else it will use load_auto_model.
+        Overwrite the _get_model_type method to return the model type from the config_sentence_transformers.json file and default to "ColBERT". This is because, ST only use load_config_modules if the model_type is equals to the class name, else it will use load_converted_modules.
 
         Args:
             model_name_or_path (str): The name or path of the pre-trained model.
@@ -1363,7 +1480,7 @@ class ColBERT(SentenceTransformer):
             local_files_only (bool, optional): Whether to use only local files. Defaults to False.
 
         Returns:
-            Optional[str]: The model type (SentenceTransformer or SparseEncoder) if available, None otherwise.
+            str: The model type (SentenceTransformer or SparseEncoder) if available, None otherwise.
         """
         config_sentence_transformers_json_path = load_file_path(
             model_name_or_path,
@@ -1381,4 +1498,4 @@ class ColBERT(SentenceTransformer):
             config = json.load(fIn)
             return config.get(
                 "model_type", "ColBERT"
-            )  # Default to "SentenceTransformer" if not specified
+            )  # Default to "ColBERT" if not specified
