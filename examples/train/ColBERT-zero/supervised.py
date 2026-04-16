@@ -7,7 +7,7 @@ from sentence_transformers import (
     SentenceTransformerTrainer,
     SentenceTransformerTrainingArguments,
 )
-from sentence_transformers.training_args import MultiDatasetBatchSamplers
+from sentence_transformers.sentence_transformer.training_args import MultiDatasetBatchSamplers
 
 from pylate import evaluation, losses, models, utils
 
