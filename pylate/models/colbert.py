@@ -213,8 +213,6 @@ class ColBERT(SentenceTransformer):
         self.do_query_expansion = do_query_expansion
         self.attend_to_expansion_tokens = attend_to_expansion_tokens
         self.skiplist_words = skiplist_words
-        self._embedding_size = embedding_size
-        self._bias = bias
         model_card_data = model_card_data or PylateModelCardData()
         if similarity_fn_name is None:
             similarity_fn_name = "MaxSim"
@@ -1130,12 +1128,9 @@ class ColBERT(SentenceTransformer):
             else {}
         )
 
-        # Tokenize the texts using the transformer module's tokenize/preprocess
+        # Tokenize the texts using the transformer module's preprocess
         first_module = self._first_module()
-        if hasattr(first_module, "tokenize"):
-            tokenized_outputs = first_module.tokenize(inputs, **tokenize_args)
-        else:
-            tokenized_outputs = first_module.preprocess(inputs, **tokenize_args)
+        tokenized_outputs = first_module.preprocess(inputs, **tokenize_args)
 
         if use_prefix:
             # Insert prefix token and update attention mask
@@ -1219,25 +1214,6 @@ class ColBERT(SentenceTransformer):
             train_datasets=train_datasets,
             safe_serialization=safe_serialization,
         )
-
-        # Write PyLate-specific config on top of the base config
-        config_path = os.path.join(path, "config_sentence_transformers.json")
-        if os.path.exists(config_path):
-            with open(config_path, "r") as fIn:
-                config = json.load(fIn)
-        else:
-            config = {}
-
-        config["query_prefix"] = self.query_prefix
-        config["document_prefix"] = self.document_prefix
-        config["query_length"] = self.query_length
-        config["document_length"] = self.document_length
-        config["attend_to_expansion_tokens"] = self.attend_to_expansion_tokens
-        config["skiplist_words"] = self.skiplist_words
-        config["do_query_expansion"] = self.do_query_expansion
-
-        with open(config_path, "w") as fOut:
-            json.dump(config, fOut, indent=2)
 
     def _get_model_config(self) -> dict[str, Any]:
         """Return the model configuration dictionary for saving."""
