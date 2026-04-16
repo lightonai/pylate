@@ -59,7 +59,7 @@ def test_kd_training() -> None:
         args=args,
         train_dataset=train,
         loss=train_loss,
-        data_collator=utils.ColBERTCollator(tokenize_fn=model.tokenize),
+        data_collator=utils.ColBERTCollator(preprocess_fn=model.preprocess),
     )
 
     trainer.train()
