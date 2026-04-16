@@ -48,9 +48,14 @@ def extract_skiplist_mask(
         sentence_feature["attention_mask"] for sentence_feature in sentence_features
     ]
 
-    skiplist_masks = [
-        torch.ones_like(sentence_features[0]["input_ids"], dtype=torch.bool)
-    ]
+    # For the query (first feature): if input_ids available use ones_like, else use attention_mask shape
+    first_feature = sentence_features[0]
+    if "input_ids" in first_feature:
+        query_mask = torch.ones_like(first_feature["input_ids"], dtype=torch.bool)
+    else:
+        query_mask = torch.ones_like(first_feature["attention_mask"], dtype=torch.bool)
+
+    skiplist_masks = [query_mask]
 
     # We skip the first sentence feature because it is the query.
     skiplist_masks.extend(
@@ -58,6 +63,8 @@ def extract_skiplist_mask(
             ColBERT.skiplist_mask(
                 input_ids=sentence_feature["input_ids"], skiplist=skiplist
             )
+            if "input_ids" in sentence_feature
+            else sentence_feature["attention_mask"].bool()
             for sentence_feature in sentence_features[1:]
         ]
     )
