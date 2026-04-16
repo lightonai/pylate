@@ -102,15 +102,15 @@ class Contrastive(nn.Module):
 
     >>> loss = losses.Contrastive(model=model)
 
-    >>> anchor = model.tokenize([
+    >>> anchor = model.preprocess([
     ...     "fruits are healthy.",
     ... ], is_query=True)
 
-    >>> positive = model.tokenize([
+    >>> positive = model.preprocess([
     ...     "fruits are good for health.",
     ... ], is_query=False)
 
-    >>> negative = model.tokenize([
+    >>> negative = model.preprocess([
     ...     "fruits are bad for health.",
     ... ], is_query=False)
 

@@ -116,15 +116,15 @@ class CachedContrastive(nn.Module):
 
     >>> loss = losses.CachedContrastive(model=model, mini_batch_size=1)
 
-    >>> anchors = model.tokenize([
+    >>> anchors = model.preprocess([
     ...     "fruits are healthy.", "chips are not healthy."
     ... ], is_query=True)
 
-    >>> positives = model.tokenize([
+    >>> positives = model.preprocess([
     ...     "fruits are good for health.", "chips are not good for health."
     ... ], is_query=False, pad=True)
 
-    >>> negatives = model.tokenize([
+    >>> negatives = model.preprocess([
     ...     "fruits are bad for health.", "chips are good for health."
     ... ], is_query=False, pad=True)
 
