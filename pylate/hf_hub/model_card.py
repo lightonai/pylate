@@ -9,7 +9,9 @@ from typing import TYPE_CHECKING, Any, Literal
 
 import torch
 import transformers
-from sentence_transformers import SentenceTransformerModelCardData
+from sentence_transformers.sentence_transformer.model_card import (
+    SentenceTransformerModelCardData,
+)
 from sentence_transformers import __version__ as sentence_transformers_version
 from sentence_transformers.util import (
     is_accelerate_available,
@@ -23,9 +25,9 @@ from ..__version__ import __version__ as pylate_version
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
-    from sentence_transformers.evaluation.SentenceEvaluator import SentenceEvaluator
-    from sentence_transformers.SentenceTransformer import SentenceTransformer
-    from sentence_transformers.trainer import SentenceTransformerTrainer
+    from sentence_transformers.base.evaluation import SentenceEvaluator
+    from sentence_transformers.sentence_transformer.model import SentenceTransformer
+    from sentence_transformers.sentence_transformer.trainer import SentenceTransformerTrainer
 
 
 IGNORED_FIELDS = ["model", "trainer", "eval_results_dict"]
@@ -244,7 +246,7 @@ class PylateModelCardData(SentenceTransformerModelCardData):
         super_dict["document_length"] = self.model.document_length
         super_dict["query_length"] = self.model.query_length
         super_dict["output_dimensionality"] = (
-            self.model.get_sentence_embedding_dimension()
+            self.model.get_embedding_dimension()
         )
         super_dict["model_string"] = str(self.model)
 
