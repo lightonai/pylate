@@ -376,7 +376,7 @@ class ColBERT(SentenceTransformer):
         )
 
         # Try adding the prefixes to the tokenizer. We call resize_token_embeddings twice to ensure the tokens are added only if resize_token_embeddings works. There should be a better way to do this.
-        prefix_tokens = [p for p in (self.query_prefix, self.document_prefix) if p]
+        prefix_tokens = [p for p in (self.query_prefix, self.document_prefix) if p != ""]
         if prefix_tokens:
             try:
                 self._first_module().auto_model.resize_token_embeddings(
