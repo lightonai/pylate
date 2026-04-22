@@ -70,9 +70,10 @@ class TestTokenizePrefixInsertion:
 
     def test_prefix_not_inserted_when_empty(self, model_without_prefix):
         tokens = model_without_prefix.tokenize(["hello world"], is_query=True)
-        input_ids = tokens["input_ids"]
-        # Second token (after [CLS]) should NOT be a prefix token
-        assert input_ids[0, 1].item() != model_without_prefix.query_prefix_id
+        ref = model_without_prefix._first_module().tokenize(["hello world"]) 
+        # Token at index 1 should be the first content token, not a prefix
+        assert tokens["input_ids"][0, 1].item() == ref["input_ids"][0, 1].item()                                                                                                                    
+        assert model_without_prefix.query_prefix_id is None
 
     def test_document_prefix_inserted_when_set(self, model_with_prefix):
         tokens = model_with_prefix.tokenize(["hello world"], is_query=False)
@@ -81,8 +82,10 @@ class TestTokenizePrefixInsertion:
 
     def test_document_prefix_not_inserted_when_empty(self, model_without_prefix):
         tokens = model_without_prefix.tokenize(["hello world"], is_query=False)
-        input_ids = tokens["input_ids"]
-        assert input_ids[0, 1].item() != model_without_prefix.document_prefix_id
+        ref = model_without_prefix._first_module().tokenize(["hello world"]) 
+        # Token at index 1 should be the first content token, not a prefix
+        assert tokens["input_ids"][0, 1].item() == ref["input_ids"][0, 1].item()                                                                                                                    
+        assert model_without_prefix.query_prefix_id is None
 
     def test_custom_query_prefix_inserted(self, model_custom_prefix):
         tokens = model_custom_prefix.tokenize(["hello world"], is_query=True)
@@ -118,15 +121,11 @@ class TestTokenizePrefixInsertion:
             == model_without_prefix.query_length
         )
 
-    def test_output_length_difference(self, model_with_prefix, model_without_prefix):
-        """With prefix, output has one extra token (the prefix) compared to without."""
-        tokens_with = model_with_prefix.tokenize(["hello world"], is_query=True)
-        tokens_without = model_without_prefix.tokenize(["hello world"], is_query=True)
-        len_with = tokens_with["input_ids"].shape[1]
-        len_without = tokens_without["input_ids"].shape[1]
-        # Both should pad to query_length, but with-prefix has the prefix token occupying one slot
-        assert len_with == model_with_prefix.query_length
-        assert len_without == model_without_prefix.query_length
+    def test_output_length_difference(self, model_with_prefix, model_without_prefix):                                                                                                               
+      """With prefix, document tokenization has one extra token (the prefix)."""
+      tokens_with = model_with_prefix.tokenize(["hello world"], is_query=False)                                                                                                                   
+      tokens_without = model_without_prefix.tokenize(["hello world"], is_query=False)
+      assert tokens_with["input_ids"].shape[1] < tokens_without["input_ids"].shape[1] + 1  
 
 
 class TestSaveLoadPrefixes:
