@@ -391,12 +391,18 @@ class ColBERT(SentenceTransformer):
                     "The tokenizer does not support resizing the token embeddings, the prefixes token have not been added to vocabulary."
                 )
 
-        self.document_prefix_id = self.tokenizer.convert_tokens_to_ids(
-            self.document_prefix
+        self.document_prefix_id = (
+            self.tokenizer.convert_tokens_to_ids(self.document_prefix)
+            if self.document_prefix
+            else None
         )
 
         # Set the query prefix ID using the tokenizer.
-        self.query_prefix_id = self.tokenizer.convert_tokens_to_ids(self.query_prefix)
+        self.query_prefix_id = (
+            self.tokenizer.convert_tokens_to_ids(self.query_prefix)
+            if self.query_prefix
+            else None
+        )
 
         # Set the padding token ID
         # If it is a MLM model, use the MASK token
