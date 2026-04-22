@@ -126,7 +126,8 @@ class TestTokenizePrefixInsertion:
         tokens_with = model_with_prefix.tokenize(["hello world"], is_query=False)
         tokens_without = model_without_prefix.tokenize(["hello world"], is_query=False)
         assert (
-            tokens_with["input_ids"].shape[1] < tokens_without["input_ids"].shape[1] + 1
+            tokens_with["input_ids"].shape[1]
+            == tokens_without["input_ids"].shape[1] + 1
         )
 
 
