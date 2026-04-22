@@ -85,7 +85,7 @@ class TestTokenizePrefixInsertion:
         ref = model_without_prefix._first_module().tokenize(["hello world"])
         # Token at index 1 should be the first content token, not a prefix
         assert tokens["input_ids"][0, 1].item() == ref["input_ids"][0, 1].item()
-        assert model_without_prefix.query_prefix_id is None
+        assert model_without_prefix.document_prefix_id is None
 
     def test_custom_query_prefix_inserted(self, model_custom_prefix):
         tokens = model_custom_prefix.tokenize(["hello world"], is_query=True)
