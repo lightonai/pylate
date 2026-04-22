@@ -9,17 +9,17 @@ description = "A library for training and retrieval with ColBERT."
 readme = "README.md"
 authors = [{ name = "LightOn" }]
 license = "MIT"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "sentence-transformers == 5.1.1",
+    "sentence-transformers == 5.3.0",
     "datasets >= 2.20.0",
     "accelerate >= 0.31.0",
     "pandas >= 2.2.1",
-    "transformers >= 4.41.0, <= 4.56.2",
+    "transformers >= 4.41.0, <= 5.3.0",
     "ujson == 5.10.0",
     "ninja == 1.11.1.4",
     "fastkmeans == 0.5.0",
@@ -76,7 +76,7 @@ pylate = ["hf_hub/model_card_template.md", "py.typed"]
 [tool.ruff]
 line-length = 88
 indent-width = 4
-target-version = "py39"
+target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E4", "E7", "E9", "F", "I", "D417"]
