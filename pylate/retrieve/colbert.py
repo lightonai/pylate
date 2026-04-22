@@ -5,8 +5,7 @@ import logging
 import numpy as np
 import torch
 
-from ..indexes.base import Base
-from ..indexes.plaid import PLAID
+from ..indexes import PLAID, Base
 from ..rank import RerankResult, rerank
 from ..utils import iter_batch
 

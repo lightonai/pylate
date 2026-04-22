@@ -164,8 +164,6 @@ class Contrastive(nn.Module):
             sentence_features=sentence_features, skiplist=skiplist
         )
         batch_size = embeddings[0].size(0)
-        # create corresponding labels
-        labels = torch.arange(0, batch_size, device=embeddings[0].device)
         # Possibly gather the embeddings across devices to have more in-batch negatives.
         if self.gather_across_devices:
             # Note that we only gather the documents embeddings and not the queries embeddings (embeddings[0]), but are keeping gradients. This is to lower the memory usage, see https://github.com/mlfoundations/open_clip/issues/616
@@ -182,23 +180,41 @@ class Contrastive(nn.Module):
                 masks[0],
                 *[torch.cat(all_gather(mask)) for mask in masks[1:]],
             ]
-            rank = get_rank()
-            # Adjust the labels to match the gathered embeddings positions
-            labels = labels + rank * batch_size
         # Note: the queries mask is not used, if added, take care that the expansion tokens are not masked from scoring (because they might be masked during encoding).
         # We might not need to compute the mask for queries but I let the logic there for now
-        scores = torch.cat(
-            [
-                self.score_metric(
-                    embeddings[0],
-                    group_embeddings,
-                    queries_mask=masks[0] if not do_query_expansion else None,
-                    documents_mask=documents_masks,
-                )
-                for group_embeddings, documents_masks in zip(embeddings[1:], masks[1:])
-            ],
-            dim=1,
-        )
+        if getattr(self.score_metric, "requires_full_batch", False):
+            # Score metrics like xtr_scores require all documents simultaneously for global
+            # top-k. Stack groups into (Q, N, Dt, H) and call once.
+            N = len(embeddings) - 1
+            scores = self.score_metric(
+                embeddings[0],
+                torch.stack(embeddings[1:], dim=1),
+                queries_mask=masks[0] if not do_query_expansion else None,
+                documents_mask=torch.stack(masks[1:], dim=1),
+            )
+            # Positive for query i is at column i*N (docs are interleaved per query)
+            labels = torch.arange(batch_size, device=embeddings[0].device) * N
+            if self.gather_across_devices:
+                labels = labels + get_rank() * batch_size * N
+        else:
+            scores = torch.cat(
+                [
+                    self.score_metric(
+                        embeddings[0],
+                        group_embeddings,
+                        queries_mask=masks[0] if not do_query_expansion else None,
+                        documents_mask=documents_masks,
+                    )
+                    for group_embeddings, documents_masks in zip(
+                        embeddings[1:], masks[1:]
+                    )
+                ],
+                dim=1,
+            )
+            # Positive for query i is at column i (groups are concatenated)
+            labels = torch.arange(batch_size, device=embeddings[0].device)
+            if self.gather_across_devices:
+                labels = labels + get_rank() * batch_size
 
         # compute constrastive loss using cross-entropy over the scores
         loss = F.cross_entropy(
