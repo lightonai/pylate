@@ -1096,8 +1096,9 @@ class ColBERT(SentenceTransformer):
         """
         # Set max sequence length based on whether the input is a query or document
         max_length = self.query_length if is_query else self.document_length
-        prefix = self.query_prefix if is_query else self.document_prefix
-        use_prefix = bool(prefix)
+        prefix_id = self.query_prefix_id if is_query else self.document_prefix_id
+        # The only case where prefix_id is None is when prefix was an empty string. Else it's a the id corresponding the prefix set (eventually defaulting to [D] or [Q])
+        use_prefix = prefix_id is not None
         self._first_module().max_seq_length = (
             max_length - 1 if use_prefix else max_length
         )
@@ -1113,9 +1114,6 @@ class ColBERT(SentenceTransformer):
         tokenized_outputs = self._first_module().tokenize(texts, **tokenize_args)
 
         if use_prefix:
-            # Determine prefix ID based on input type
-            prefix_id = self.query_prefix_id if is_query else self.document_prefix_id
-
             # Insert prefix token and update attention mask
             tokenized_outputs["input_ids"] = self.insert_prefix_token(
                 tokenized_outputs["input_ids"], prefix_id
