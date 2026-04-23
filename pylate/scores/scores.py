@@ -229,7 +229,7 @@ class ColBERTScores:
         queries_embeddings = convert_to_tensor(queries_embeddings)
         documents_embeddings = convert_to_tensor(documents_embeddings)
 
-        D, N, Dt, H = documents_embeddings.shape
+        D, N, _, _ = documents_embeddings.shape
         # Per-group scores: list of N tensors each of shape (Q_query, D).
         per_group = [
             colbert_scores(
@@ -334,12 +334,9 @@ class XTRScores:
     def _score(
         self, queries_embeddings, documents_embeddings, queries_mask, documents_mask
     ):
-        Qb = queries_embeddings.shape[0]
-        D, N = documents_embeddings.shape[:2]
+        Qb, Qt, H = queries_embeddings.shape
+        D, N, Dt, _ = documents_embeddings.shape
         Db = D * N
-        Qt = queries_embeddings.shape[1]
-        Dt = documents_embeddings.shape[-2]
-        H = queries_embeddings.shape[-1]
 
         docs_flat = documents_embeddings.reshape(Db, Dt, H)
         Q_flat = queries_embeddings.reshape(Qb * Qt, H)
