@@ -11,7 +11,7 @@ from __future__ import annotations
 import pytest
 import torch
 
-from pylate.scores import XTRKDScores, XTRScores, xtr_scores
+from pylate.scores import XTRKDScores, XTRScores
 
 # ---------------------------------------------------------------------------
 # 1. Shape tests
@@ -39,69 +39,114 @@ class TestXTRScoresShapes:
         scores = XTRScores(k=3)(torch.randn(Q, Qt, H), torch.randn(Q, N, Dt, H))
         assert scores.shape == (Q, Q * N)
 
-    def test_requires_full_batch_flag(self) -> None:
-        assert getattr(xtr_scores, "requires_full_batch", False) is True
-
 
 # ---------------------------------------------------------------------------
-# 1b. Batch mismatch tests (CachedContrastive: Qb != Dq)
+# 1b. Query slicing equivalence (top-k is per-query-token independent)
 # ---------------------------------------------------------------------------
 
 
-class TestXTRScoresMismatchedBatch:
-    """Tests where query batch != doc batch (cached contrastive case).
+class TestXTRScoresQuerySlicing:
+    """The top-k is computed per query token, independent across queries — so
+    scoring a slice of queries against the same docs must produce identical
+    rows to the corresponding slice of the full-batch call. This backs the
+    loss-level query-chunk loop in both Contrastive and CachedContrastive."""
 
-    When CachedContrastive mini-batches queries, a smaller query chunk is
-    scored against all documents. This requires xtr_scores to handle
-    Qb != Dq correctly.
-    """
-
-    def test_fewer_queries_than_docs(self) -> None:
-        """Core regression test: Qb < Dq should not raise."""
-        Qb, Dq, N, Qt, Dt, H = 4, 16, 2, 8, 12, 16
-        queries = torch.randn(Qb, Qt, H)
-        docs = torch.randn(Dq, N, Dt, H)
-        result = XTRScores(k=8)(queries, docs)
-        assert result.shape == (Qb, Dq * N)
-
-    def test_fewer_queries_with_masks(self) -> None:
-        """Mask expansion must use Qb, not Dq."""
-        Qb, Dq, N, Qt, Dt, H = 4, 16, 2, 8, 12, 16
-        queries = torch.randn(Qb, Qt, H)
-        docs = torch.randn(Dq, N, Dt, H)
-        q_mask = torch.ones(Qb, Qt)
-        d_mask = torch.ones(Dq, N, Dt)
-        q_mask[:, -2:] = 0
-        d_mask[:, :, -3:] = 0
-        result = XTRScores(k=8)(
-            queries, docs, queries_mask=q_mask, documents_mask=d_mask
-        )
-        assert result.shape == (Qb, Dq * N)
-
-    def test_single_query_against_full_batch(self) -> None:
-        """Extreme case: mini_batch_size=1."""
-        Dq, N, Qt, Dt, H = 8, 2, 6, 10, 16
-        queries = torch.randn(1, Qt, H)
-        docs = torch.randn(Dq, N, Dt, H)
-        result = XTRScores(k=8)(queries, docs)
-        assert result.shape == (1, Dq * N)
-
-    def test_scores_consistent_with_matched_batch(self) -> None:
-        """Scores from a query chunk should match the corresponding rows
-        of the full-batch computation."""
+    def test_slicing_matches_full_first_rows(self) -> None:
         Q, N, Qt, Dt, H = 8, 2, 6, 10, 16
-        k = 8
         torch.manual_seed(42)
         queries = torch.randn(Q, Qt, H)
         docs = torch.randn(Q, N, Dt, H)
 
-        # Chunked: first 4 queries against all docs
-        chunk_scores = XTRScores(k=k)(queries[:4], docs)
+        scorer = XTRScores(k=8)
+        full = scorer(queries, docs)
+        chunk = scorer(queries[:4], docs)
 
-        # The chunk result should match the first 4 rows of the full result.
-        # They won't be identical because the global top-k pool differs
-        # (full has 8 queries competing, chunk has 4), but shapes must match.
-        assert chunk_scores.shape == (4, Q * N)
+        assert chunk.shape == (4, Q * N)
+        torch.testing.assert_close(chunk, full[:4])
+
+    def test_slicing_matches_full_with_masks(self) -> None:
+        Q, N, Qt, Dt, H = 6, 2, 5, 8, 16
+        torch.manual_seed(1)
+        queries = torch.randn(Q, Qt, H)
+        docs = torch.randn(Q, N, Dt, H)
+        q_mask = torch.ones(Q, Qt)
+        d_mask = torch.ones(Q, N, Dt)
+        q_mask[:, -1] = 0
+        d_mask[:, :, -2:] = 0
+
+        scorer = XTRScores(k=4)
+        full = scorer(queries, docs, queries_mask=q_mask, documents_mask=d_mask)
+        chunk = scorer(
+            queries[2:5],
+            docs,
+            queries_mask=q_mask[2:5],
+            documents_mask=d_mask,
+        )
+        torch.testing.assert_close(chunk, full[2:5])
+
+
+# ---------------------------------------------------------------------------
+# 1c. Document-axis chunking
+# ---------------------------------------------------------------------------
+
+
+class TestXTRScoresDocumentChunking:
+    """document_chunk_size trims the transient matmul peak by iterating over
+    doc chunks, but the global top-k after the concat keeps scoring semantics
+    identical to the unchunked path."""
+
+    def test_chunked_scores_match_unchunked(self) -> None:
+        Q, N, Qt, Dt, H = 4, 5, 6, 10, 16
+        torch.manual_seed(0)
+        queries = torch.randn(Q, Qt, H)
+        docs = torch.randn(Q, N, Dt, H)
+
+        # Db = Q * N = 20; chunks of 7 give 3 chunks (7 + 7 + 6).
+        full = XTRScores(k=8)(queries, docs)
+        chunked = XTRScores(k=8, document_chunk_size=7)(queries, docs)
+
+        torch.testing.assert_close(chunked, full)
+
+    def test_chunked_scores_match_unchunked_with_masks(self) -> None:
+        Q, N, Qt, Dt, H = 4, 3, 5, 8, 16
+        torch.manual_seed(1)
+        queries = torch.randn(Q, Qt, H)
+        docs = torch.randn(Q, N, Dt, H)
+        q_mask = torch.ones(Q, Qt)
+        d_mask = torch.ones(Q, N, Dt)
+        q_mask[:, -1] = 0
+        d_mask[:, :, -2:] = 0
+
+        full = XTRScores(k=4)(queries, docs, queries_mask=q_mask, documents_mask=d_mask)
+        chunked = XTRScores(k=4, document_chunk_size=5)(
+            queries, docs, queries_mask=q_mask, documents_mask=d_mask
+        )
+        torch.testing.assert_close(chunked, full)
+
+    def test_chunked_gradients_match_unchunked(self) -> None:
+        Q, N, Qt, Dt, H = 4, 3, 5, 8, 16
+        torch.manual_seed(2)
+        q0 = torch.randn(Q, Qt, H, requires_grad=True)
+        d0 = torch.randn(Q, N, Dt, H, requires_grad=True)
+        q1 = q0.detach().clone().requires_grad_(True)
+        d1 = d0.detach().clone().requires_grad_(True)
+
+        XTRScores(k=4)(q0, d0).sum().backward()
+        XTRScores(k=4, document_chunk_size=4)(q1, d1).sum().backward()
+
+        torch.testing.assert_close(q0.grad, q1.grad, rtol=1e-5, atol=1e-6)
+        torch.testing.assert_close(d0.grad, d1.grad, rtol=1e-5, atol=1e-6)
+
+    def test_chunk_size_larger_than_docs_is_noop(self) -> None:
+        """Setting document_chunk_size >= Db should be identical to unchunked."""
+        Q, N, Qt, Dt, H = 3, 2, 4, 5, 8
+        torch.manual_seed(3)
+        queries = torch.randn(Q, Qt, H)
+        docs = torch.randn(Q, N, Dt, H)
+
+        full = XTRScores(k=4)(queries, docs)
+        noop = XTRScores(k=4, document_chunk_size=1000)(queries, docs)
+        torch.testing.assert_close(noop, full)
 
 
 # ---------------------------------------------------------------------------
