@@ -397,10 +397,12 @@ class XTRKDScores:
     ----------
     k
         Number of top token matches to retain per query token.
+    document_chunk_size
+        Forwarded to the underlying :class:`XTRScores`. See its docstring.
     """
 
-    def __init__(self, k: int = 256):
-        self._xtr_scores = XTRScores(k=k)
+    def __init__(self, k: int = 256, document_chunk_size: int | None = None):
+        self._xtr_scores = XTRScores(k=k, document_chunk_size=document_chunk_size)
 
     @property
     def k(self):
