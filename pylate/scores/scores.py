@@ -2,8 +2,39 @@ from __future__ import annotations
 
 import numpy as np
 import torch
+import torch.utils.checkpoint
 
 from ..utils.tensor import convert_to_tensor
+
+
+def _chunked_queries(score_fn, queries, docs, queries_mask, documents_mask, chunk_size):
+    """Iterate score_fn over query chunks, wrapping each chunk in a checkpoint
+    region when grads are enabled so intermediate activations are released
+    between chunks (recomputed on backward).
+
+    score_fn(queries, docs, queries_mask, documents_mask) -> (Q_chunk, ...).
+    """
+    Q = queries.shape[0]
+    if chunk_size is None or chunk_size >= Q:
+        return score_fn(queries, docs, queries_mask, documents_mask)
+    outputs = []
+    for begin in range(0, Q, chunk_size):
+        end = min(begin + chunk_size, Q)
+        q_chunk = queries[begin:end]
+        qm_chunk = queries_mask[begin:end] if queries_mask is not None else None
+        if torch.is_grad_enabled() and q_chunk.requires_grad:
+            out = torch.utils.checkpoint.checkpoint(
+                score_fn,
+                q_chunk,
+                docs,
+                qm_chunk,
+                documents_mask,
+                use_reentrant=False,
+            )
+        else:
+            out = score_fn(q_chunk, docs, qm_chunk, documents_mask)
+        outputs.append(out)
+    return torch.cat(outputs, dim=0)
 
 
 def colbert_scores(
@@ -205,6 +236,52 @@ def colbert_kd_scores(
     return scores
 
 
+class ColBERTScores:
+    """ColBERT contrastive scoring.
+
+    Takes stacked per-query document groups ``(Q, N, Dt, H)`` and returns the
+    full ``(Q, Q*N)`` cross-product score matrix with query-major ordering:
+    ``scores[i, j*N + k]`` is the score of query ``i`` against query ``j``'s
+    ``k``-th document. The positive for query ``i`` sits at column ``i*N``.
+
+    Parameters
+    ----------
+    query_chunk_size
+        If set, the query dimension is processed in chunks of this size with
+        gradient checkpointing, trading a forward recomputation on backward
+        for a lower peak memory. None disables chunking.
+    """
+
+    def __init__(self, query_chunk_size: int | None = None):
+        self.query_chunk_size = query_chunk_size
+
+    def __call__(
+        self,
+        queries_embeddings: list | np.ndarray | torch.Tensor,
+        documents_embeddings: list | np.ndarray | torch.Tensor,
+        queries_mask: torch.Tensor | None = None,
+        documents_mask: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        queries_embeddings = convert_to_tensor(queries_embeddings)
+        documents_embeddings = convert_to_tensor(documents_embeddings)
+        return _chunked_queries(
+            self._score_block,
+            queries_embeddings,
+            documents_embeddings,
+            queries_mask,
+            documents_mask,
+            self.query_chunk_size,
+        )
+
+    def _score_block(self, queries, docs, queries_mask, documents_mask):
+        D, N, Dt, H = docs.shape
+        docs_flat = docs.reshape(D * N, Dt, H)
+        doc_mask_flat = (
+            documents_mask.reshape(D * N, Dt) if documents_mask is not None else None
+        )
+        return colbert_scores(queries, docs_flat, queries_mask, doc_mask_flat)
+
+
 # Adapted from PrimeQA (https://github.com/primeqa/primeqa branch:xtr)
 # Specifically: https://github.com/primeqa/primeqa/blob/bb9385fa129a0dbb3c7aae96ad3c782913f8280d/primeqa/ir/dense/xtr_top/xtr/modeling/XTR.py
 
@@ -225,16 +302,23 @@ def colbert_kd_scores(
 
 
 class XTRScores:
-    """XTR scoring using global top-k token retrieval.
+    """XTR contrastive scoring with global top-k token retrieval.
 
-    Each query's top-k token matches are selected globally across all Q*N documents in the
-    batch, simulating retrieval from an index. Returns the full (Q, Q*N) cross-product score
-    matrix so that all in-batch documents compete as negatives.
+    For each query token, the top-k matches are selected globally across all
+    ``Q*N`` in-batch document tokens (simulating retrieval from an index).
+    Returns the full ``(Q, Q*N)`` cross-product score matrix with query-major
+    ordering: ``scores[i, j*N + k]`` is query ``i`` against query ``j``'s
+    ``k``-th document. The positive for query ``i`` sits at column ``i*N``.
 
     Parameters
     ----------
     k
         Number of top token matches to retain per query token across all Q*N documents.
+    query_chunk_size
+        If set, the query dimension is processed in chunks of this size with
+        gradient checkpointing, trading a forward recomputation on backward
+        for a lower peak memory. None disables chunking. Recommended for large
+        batches because the pre-reduction intermediate scales as Q*Qt*Q*N*Dt.
 
     Examples
     --------
@@ -259,42 +343,58 @@ class XTRScores:
 
     """
 
-    requires_full_batch = True
-
-    def __init__(self, k: int = 128):
+    def __init__(self, k: int = 128, query_chunk_size: int | None = None):
         self.k = k
+        self.query_chunk_size = query_chunk_size
 
     def compile(self, *args, **kwargs):
-        self.__call__ = torch.compile(self.__call__, *args, **kwargs)
+        # Shadowing the bound method with an instance attribute works here
+        # because _score_block is looked up via normal attribute resolution
+        # (unlike __call__, which Python resolves on the type).
+        self._score_block = torch.compile(self._score_block, *args, **kwargs)
 
-    def __call__(self, queries_embeddings, documents_embeddings,
-        queries_mask=None, documents_mask=None):
+    def __call__(
+        self,
+        queries_embeddings: list | np.ndarray | torch.Tensor,
+        documents_embeddings: list | np.ndarray | torch.Tensor,
+        queries_mask: torch.Tensor | None = None,
+        documents_mask: torch.Tensor | None = None,
+    ) -> torch.Tensor:
         queries_embeddings = convert_to_tensor(queries_embeddings)
         documents_embeddings = convert_to_tensor(documents_embeddings)
+        return _chunked_queries(
+            self._score_block,
+            queries_embeddings,
+            documents_embeddings,
+            queries_mask,
+            documents_mask,
+            self.query_chunk_size,
+        )
 
+    def _score_block(self, queries_embeddings, documents_embeddings, queries_mask, documents_mask):
         Qb = queries_embeddings.shape[0]
-        Dq, N = documents_embeddings.shape[:2]
-        Db = Dq * N
+        D, N = documents_embeddings.shape[:2]
+        Db = D * N
         Qt = queries_embeddings.shape[1]
         Dt = documents_embeddings.shape[-2]
         H = queries_embeddings.shape[-1]
 
-        docs_flat = documents_embeddings.view(Db, Dt, H)
+        docs_flat = documents_embeddings.reshape(Db, Dt, H)
 
         # Single large matmul — tensor core friendly
         Q_flat = queries_embeddings.reshape(Qb * Qt, H)
         D_flat = docs_flat.reshape(Db * Dt, H).T
-        scores = (Q_flat @ D_flat).view(Qb, Qt, Db, Dt)   # (Qb, Qt, Db, Dt)
+        scores = (Q_flat @ D_flat).view(Qb, Qt, Db, Dt)
 
         if documents_mask is not None:
-            docs_mask_flat = documents_mask.view(Db, Dt)
+            docs_mask_flat = documents_mask.reshape(Db, Dt)
             scores = scores.masked_fill(
                 ~docs_mask_flat.bool().unsqueeze(0).unsqueeze(0), -99999
             )
 
-        # Replace topk with threshold mask — fully parallel
-        clubbed = scores.flatten(2, 3) # (Qb, Qt, Db*Dt)
-        _, indices = clubbed.half().topk(self.k, dim=-1, sorted=False,)
+        # Threshold-mask rather than gather: fully parallel
+        clubbed = scores.flatten(2, 3)  # (Qb, Qt, Db*Dt)
+        _, indices = clubbed.half().topk(self.k, dim=-1, sorted=False)
         mask = torch.zeros_like(clubbed, dtype=torch.bool).scatter_(-1, indices, True)
         masked = clubbed * mask
         topk_scores_max = masked.view(Qb, Qt, Db, Dt).max(dim=-1).values  # (Qb, Qt, Db)
@@ -302,7 +402,7 @@ class XTRScores:
         if queries_mask is not None:
             topk_scores_max = topk_scores_max * queries_mask.unsqueeze(-1)
 
-        scores_sum = topk_scores_max.sum(dim=1)            # (Qb, Db)
+        scores_sum = topk_scores_max.sum(dim=1)  # (Qb, Db)
         Z = topk_scores_max.gt(0).float().sum(dim=1).clamp_(min=1e-3)
         return (scores_sum / Z).float()
 
@@ -317,8 +417,6 @@ class XTRKDScores:
     k
         Number of top token matches to retain per query token.
     """
-
-    requires_full_batch = True
 
     def __init__(self, k: int = 128):
         self._xtr_scores = XTRScores(k=k)

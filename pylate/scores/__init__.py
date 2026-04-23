@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from .scores import (
+    ColBERTScores,
     XTRKDScores,
     XTRScores,
     colbert_kd_scores,
@@ -15,6 +16,7 @@ __all__ = [
     "colbert_scores",
     "colbert_scores_pairwise",
     "colbert_kd_scores",
+    "ColBERTScores",
     "XTRScores",
     "XTRKDScores",
     "xtr_scores",

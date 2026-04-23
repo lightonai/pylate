@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from torch import Tensor, nn
 
 from ..models import ColBERT
-from ..scores import colbert_scores
+from ..scores import ColBERTScores
 from ..utils import all_gather, all_gather_with_gradients, get_rank, get_world_size
 
 
@@ -78,7 +78,10 @@ class Contrastive(nn.Module):
     model
         ColBERT model.
     score_metric
-        ColBERT scoring function. Defaults to colbert_scores.
+        Contrastive scoring callable. Receives queries ``(Q, Qt, H)`` and
+        stacked documents ``(Q, N, Dt, H)`` and returns ``(Q, Q*N)`` with the
+        positive for query ``i`` at column ``i*N``. Defaults to a
+        :class:`~pylate.scores.ColBERTScores` instance.
     size_average
         Average by the size of the mini-batch.
     gather_across_devices
@@ -116,13 +119,13 @@ class Contrastive(nn.Module):
     def __init__(
         self,
         model: ColBERT,
-        score_metric=colbert_scores,
+        score_metric=None,
         size_average: bool = True,
         gather_across_devices: bool = False,
         temperature: float = 1.0,
     ) -> None:
         super(Contrastive, self).__init__()
-        self.score_metric = score_metric
+        self.score_metric = score_metric if score_metric is not None else ColBERTScores()
         self.model = model
         self.size_average = size_average
         self.gather_across_devices = gather_across_devices
@@ -180,50 +183,26 @@ class Contrastive(nn.Module):
                 masks[0],
                 *[torch.cat(all_gather(mask)) for mask in masks[1:]],
             ]
-        # Note: the queries mask is not used, if added, take care that the expansion tokens are not masked from scoring (because they might be masked during encoding).
-        # We might not need to compute the mask for queries but I let the logic there for now
-        if getattr(self.score_metric, "requires_full_batch", False):
-            # Score metrics like xtr_scores require all documents simultaneously for global
-            # top-k. Stack groups into (Q, N, Dt, H) and call once.
-            N = len(embeddings) - 1
-            scores = self.score_metric(
-                embeddings[0],
-                torch.stack(embeddings[1:], dim=1),
-                queries_mask=masks[0] if not do_query_expansion else None,
-                documents_mask=torch.stack(masks[1:], dim=1),
-            )
-            # Positive for query i is at column i*N (docs are interleaved per query)
-            labels = torch.arange(batch_size, device=embeddings[0].device) * N
-            if self.gather_across_devices:
-                labels = labels + get_rank() * batch_size * N
-        else:
-            scores = torch.cat(
-                [
-                    self.score_metric(
-                        embeddings[0],
-                        group_embeddings,
-                        queries_mask=masks[0] if not do_query_expansion else None,
-                        documents_mask=documents_masks,
-                    )
-                    for group_embeddings, documents_masks in zip(
-                        embeddings[1:], masks[1:]
-                    )
-                ],
-                dim=1,
-            )
-            # Positive for query i is at column i (groups are concatenated)
-            labels = torch.arange(batch_size, device=embeddings[0].device)
-            if self.gather_across_devices:
-                labels = labels + get_rank() * batch_size
+        # Note: the queries mask is not used by default; if it's fed through, take care that
+        # expansion tokens are not masked from scoring (they may be masked during encoding).
+        N = len(embeddings) - 1
+        scores = self.score_metric(
+            embeddings[0],
+            torch.stack(embeddings[1:], dim=1),
+            queries_mask=masks[0] if not do_query_expansion else None,
+            documents_mask=torch.stack(masks[1:], dim=1),
+        )
+        # Query-major layout: positive for query i is at column i*N.
+        labels = torch.arange(batch_size, device=embeddings[0].device) * N
+        if self.gather_across_devices:
+            labels = labels + get_rank() * batch_size * N
 
-        # compute constrastive loss using cross-entropy over the scores
         loss = F.cross_entropy(
             input=scores / self.temperature,
             target=labels,
             reduction="mean" if self.size_average else "sum",
         )
 
-        # Scale by world size when gathering across device
         if self.gather_across_devices:
             loss *= get_world_size()
         return loss
