@@ -354,7 +354,8 @@ class XTRScores:
             scores = (Q_flat @ D_flat).view(Qb, Qt, Db, Dt)
             if docs_mask_flat is not None:
                 scores = scores.masked_fill(
-                    ~docs_mask_flat.bool().unsqueeze(0).unsqueeze(0), -99999
+                    ~docs_mask_flat.bool().unsqueeze(0).unsqueeze(0),
+                    torch.finfo(scores.dtype).min,
                 )
         else:
             # Chunk the doc axis: each chunk's matmul + masked_fill holds only
@@ -369,7 +370,8 @@ class XTRScores:
                 if docs_mask_flat is not None:
                     chunk_mask = docs_mask_flat[d_start:d_end]
                     chunk_scores = chunk_scores.masked_fill(
-                        ~chunk_mask.bool().unsqueeze(0).unsqueeze(0), -99999
+                        ~chunk_mask.bool().unsqueeze(0).unsqueeze(0),
+                        torch.finfo(chunk_scores.dtype).min,
                     )
                 score_chunks.append(chunk_scores)
             scores = torch.cat(score_chunks, dim=2)
