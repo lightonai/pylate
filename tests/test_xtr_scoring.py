@@ -55,16 +55,6 @@ class TestScoreXTR:
         doc1 = next(r for r in results if r["id"] == "doc1")
         assert doc1["score"] == pytest.approx(1.4, abs=1e-5)
 
-    def test_integer_doc_ids(self) -> None:
-        query_doc_ids = [[1, 2, 3], [2, 3, 4]]
-        query_scores = [[0.9, 0.7, 0.5], [0.8, 0.6, 0.4]]
-
-        results = score_xtr(query_doc_ids, query_scores, k=4)
-        assert len(results) == 4
-        assert isinstance(results[0]["id"], int)
-        assert results[0]["id"] == 2
-        assert results[0]["score"] == pytest.approx(1.5, abs=1e-5)
-
     def test_single_query_token(self) -> None:
         query_doc_ids = [["doc1", "doc2", "doc3"]]
         query_scores = [[0.9, 0.7, 0.5]]

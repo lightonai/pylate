@@ -158,7 +158,7 @@ def rerank(
 
 
 def score_xtr(
-    query_doc_ids: list[list[str | int]],
+    query_doc_ids: list[list[str]],
     query_scores: list[list[float]],
     k: int,
     device: str = "cpu",
@@ -174,7 +174,7 @@ def score_xtr(
     ----------
     query_doc_ids
         List of length q_tok, where each element is a list of k_token document IDs
-        retrieved for that query token. Document IDs can be strings or integers.
+        retrieved for that query token.
     query_scores
         List of length q_tok, where each element is a list of k_token scores
         corresponding to the retrieved document IDs.
@@ -244,63 +244,33 @@ def score_xtr(
     # repeated list resizing and gives faster torch.from_numpy conversion).
     all_scores_np = np.empty(total, dtype=np.float32)
     q_tok_indices_np = np.empty(total, dtype=np.int64)
+    all_doc_ids_np = np.empty(total, dtype=np.int64)
 
-    # Determine doc-ID type from the first non-empty token list.
-    doc_id_is_string = isinstance(
-        query_doc_ids[0][0]
-        if sizes[0] > 0
-        else query_doc_ids[next(i for i, s in enumerate(sizes) if s > 0)][0],
-        str,
-    )
+    # Build string→int mapping while filling the flat arrays in one pass.
+    # Preserves insertion order for deterministic tie handling.
+    doc_id_to_int: dict[str, int] = {}
+    offset = 0
+    for q_idx, (token_docs, token_scores) in enumerate(
+        zip(query_doc_ids, query_scores)
+    ):
+        n = sizes[q_idx]
+        if n == 0:
+            continue
+        for i, did in enumerate(token_docs):
+            if did not in doc_id_to_int:
+                doc_id_to_int[did] = len(doc_id_to_int)
+            all_doc_ids_np[offset + i] = doc_id_to_int[did]
+        all_scores_np[offset : offset + n] = token_scores
+        q_tok_indices_np[offset : offset + n] = q_idx
+        offset += n
 
-    if doc_id_is_string:
-        # Build string→int mapping while filling the flat arrays in one pass.
-        # Preserves insertion order for deterministic tie handling.
-        doc_id_to_int: dict[str, int] = {}
-        all_doc_ids_np = np.empty(total, dtype=np.int64)
-        offset = 0
-        for q_idx, (token_docs, token_scores) in enumerate(
-            zip(query_doc_ids, query_scores)
-        ):
-            n = sizes[q_idx]
-            if n == 0:
-                continue
-            for i, did in enumerate(token_docs):
-                if did not in doc_id_to_int:
-                    doc_id_to_int[did] = len(doc_id_to_int)
-                all_doc_ids_np[offset + i] = doc_id_to_int[did]
-            all_scores_np[offset : offset + n] = token_scores
-            q_tok_indices_np[offset : offset + n] = q_idx
-            offset += n
+    # Invert the mapping for final output.
+    unique_doc_ids = list(doc_id_to_int.keys())
+    num_docs = len(unique_doc_ids)
 
-        # Invert the mapping for final output.
-        unique_doc_id_strings = list(doc_id_to_int.keys())
-        num_docs = len(unique_doc_id_strings)
-
-        # The integer IDs are already in [0, num_docs), so inverse_indices
-        # IS the doc-id tensor — no torch.unique() needed.
-        inverse_indices = torch.from_numpy(all_doc_ids_np).to(device=device)
-    else:
-        # Integer doc IDs — need torch.unique to discover the unique set.
-        all_doc_ids_list: list[int] = []
-        offset = 0
-        for q_idx, (token_docs, token_scores) in enumerate(
-            zip(query_doc_ids, query_scores)
-        ):
-            n = sizes[q_idx]
-            if n == 0:
-                continue
-            all_doc_ids_list.extend(token_docs)
-            all_scores_np[offset : offset + n] = token_scores
-            q_tok_indices_np[offset : offset + n] = q_idx
-            offset += n
-
-        all_doc_ids_t = torch.tensor(all_doc_ids_list, dtype=torch.long, device=device)
-        unique_doc_ids, inverse_indices = torch.unique(
-            all_doc_ids_t, return_inverse=True, sorted=False
-        )
-        num_docs = len(unique_doc_ids)
-
+    # The integer IDs are already in [0, num_docs), so inverse_indices
+    # IS the doc-id tensor — no torch.unique() needed.
+    inverse_indices = torch.from_numpy(all_doc_ids_np).to(device=device)
     all_scores_t = torch.from_numpy(all_scores_np).to(device=device)
     q_tok_indices_t = torch.from_numpy(q_tok_indices_np).to(device=device)
 
@@ -344,18 +314,8 @@ def score_xtr(
 
     # Bulk-convert to Python lists (single C-to-Python transition).
     top_k_scores_list = top_k_scores.tolist()
-
-    if doc_id_is_string:
-        # top_k_indices index into [0, num_docs) which maps directly to
-        # unique_doc_id_strings -- no intermediate tensor lookup needed.
-        top_k_idx_list = top_k_indices.tolist()
-        return [
-            RerankResult(id=unique_doc_id_strings[idx], score=score)
-            for idx, score in zip(top_k_idx_list, top_k_scores_list)
-        ]
-
-    top_k_doc_ids_list = unique_doc_ids[top_k_indices].tolist()
+    top_k_idx_list = top_k_indices.tolist()
     return [
-        RerankResult(id=doc_id, score=score)
-        for doc_id, score in zip(top_k_doc_ids_list, top_k_scores_list)
+        RerankResult(id=unique_doc_ids[idx], score=score)
+        for idx, score in zip(top_k_idx_list, top_k_scores_list)
     ]
