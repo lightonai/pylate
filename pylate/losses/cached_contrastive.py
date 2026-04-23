@@ -122,11 +122,11 @@ class CachedContrastive(nn.Module):
 
     >>> positives = model.tokenize([
     ...     "fruits are good for health.", "chips are not good for health."
-    ... ], is_query=False)
+    ... ], is_query=False, pad=True)
 
     >>> negatives = model.tokenize([
     ...     "fruits are bad for health.", "chips are good for health."
-    ... ], is_query=False)
+    ... ], is_query=False, pad=True)
 
     >>> sentence_features = [anchors, positives, negatives]
 
