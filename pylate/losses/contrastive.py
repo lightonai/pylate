@@ -199,29 +199,22 @@ class Contrastive(nn.Module):
         docs_mask_stacked = torch.stack(masks[1:], dim=1)
         q_mask = masks[0] if not do_query_expansion else None
 
-        chunk = (
-            self.score_mini_batch_size
-            if self.score_mini_batch_size is not None
-            and self.score_mini_batch_size < batch_size
-            else batch_size
-        )
-        if chunk >= batch_size:
-            scores = self.score_metric(
-                embeddings[0], docs_stacked, q_mask, docs_mask_stacked
-            )
-        else:
-            # Chunking here only lowers transient forward memory — gradients
-            # still flow through one big backward below.
-            score_chunks = [
+        # Chunking queries here only lowers transient forward memory — gradients
+        # still flow through one big backward below.
+        # If the score_mini_batch_size is not set, we process the entire batch at once (old behavior)
+        step = self.score_mini_batch_size or batch_size
+        score_chunks = []
+        for begin in range(0, batch_size, step):
+            end = begin + step
+            score_chunks.append(
                 self.score_metric(
-                    embeddings[0][begin : begin + chunk],
+                    embeddings[0][begin:end],
                     docs_stacked,
-                    q_mask[begin : begin + chunk] if q_mask is not None else None,
-                    docs_mask_stacked,
+                    queries_mask=q_mask[begin:end] if q_mask is not None else None,
+                    documents_mask=docs_mask_stacked,
                 )
-                for begin in range(0, batch_size, chunk)
-            ]
-            scores = torch.cat(score_chunks, dim=0)
+            )
+        scores = torch.cat(score_chunks, dim=0)
 
         # Query-major layout: positive for query i is at column i*N.
         labels = torch.arange(batch_size, device=embeddings[0].device) * N
