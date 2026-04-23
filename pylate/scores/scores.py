@@ -331,7 +331,9 @@ class XTRScores:
             queries_embeddings, documents_embeddings, queries_mask, documents_mask
         )
 
-    def _score(self, queries_embeddings, documents_embeddings, queries_mask, documents_mask):
+    def _score(
+        self, queries_embeddings, documents_embeddings, queries_mask, documents_mask
+    ):
         Qb = queries_embeddings.shape[0]
         D, N = documents_embeddings.shape[:2]
         Db = D * N
@@ -432,8 +434,3 @@ class XTRKDScores:
             N, device=all_scores.device
         )
         return all_scores.gather(1, idx)
-
-
-# Default instances — backward compatible as bare callables
-xtr_scores = XTRScores()
-xtr_kd_scores = XTRKDScores()
