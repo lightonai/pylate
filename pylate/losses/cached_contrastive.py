@@ -152,7 +152,9 @@ class CachedContrastive(nn.Module):
         )
         self.mini_batch_size = mini_batch_size
         self.score_mini_batch_size = (
-            score_mini_batch_size if score_mini_batch_size is not None else mini_batch_size
+            score_mini_batch_size
+            if score_mini_batch_size is not None
+            else mini_batch_size
         )
         self.size_average = size_average
         self.gather_across_devices = gather_across_devices

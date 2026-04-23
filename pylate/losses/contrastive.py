@@ -131,7 +131,9 @@ class Contrastive(nn.Module):
         temperature: float = 1.0,
     ) -> None:
         super(Contrastive, self).__init__()
-        self.score_metric = score_metric if score_metric is not None else ColBERTScores()
+        self.score_metric = (
+            score_metric if score_metric is not None else ColBERTScores()
+        )
         self.model = model
         self.score_mini_batch_size = score_mini_batch_size
         self.size_average = size_average
