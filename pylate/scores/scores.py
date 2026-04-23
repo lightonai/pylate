@@ -2,39 +2,8 @@ from __future__ import annotations
 
 import numpy as np
 import torch
-import torch.utils.checkpoint
 
 from ..utils.tensor import convert_to_tensor
-
-
-def _chunked_queries(score_fn, queries, docs, queries_mask, documents_mask, chunk_size):
-    """Iterate score_fn over query chunks, wrapping each chunk in a checkpoint
-    region when grads are enabled so intermediate activations are released
-    between chunks (recomputed on backward).
-
-    score_fn(queries, docs, queries_mask, documents_mask) -> (Q_chunk, ...).
-    """
-    Q = queries.shape[0]
-    if chunk_size is None or chunk_size >= Q:
-        return score_fn(queries, docs, queries_mask, documents_mask)
-    outputs = []
-    for begin in range(0, Q, chunk_size):
-        end = min(begin + chunk_size, Q)
-        q_chunk = queries[begin:end]
-        qm_chunk = queries_mask[begin:end] if queries_mask is not None else None
-        if torch.is_grad_enabled() and q_chunk.requires_grad:
-            out = torch.utils.checkpoint.checkpoint(
-                score_fn,
-                q_chunk,
-                docs,
-                qm_chunk,
-                documents_mask,
-                use_reentrant=False,
-            )
-        else:
-            out = score_fn(q_chunk, docs, qm_chunk, documents_mask)
-        outputs.append(out)
-    return torch.cat(outputs, dim=0)
 
 
 def colbert_scores(
@@ -239,21 +208,16 @@ def colbert_kd_scores(
 class ColBERTScores:
     """ColBERT contrastive scoring.
 
-    Takes stacked per-query document groups ``(Q, N, Dt, H)`` and returns the
-    full ``(Q, Q*N)`` cross-product score matrix with query-major ordering:
-    ``scores[i, j*N + k]`` is the score of query ``i`` against query ``j``'s
-    ``k``-th document. The positive for query ``i`` sits at column ``i*N``.
+    Takes ``(Q_query, Qt, H)`` queries and ``(Q_doc, N, Dt, H)`` stacked
+    per-query document groups and returns the full ``(Q_query, Q_doc * N)``
+    score matrix with query-major ordering: ``scores[i, j*N + k]`` is the
+    score of query ``i`` against the i-th entry of doc group ``j``'s ``k``-th
+    slot. When called with matched ``Q_query == Q_doc``, the positive for
+    query ``i`` sits at column ``i*N``.
 
-    Parameters
-    ----------
-    query_chunk_size
-        If set, the query dimension is processed in chunks of this size with
-        gradient checkpointing, trading a forward recomputation on backward
-        for a lower peak memory. None disables chunking.
+    The document dimension is iterated group-by-group internally so that only
+    one ``(Q_query, Q_doc, Qt, Dt)`` intermediate is live at a time.
     """
-
-    def __init__(self, query_chunk_size: int | None = None):
-        self.query_chunk_size = query_chunk_size
 
     def __call__(
         self,
@@ -264,22 +228,21 @@ class ColBERTScores:
     ) -> torch.Tensor:
         queries_embeddings = convert_to_tensor(queries_embeddings)
         documents_embeddings = convert_to_tensor(documents_embeddings)
-        return _chunked_queries(
-            self._score_block,
-            queries_embeddings,
-            documents_embeddings,
-            queries_mask,
-            documents_mask,
-            self.query_chunk_size,
-        )
 
-    def _score_block(self, queries, docs, queries_mask, documents_mask):
-        D, N, Dt, H = docs.shape
-        docs_flat = docs.reshape(D * N, Dt, H)
-        doc_mask_flat = (
-            documents_mask.reshape(D * N, Dt) if documents_mask is not None else None
-        )
-        return colbert_scores(queries, docs_flat, queries_mask, doc_mask_flat)
+        D, N, Dt, H = documents_embeddings.shape
+        # Per-group scores: list of N tensors each of shape (Q_query, D).
+        per_group = [
+            colbert_scores(
+                queries_embeddings,
+                documents_embeddings[:, j],
+                queries_mask,
+                documents_mask[:, j] if documents_mask is not None else None,
+            )
+            for j in range(N)
+        ]
+        # Stack to (Q_query, D, N) then flatten to (Q_query, D*N) with
+        # query-major ordering (doc d's k-th slot at column d*N + k).
+        return torch.stack(per_group, dim=2).reshape(-1, D * N)
 
 
 # Adapted from PrimeQA (https://github.com/primeqa/primeqa branch:xtr)
@@ -314,11 +277,13 @@ class XTRScores:
     ----------
     k
         Number of top token matches to retain per query token across all Q*N documents.
-    query_chunk_size
-        If set, the query dimension is processed in chunks of this size with
-        gradient checkpointing, trading a forward recomputation on backward
-        for a lower peak memory. None disables chunking. Recommended for large
-        batches because the pre-reduction intermediate scales as Q*Qt*Q*N*Dt.
+    document_chunk_size
+        If set, the matmul + ``masked_fill`` phase is iterated over
+        ``document_chunk_size`` docs at a time (out of ``Q*N`` total). The
+        resulting chunks are concatenated before the global top-k, so scoring
+        semantics are unchanged. Useful to trim the transient matmul peak at
+        large effective batch sizes. Default ``None`` runs the full matmul
+        in one shot.
 
     Examples
     --------
@@ -343,15 +308,15 @@ class XTRScores:
 
     """
 
-    def __init__(self, k: int = 128, query_chunk_size: int | None = None):
+    def __init__(self, k: int = 128, document_chunk_size: int | None = None):
         self.k = k
-        self.query_chunk_size = query_chunk_size
+        self.document_chunk_size = document_chunk_size
 
     def compile(self, *args, **kwargs):
         # Shadowing the bound method with an instance attribute works here
-        # because _score_block is looked up via normal attribute resolution
+        # because _score is looked up via normal attribute resolution
         # (unlike __call__, which Python resolves on the type).
-        self._score_block = torch.compile(self._score_block, *args, **kwargs)
+        self._score = torch.compile(self._score, *args, **kwargs)
 
     def __call__(
         self,
@@ -362,16 +327,11 @@ class XTRScores:
     ) -> torch.Tensor:
         queries_embeddings = convert_to_tensor(queries_embeddings)
         documents_embeddings = convert_to_tensor(documents_embeddings)
-        return _chunked_queries(
-            self._score_block,
-            queries_embeddings,
-            documents_embeddings,
-            queries_mask,
-            documents_mask,
-            self.query_chunk_size,
+        return self._score(
+            queries_embeddings, documents_embeddings, queries_mask, documents_mask
         )
 
-    def _score_block(self, queries_embeddings, documents_embeddings, queries_mask, documents_mask):
+    def _score(self, queries_embeddings, documents_embeddings, queries_mask, documents_mask):
         Qb = queries_embeddings.shape[0]
         D, N = documents_embeddings.shape[:2]
         Db = D * N
@@ -380,19 +340,39 @@ class XTRScores:
         H = queries_embeddings.shape[-1]
 
         docs_flat = documents_embeddings.reshape(Db, Dt, H)
-
-        # Single large matmul — tensor core friendly
         Q_flat = queries_embeddings.reshape(Qb * Qt, H)
-        D_flat = docs_flat.reshape(Db * Dt, H).T
-        scores = (Q_flat @ D_flat).view(Qb, Qt, Db, Dt)
+        docs_mask_flat = (
+            documents_mask.reshape(Db, Dt) if documents_mask is not None else None
+        )
 
-        if documents_mask is not None:
-            docs_mask_flat = documents_mask.reshape(Db, Dt)
-            scores = scores.masked_fill(
-                ~docs_mask_flat.bool().unsqueeze(0).unsqueeze(0), -99999
-            )
+        doc_chunk = self.document_chunk_size
+        if doc_chunk is None or doc_chunk >= Db:
+            # Single large matmul — tensor core friendly.
+            D_flat = docs_flat.reshape(Db * Dt, H).T
+            scores = (Q_flat @ D_flat).view(Qb, Qt, Db, Dt)
+            if docs_mask_flat is not None:
+                scores = scores.masked_fill(
+                    ~docs_mask_flat.bool().unsqueeze(0).unsqueeze(0), -99999
+                )
+        else:
+            # Chunk the doc axis: each chunk's matmul + masked_fill holds only
+            # a (Qb, Qt, chunk, Dt) intermediate. Chunks are concatenated
+            # before the global top-k so scoring semantics are unchanged.
+            score_chunks = []
+            for d_start in range(0, Db, doc_chunk):
+                d_end = min(d_start + doc_chunk, Db)
+                db = d_end - d_start
+                chunk_D_flat = docs_flat[d_start:d_end].reshape(db * Dt, H).T
+                chunk_scores = (Q_flat @ chunk_D_flat).view(Qb, Qt, db, Dt)
+                if docs_mask_flat is not None:
+                    chunk_mask = docs_mask_flat[d_start:d_end]
+                    chunk_scores = chunk_scores.masked_fill(
+                        ~chunk_mask.bool().unsqueeze(0).unsqueeze(0), -99999
+                    )
+                score_chunks.append(chunk_scores)
+            scores = torch.cat(score_chunks, dim=2)
 
-        # Threshold-mask rather than gather: fully parallel
+        # Global top-k across the full Db*Dt pool.
         clubbed = scores.flatten(2, 3)  # (Qb, Qt, Db*Dt)
         _, indices = clubbed.half().topk(self.k, dim=-1, sorted=False)
         mask = torch.zeros_like(clubbed, dtype=torch.bool).scatter_(-1, indices, True)

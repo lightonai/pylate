@@ -78,10 +78,15 @@ class Contrastive(nn.Module):
     model
         ColBERT model.
     score_metric
-        Contrastive scoring callable. Receives queries ``(Q, Qt, H)`` and
-        stacked documents ``(Q, N, Dt, H)`` and returns ``(Q, Q*N)`` with the
-        positive for query ``i`` at column ``i*N``. Defaults to a
-        :class:`~pylate.scores.ColBERTScores` instance.
+        Contrastive scoring callable. Receives queries ``(Q_query, Qt, H)`` and
+        stacked documents ``(Q_doc, N, Dt, H)`` and returns ``(Q_query, Q_doc*N)``
+        with query-major ordering. Defaults to a :class:`~pylate.scores.ColBERTScores`
+        instance.
+    score_mini_batch_size
+        If set, queries are processed in chunks of this size during scoring.
+        Gradients are still computed from a single backward at the end; chunking
+        here only reduces transient memory during the forward. Defaults to None
+        (no chunking).
     size_average
         Average by the size of the mini-batch.
     gather_across_devices
@@ -120,6 +125,7 @@ class Contrastive(nn.Module):
         self,
         model: ColBERT,
         score_metric=None,
+        score_mini_batch_size: int | None = None,
         size_average: bool = True,
         gather_across_devices: bool = False,
         temperature: float = 1.0,
@@ -127,6 +133,7 @@ class Contrastive(nn.Module):
         super(Contrastive, self).__init__()
         self.score_metric = score_metric if score_metric is not None else ColBERTScores()
         self.model = model
+        self.score_mini_batch_size = score_mini_batch_size
         self.size_average = size_average
         self.gather_across_devices = gather_across_devices
         self.temperature = temperature
@@ -186,12 +193,34 @@ class Contrastive(nn.Module):
         # Note: the queries mask is not used by default; if it's fed through, take care that
         # expansion tokens are not masked from scoring (they may be masked during encoding).
         N = len(embeddings) - 1
-        scores = self.score_metric(
-            embeddings[0],
-            torch.stack(embeddings[1:], dim=1),
-            queries_mask=masks[0] if not do_query_expansion else None,
-            documents_mask=torch.stack(masks[1:], dim=1),
+        docs_stacked = torch.stack(embeddings[1:], dim=1)
+        docs_mask_stacked = torch.stack(masks[1:], dim=1)
+        q_mask = masks[0] if not do_query_expansion else None
+
+        chunk = (
+            self.score_mini_batch_size
+            if self.score_mini_batch_size is not None
+            and self.score_mini_batch_size < batch_size
+            else batch_size
         )
+        if chunk >= batch_size:
+            scores = self.score_metric(
+                embeddings[0], docs_stacked, q_mask, docs_mask_stacked
+            )
+        else:
+            # Chunking here only lowers transient forward memory — gradients
+            # still flow through one big backward below.
+            score_chunks = [
+                self.score_metric(
+                    embeddings[0][begin : begin + chunk],
+                    docs_stacked,
+                    q_mask[begin : begin + chunk] if q_mask is not None else None,
+                    docs_mask_stacked,
+                )
+                for begin in range(0, batch_size, chunk)
+            ]
+            scores = torch.cat(score_chunks, dim=0)
+
         # Query-major layout: positive for query i is at column i*N.
         labels = torch.arange(batch_size, device=embeddings[0].device) * N
         if self.gather_across_devices:

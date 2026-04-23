@@ -86,16 +86,19 @@ class CachedContrastive(nn.Module):
     model :
         A PyLate ColBERT model
     score_metric
-        Contrastive scoring callable. Receives queries ``(Q, Qt, H)`` and
-        stacked documents ``(Q, N, Dt, H)`` and returns ``(Q, Q*N)`` with the
-        positive for query ``i`` at column ``i*N``. Defaults to a
-        :class:`~pylate.scores.ColBERTScores` with ``query_chunk_size`` set to
-        ``mini_batch_size`` so the scoring step stays memory-bounded. Pass a
-        pre-configured instance (e.g. ``XTRScores(k=128, query_chunk_size=32)``)
-        to use a different metric or tune chunking.
+        Contrastive scoring callable. Receives queries ``(Q_query, Qt, H)`` and
+        stacked documents ``(Q_doc, N, Dt, H)`` and returns ``(Q_query, Q_doc*N)``
+        with query-major ordering. Defaults to :class:`~pylate.scores.ColBERTScores`.
     mini_batch_size
-        Chunk size for the model forward pass. Also the default chunk size used
-        by the default scoring metric.
+        Chunk size for the **model** forward/backward pass (GradCache). Keep
+        this small enough that a single model chunk fits in GPU memory.
+    score_mini_batch_size
+        Chunk size used when iterating queries for the **score** computation in
+        Phase 2 of GradCache. Each chunk's scoring is followed by its own
+        ``backward`` so intermediates are released between chunks. Defaults to
+        ``mini_batch_size``. Make it smaller than ``mini_batch_size`` when the
+        scoring intermediate is the memory bottleneck (e.g. with XTR at large
+        effective batches).
     size_average
         Whether to average or sum the cross-entropy loss across the mini-batch.
     gather_across_devices
@@ -136,6 +139,7 @@ class CachedContrastive(nn.Module):
         model: ColBERT,
         score_metric: Callable | None = None,
         mini_batch_size: int = 32,
+        score_mini_batch_size: int | None = None,
         size_average: bool = True,
         gather_across_devices: bool = False,
         show_progress_bar: bool = False,
@@ -143,15 +147,13 @@ class CachedContrastive(nn.Module):
     ) -> None:
         super(CachedContrastive, self).__init__()
         self.model = model
-        # Default metric chunks its own query dim at mini_batch_size so peak
-        # memory stays bounded under large effective batches (gradient
-        # checkpointing trades a forward recompute for the saved activations).
         self.score_metric = (
-            score_metric
-            if score_metric is not None
-            else ColBERTScores(query_chunk_size=mini_batch_size)
+            score_metric if score_metric is not None else ColBERTScores()
         )
         self.mini_batch_size = mini_batch_size
+        self.score_mini_batch_size = (
+            score_mini_batch_size if score_mini_batch_size is not None else mini_batch_size
+        )
         self.size_average = size_average
         self.gather_across_devices = gather_across_devices
         self.show_progress_bar = show_progress_bar
@@ -277,28 +279,51 @@ class CachedContrastive(nn.Module):
         )
 
         N = len(embeddings_other)
-        scores = self.score_metric(
-            embeddings_anchor,
-            torch.stack(embeddings_other, dim=1),
-            queries_mask=masks[0] if not do_query_expansion else None,
-            documents_mask=torch.stack(masks[1:], dim=1),
-        )
+        docs_stacked = torch.stack(embeddings_other, dim=1)
+        docs_mask_stacked = torch.stack(masks[1:], dim=1)
+        q_mask = masks[0] if not do_query_expansion else None
+
         # Query-major layout: positive for query i is at column i*N.
         labels = torch.arange(batch_size, device=reps[0][0].device) * N
         if self.gather_across_devices:
             labels = labels + get_rank() * batch_size * N
 
-        loss = F.cross_entropy(
-            input=scores / self.temperature,
-            target=labels,
-            reduction="mean" if self.size_average else "sum",
-        )
-        if self.gather_across_devices:
-            loss *= get_world_size()
+        losses: list[torch.Tensor] = []
+        for begin in tqdm.trange(
+            0,
+            batch_size,
+            self.score_mini_batch_size,
+            desc="Preparing caches",
+            disable=not self.show_progress_bar,
+        ):
+            end = begin + self.score_mini_batch_size
+            scores = self.score_metric(
+                embeddings_anchor[begin:end],
+                docs_stacked,
+                queries_mask=q_mask[begin:end] if q_mask is not None else None,
+                documents_mask=docs_mask_stacked,
+            )
+            # We don't want to average the loss across the mini-batch as mini-batch
+            # sizes can vary, which would create an issue similar to:
+            # https://huggingface.co/blog/gradient_accumulation#where-does-it-stem-from
+            loss_mbatch = F.cross_entropy(
+                input=scores / self.temperature,
+                target=labels[begin:end],
+                reduction="sum",
+            )
+            if self.gather_across_devices:
+                loss_mbatch *= get_world_size()
 
-        if with_backward:
-            loss.backward()
-            loss = loss.detach()
+            if with_backward:
+                # Per-chunk backward releases this chunk's scoring intermediates
+                # before the next chunk is scored, keeping peak memory bounded.
+                loss_mbatch.backward()
+                loss_mbatch = loss_mbatch.detach()
+            losses.append(loss_mbatch)
+
+        loss = sum(losses)
+        if self.size_average:
+            loss = loss / batch_size
 
         return loss
 
