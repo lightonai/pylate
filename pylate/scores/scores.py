@@ -308,7 +308,7 @@ class XTRScores:
 
     """
 
-    def __init__(self, k: int = 128, document_chunk_size: int | None = None):
+    def __init__(self, k: int = 256, document_chunk_size: int | None = None):
         self.k = k
         self.document_chunk_size = document_chunk_size
 
@@ -400,7 +400,7 @@ class XTRKDScores:
         Number of top token matches to retain per query token.
     """
 
-    def __init__(self, k: int = 128):
+    def __init__(self, k: int = 256):
         self._xtr_scores = XTRScores(k=k)
 
     @property
@@ -434,3 +434,8 @@ class XTRKDScores:
             N, device=all_scores.device
         )
         return all_scores.gather(1, idx)
+
+
+# Default instances — backward compatible as bare callables
+xtr_scores = XTRScores()
+xtr_kd_scores = XTRKDScores()
