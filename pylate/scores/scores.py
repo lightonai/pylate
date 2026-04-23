@@ -376,7 +376,7 @@ class XTRScores:
 
         # Global top-k across the full Db*Dt pool.
         clubbed = scores.flatten(2, 3)  # (Qb, Qt, Db*Dt)
-        _, indices = clubbed.half().topk(self.k, dim=-1, sorted=False)
+        _, indices = clubbed.topk(self.k, dim=-1, sorted=False)
         mask = torch.zeros_like(clubbed, dtype=torch.bool).scatter_(-1, indices, True)
         masked = clubbed * mask
         topk_scores_max = masked.view(Qb, Qt, Db, Dt).max(dim=-1).values  # (Qb, Qt, Db)
