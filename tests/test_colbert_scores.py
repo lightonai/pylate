@@ -30,8 +30,14 @@ class TestColBERTScoresQueryMajorOrdering:
         queries = torch.tensor([[[1.0, 0.0]], [[0.0, 1.0]]])  # (2, 1, 2)
         docs = torch.tensor(
             [
-                [[[1.0, 0.0]], [[0.0, 0.5]]],  # q0: pos matches q0, neg partially matches q1
-                [[[0.0, 1.0]], [[0.5, 0.0]]],  # q1: pos matches q1, neg partially matches q0
+                [
+                    [[1.0, 0.0]],
+                    [[0.0, 0.5]],
+                ],  # q0: pos matches q0, neg partially matches q1
+                [
+                    [[0.0, 1.0]],
+                    [[0.5, 0.0]],
+                ],  # q1: pos matches q1, neg partially matches q0
             ]
         )  # (2, 2, 1, 2)
 
