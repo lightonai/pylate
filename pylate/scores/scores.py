@@ -388,29 +388,12 @@ class XTRScores:
         return (scores_sum / Z).float()
 
 
-class XTRKDScores:
+class XTRKDScores(XTRScores):
     """XTR scores for knowledge distillation. Same global top-k scoring as
-    :class:`XTRScores`, but returns only each query's own N-way document scores
-    to match the ``(Q, N)`` interface expected by :class:`~pylate.losses.Distillation`.
-
-    Parameters
-    ----------
-    k
-        Number of top token matches to retain per query token.
-    document_chunk_size
-        Forwarded to the underlying :class:`XTRScores`. See its docstring.
+    :class:`XTRScores`, but returns each query's own N-way document scores
+    ``(Q, N)`` instead of the full ``(Q, Q*N)`` cross-product — matching the
+    interface expected by :class:`~pylate.losses.Distillation`.
     """
-
-    def __init__(self, k: int = 256, document_chunk_size: int | None = None):
-        self._xtr_scores = XTRScores(k=k, document_chunk_size=document_chunk_size)
-
-    @property
-    def k(self):
-        return self._xtr_scores.k
-
-    @k.setter
-    def k(self, value):
-        self._xtr_scores.k = value
 
     def __call__(
         self,
@@ -423,7 +406,7 @@ class XTRKDScores:
         Q, N = documents_embeddings.shape[:2]
 
         # Full cross-product scores: (Q, Q*N)
-        all_scores = self._xtr_scores(
+        all_scores = super().__call__(
             queries_embeddings,
             documents_embeddings,
             queries_mask=queries_mask,
