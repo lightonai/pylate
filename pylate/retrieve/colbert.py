@@ -5,7 +5,7 @@ import logging
 import numpy as np
 import torch
 
-from ..indexes import PLAID, Base
+from ..indexes import Base
 from ..rank import RerankResult, rerank
 from ..utils import iter_batch
 
@@ -128,8 +128,9 @@ class ColBERT:
             Currently only supported with PLAID index.
 
         """
-        # PLAID handles reranking internally and returns RerankResult directly
-        if isinstance(self.index, PLAID):
+        # End-to-end indexes (e.g. PLAID) handle scoring internally and return
+        # RerankResult directly.
+        if self.index.is_end_to_end_index:
             return self.index(
                 queries_embeddings=queries_embeddings,
                 k=k,

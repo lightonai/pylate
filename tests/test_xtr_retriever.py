@@ -37,7 +37,7 @@ def test_xtr_constructor_rejects_plaid_style_indices() -> None:
     # Use __new__ to avoid expensive backend initialization while still testing
     # the isinstance check against PLAID-style indices.
     plaid_like = indexes.PLAID.__new__(indexes.PLAID)
-    with pytest.raises(ValueError, match="PLAID-style end-to-end indices"):
+    with pytest.raises(ValueError, match="non end-to-end index"):
         retrieve.XTR(index=plaid_like)
 
 

@@ -88,12 +88,8 @@ class XTR:
     """
 
     def __init__(self, index: indexes.Base, verbose: bool = False) -> None:
-        if isinstance(index, indexes.PLAID):
-            raise ValueError(
-                "XTR retriever requires token-level index outputs "
-                "(`documents_ids` and `distances`). PLAID-style end-to-end indices "
-                "are not supported."
-            )
+        if index.is_end_to_end_index:
+            raise ValueError("XTR requires to use a non end-to-end index")
         self.index = index
         self.verbose = verbose
 
@@ -166,23 +162,8 @@ class XTR:
             # Initial retrieval from index
             retrieval_start = time.perf_counter()
             index_results = self.index(batch_queries_embeddings, k=k_token)
-            if not isinstance(index_results, dict):
-                raise ValueError(
-                    "XTR retriever expects token-level dict outputs from the index "
-                    "with `documents_ids` and `distances`."
-                )
-            if "documents_ids" not in index_results or "distances" not in index_results:
-                raise ValueError(
-                    "XTR retriever received invalid index output. Expected keys: "
-                    "`documents_ids` and `distances`."
-                )
             token_doc_ids = index_results["documents_ids"]
             token_distances = index_results["distances"]
-            if len(token_doc_ids) != len(token_distances):
-                raise ValueError(
-                    "XTR retriever received invalid index output. "
-                    "`documents_ids` and `distances` must have the same batch length."
-                )
             retrieval_time = time.perf_counter() - retrieval_start
             total_retrieval_time += retrieval_time
 

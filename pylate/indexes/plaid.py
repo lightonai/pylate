@@ -115,6 +115,8 @@ class PLAID(Base):
 
     """
 
+    is_end_to_end_index = True
+
     def __init__(
         self,
         index_folder: str = "indexes",
