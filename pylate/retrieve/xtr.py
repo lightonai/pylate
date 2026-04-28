@@ -94,7 +94,7 @@ class XTR:
         queries_embeddings: list[list | np.ndarray | torch.Tensor],
         k: int = 10,
         k_token: int = 10_000,
-        device: str = "cpu",
+        device: str | None = None,
         batch_size: int = 1,
         subset: list[list[str]] | list[str] | None = None,
     ) -> list[list[RerankResult]]:
@@ -113,7 +113,8 @@ class XTR:
         k_token
             The number of documents to retrieve from the index per query token.
         device
-            The device to use for XTR scoring computation. Defaults to 'cpu'.
+            The device to use for XTR scoring computation. If None, defaults to
+            the queries embeddings device when available, otherwise 'cpu'.
         batch_size
             The batch size to use for retrieval.
         subset
@@ -136,6 +137,12 @@ class XTR:
         elif isinstance(queries_embeddings, torch.Tensor):
             if queries_embeddings.ndim == 2:
                 queries_embeddings = [queries_embeddings]
+
+        if device is None:
+            if queries_embeddings and isinstance(queries_embeddings[0], torch.Tensor):
+                device = str(queries_embeddings[0].device)
+            else:
+                device = "cpu"
 
         if subset is not None:
             raise NotImplementedError(
