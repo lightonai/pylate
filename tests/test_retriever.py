@@ -66,7 +66,7 @@ def test_voyager_index(**kwargs) -> None:
         assert "distances" in matches
 
         assert (
-            matches["distances"].shape[0] == len(configuration["sentences"])
+            len(matches["distances"]) == len(configuration["sentences"])
             if isinstance(configuration["sentences"], list)
             else 1
         )
