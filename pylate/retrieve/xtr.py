@@ -1,23 +1,27 @@
 from __future__ import annotations
 
-import math
-
 import numpy as np
 import torch
-from tqdm.auto import tqdm
 
-from .. import indexes
+from ..indexes import Base as BaseIndex
 from ..rank import RerankResult, score_xtr
-from ..utils import iter_batch
+from .base import BaseRetriever
 
 
-class XTR:
+class XTR(BaseRetriever):
     """XTR retriever.
+
+    Performs XTR (eXact Token Retrieval) scoring: documents are scored only
+    from their initially retrieved tokens, and missing token scores are filled
+    in via min imputation. Differs from :class:`ColBERT`, which does a full
+    MaxSim rerank using cached document embeddings.
 
     Parameters
     ----------
-    index:
+    index
         The index to use for retrieval.
+    verbose
+        Show a progress bar during retrieval.
 
     Examples
     --------
@@ -83,96 +87,41 @@ class XTR:
 
     """
 
-    def __init__(self, index: indexes.Base, verbose: bool = False) -> None:
-        if index.is_end_to_end_index:
-            raise ValueError("XTR requires to use a non end-to-end index")
-        self.index = index
+    default_k_token = 10_000
+    default_batch_size = 1
+    progress_desc = "Retrieving documents (XTR)"
+
+    def __init__(self, index: BaseIndex, verbose: bool = False) -> None:
+        super().__init__(index=index)
         self.verbose = verbose
 
-    def retrieve(
-        self,
-        queries_embeddings: list[list | np.ndarray | torch.Tensor],
-        k: int = 10,
-        k_token: int = 10_000,
-        device: str | None = None,
-        batch_size: int = 1,
-        subset: list[list[str]] | list[str] | None = None,
-    ) -> list[list[RerankResult]]:
-        """Retrieve documents using XTR (eXact Token Retrieval) scoring.
+    def _show_progress(self) -> bool:
+        return self.verbose
 
-        XTR differs from standard ColBERT retrieval in that it doesn't do a full
-        reranking step. Instead, it only scores documents using initially retrieved
-        tokens and imputes missing scores using min imputation.
-
-        Parameters
-        ----------
-        queries_embeddings
-            The queries embeddings.
-        k
-            The number of documents to retrieve.
-        k_token
-            The number of documents to retrieve from the index per query token.
-        device
-            The device to use for XTR scoring computation. If None, defaults to
-            the queries embeddings device when available, otherwise 'cpu'.
-        batch_size
-            The batch size to use for retrieval.
-        subset
-            Optional subset of document IDs to restrict search to.
-            Only supported with certain index types.
-
-
-        Returns
-        -------
-        list[list[RerankResult]]
-            List of results for each query, where each result contains
-            document IDs and scores sorted by score (descending).
-
-        """
-        # Handle single query: if a 2D array/tensor is passed (num_tokens, dim),
-        # wrap it in a list so it's treated as one query, not num_tokens queries.
-        if isinstance(queries_embeddings, np.ndarray):
-            if queries_embeddings.ndim == 2:
-                queries_embeddings = [queries_embeddings]
-        elif isinstance(queries_embeddings, torch.Tensor):
-            if queries_embeddings.ndim == 2:
-                queries_embeddings = [queries_embeddings]
-
-        if device is None:
-            if queries_embeddings and isinstance(queries_embeddings[0], torch.Tensor):
-                device = str(queries_embeddings[0].device)
-            else:
-                device = "cpu"
-
+    def _validate_subset_token_path(
+        self, subset: list[list[str]] | list[str] | None
+    ) -> None:
         if subset is not None:
             raise NotImplementedError(
                 "Subset filtering is not implemented for XTR retrieval yet."
             )
 
-        results = []
-
-        progress_bar = tqdm(
-            iter_batch(queries_embeddings, batch_size=batch_size, tqdm_bar=False),
-            desc="Retrieving documents (XTR)",
-            disable=not self.verbose,
-            total=math.ceil(len(queries_embeddings) / batch_size),
-        )
-        for batch_queries_embeddings in progress_bar:
-            # Initial retrieval from index
-            index_results = self.index(batch_queries_embeddings, k=k_token)
-            token_doc_ids = index_results["documents_ids"]
-            token_distances = index_results["distances"]
-
-            # XTR scoring
-            for query_doc_ids, query_scores in zip(token_doc_ids, token_distances):
-                # Use the score_xtr helper function to compute XTR scores
-                query_results = score_xtr(
-                    query_doc_ids=query_doc_ids,
-                    query_scores=query_scores,
-                    k=k,
-                    device=device,
-                )
-
-                results.append(query_results)
-
-        return results
+    def _score_batch(
+        self,
+        batch_queries_embeddings: list | np.ndarray | torch.Tensor,
+        hits: dict,
+        *,
+        k: int,
+        device: str,
+    ) -> list[list[RerankResult]]:
+        return [
+            score_xtr(
+                query_doc_ids=query_doc_ids,
+                query_scores=query_scores,
+                k=k,
+                device=device,
+            )
+            for query_doc_ids, query_scores in zip(
+                hits["documents_ids"], hits["distances"]
+            )
+        ]

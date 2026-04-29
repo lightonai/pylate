@@ -1,18 +1,13 @@
 from __future__ import annotations
 
-import logging
-
 import numpy as np
 import torch
 
-from ..indexes import Base
 from ..rank import RerankResult, rerank
-from ..utils import iter_batch
-
-logger = logging.getLogger(__name__)
+from .base import BaseRetriever
 
 
-class ColBERT:
+class ColBERT(BaseRetriever):
     """ColBERT retriever.
 
     Parameters
@@ -93,88 +88,33 @@ class ColBERT:
 
     """
 
-    def __init__(self, index: Base) -> None:
-        self.index = index
+    default_k_token = 100
+    default_batch_size = 50
+    progress_desc = "Retrieving documents"
 
-    def retrieve(
+    def _score_batch(
         self,
-        queries_embeddings: list[list | np.ndarray | torch.Tensor],
-        k: int = 10,
-        k_token: int = 100,
-        device: str | None = None,
-        batch_size: int = 50,
-        subset: list[list[str]] | list[str] | None = None,
+        batch_queries_embeddings: list | np.ndarray | torch.Tensor,
+        hits: dict,
+        *,
+        k: int,
+        device: str,
     ) -> list[list[RerankResult]]:
-        """Retrieve documents for a list of queries.
-
-        Parameters
-        ----------
-        queries_embeddings
-            The queries embeddings.
-        k
-            The number of documents to retrieve.
-        k_token
-            The number of token-level candidates to retrieve from the index
-            before reranking. Only used for non-PLAID indexes. Defaults to 100.
-        device
-            The device to use for reranking. Defaults to queries_embeddings device.
-        batch_size
-            The batch size to use for retrieval. Only used for non-PLAID indexes.
-        subset
-            Optional subset of document IDs to restrict search to.
-            Can be a single list (same filter for all queries) or
-            list of lists (different filter per query).
-            Document IDs should match the IDs used when adding documents.
-            Currently only supported with PLAID index.
-
-        """
-        # End-to-end indexes (e.g. PLAID) handle scoring internally and return
-        # RerankResult directly.
-        if self.index.is_end_to_end_index:
-            return self.index(
-                queries_embeddings=queries_embeddings,
-                k=k,
-                subset=subset,
+        documents_ids = [
+            list(
+                {
+                    document_id
+                    for query_token_document_ids in query_documents_ids
+                    for document_id in query_token_document_ids
+                }
             )
-
-        # Other indexes first generate candidates by calling the index and then rerank them
-        if k > k_token:
-            logger.warning(
-                f"k ({k}) is greater than k_token ({k_token}), setting k_token to k."
-            )
-            k_token = k
-        reranking_results = []
-        for queries_embeddings_batch in iter_batch(
-            queries_embeddings,
-            batch_size=batch_size,
-            desc=f"Retrieving documents (bs={batch_size})",
-        ):
-            retrieved_elements = self.index(
-                queries_embeddings=queries_embeddings_batch,
-                k=k_token,
-            )
-
-            documents_ids = [
-                list(
-                    set(
-                        [
-                            document_id
-                            for query_token_document_ids in query_documents_ids
-                            for document_id in query_token_document_ids
-                        ]
-                    )
-                )
-                for query_documents_ids in retrieved_elements["documents_ids"]
-            ]
-
-            documents_embeddings = self.index.get_documents_embeddings(documents_ids)
-
-            reranking_results.extend(
-                rerank(
-                    documents_ids=documents_ids,
-                    queries_embeddings=queries_embeddings_batch,
-                    documents_embeddings=documents_embeddings,
-                    device=device,
-                )
-            )
-        return [query_results[:k] for query_results in reranking_results]
+            for query_documents_ids in hits["documents_ids"]
+        ]
+        documents_embeddings = self.index.get_documents_embeddings(documents_ids)
+        reranked = rerank(
+            documents_ids=documents_ids,
+            queries_embeddings=batch_queries_embeddings,
+            documents_embeddings=documents_embeddings,
+            device=device,
+        )
+        return [query_results[:k] for query_results in reranked]
