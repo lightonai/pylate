@@ -1,16 +1,13 @@
 from __future__ import annotations
 
-from .scores import (
+from .colbert import (
     ColBERTScores,
-    XTRKDScores,
-    XTRScores,
     colbert_kd_scores,
     colbert_scores,
     colbert_scores_pairwise,
-    xtr_kd_scores,
-    xtr_scores,
 )
 from .similarity_functions import SimilarityFunction
+from .xtr import XTRKDScores, XTRScores, xtr_kd_scores, xtr_scores
 
 __all__ = [
     "colbert_scores",
