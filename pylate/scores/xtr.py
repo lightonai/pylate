@@ -1,21 +1,3 @@
-# Adapted from PrimeQA (https://github.com/primeqa/primeqa branch:xtr)
-# Specifically: https://github.com/primeqa/primeqa/blob/bb9385fa129a0dbb3c7aae96ad3c782913f8280d/primeqa/ir/dense/xtr_top/xtr/modeling/XTR.py
-
-#   Copyright 2026 IBM PrimeQA Authors
-#    Licensed under the Apache License, Version 2.0 (the "License");
-#    you may not use this file except in compliance with the License.
-#    You may obtain a copy of the License at
-#        http://www.apache.org/licenses/LICENSE-2.0
-#    Unless required by applicable law or agreed to in writing, software
-#    distributed under the License is distributed on an "AS IS" BASIS,
-#    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#    See the License for the specific language governing permissions and
-#    limitations under the License.
-
-# Changes:
-# - extricated scoring function from E2E modeling class that also handled contrastive loss computation.
-# - fixed a bug in the original implementation where the alignment mask was not being applied correctly.
-
 from __future__ import annotations
 
 import numpy as np
@@ -65,6 +47,20 @@ class XTRScores:
     ... )
     >>> scores.shape
     torch.Size([2, 4])
+
+    Notes
+    -----
+    Adapted from PrimeQA (Copyright 2026 IBM PrimeQA Authors, licensed under
+    the Apache License, Version 2.0). Changes from the original implementation:
+
+    - Extricated the scoring function from the end-to-end modeling class that
+      also handled contrastive loss computation.
+    - Fixed a bug in the original implementation where the alignment mask was
+      not being applied correctly.
+
+    References
+    ----------
+    - [PrimeQA XTR](https://github.com/primeqa/primeqa/blob/bb9385fa129a0dbb3c7aae96ad3c782913f8280d/primeqa/ir/dense/xtr_top/xtr/modeling/XTR.py)
 
     """
 
