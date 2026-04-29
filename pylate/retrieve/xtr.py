@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import torch
 
-from ..indexes import Base as BaseIndex
+from ..indexes.base import Base as BaseIndex
 from ..rank import RerankResult, score_xtr
 from .base import BaseRetriever
 

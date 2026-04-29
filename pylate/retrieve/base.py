@@ -8,7 +8,7 @@ import numpy as np
 import torch
 import tqdm
 
-from ..indexes import Base as BaseIndex
+from ..indexes.base import Base as BaseIndex
 from ..rank import RerankResult
 from ..utils import iter_batch
 
