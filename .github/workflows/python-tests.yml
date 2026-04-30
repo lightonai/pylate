@@ -38,4 +38,4 @@ jobs:
         run: uv run --extra dev pytest tests -m "model_loading" --durations=5
 
       - name: Run other tests
-        run: uv run --extra dev --extra voyager pytest ${{ matrix.test-target }} -m "not model_loading" -n auto --durations=5
+        run: uv run --extra dev --extra voyager --extra scann pytest ${{ matrix.test-target }} -m "not model_loading" -n auto --durations=5

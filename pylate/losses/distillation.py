@@ -20,6 +20,8 @@ class Distillation(torch.nn.Module):
         Function that returns a score between two sequences of embeddings.
     size_average
         Average by the size of the mini-batch or perform sum.
+    normalize_scores
+        Whether to min-max normalize scores before computing the loss.
 
     Examples
     --------

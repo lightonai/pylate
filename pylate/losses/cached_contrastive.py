@@ -12,7 +12,7 @@ from torch import Tensor, nn
 from torch.utils.checkpoint import get_device_states, set_device_states
 
 from ..models import ColBERT
-from ..scores import colbert_scores
+from ..scores import ColBERTScores
 from ..utils import all_gather, all_gather_with_gradients, get_rank, get_world_size
 from .contrastive import extract_skiplist_mask
 
@@ -86,9 +86,19 @@ class CachedContrastive(nn.Module):
     model :
         A PyLate ColBERT model
     score_metric
-        ColBERT scoring function. Defaults to colbert_scores.
+        Contrastive scoring callable. Receives queries ``(Q_query, Qt, H)`` and
+        stacked documents ``(Q_doc, N, Dt, H)`` and returns ``(Q_query, Q_doc*N)``
+        with query-major ordering. Defaults to :class:`~pylate.scores.ColBERTScores`.
     mini_batch_size
-        Chunk size for the forward pass. You can keep this small to avoid OOM on large batch sizes.
+        Chunk size for the **model** forward/backward pass (GradCache). Keep
+        this small enough that a single model chunk fits in GPU memory.
+    score_mini_batch_size
+        Chunk size used when iterating queries for the **score** computation in
+        Phase 2 of GradCache. Each chunk's scoring is followed by its own
+        ``backward`` so intermediates are released between chunks. Defaults to
+        ``mini_batch_size``. Make it smaller than ``mini_batch_size`` when the
+        scoring intermediate is the memory bottleneck (e.g. with XTR at large
+        effective batches).
     size_average
         Whether to average or sum the cross-entropy loss across the mini-batch.
     gather_across_devices
@@ -112,11 +122,11 @@ class CachedContrastive(nn.Module):
 
     >>> positives = model.tokenize([
     ...     "fruits are good for health.", "chips are not good for health."
-    ... ], is_query=False)
+    ... ], is_query=False, pad=True)
 
     >>> negatives = model.tokenize([
     ...     "fruits are bad for health.", "chips are good for health."
-    ... ], is_query=False)
+    ... ], is_query=False, pad=True)
 
     >>> sentence_features = [anchors, positives, negatives]
 
@@ -127,8 +137,9 @@ class CachedContrastive(nn.Module):
     def __init__(
         self,
         model: ColBERT,
-        score_metric: Callable = colbert_scores,
+        score_metric: Callable | None = None,
         mini_batch_size: int = 32,
+        score_mini_batch_size: int | None = None,
         size_average: bool = True,
         gather_across_devices: bool = False,
         show_progress_bar: bool = False,
@@ -136,8 +147,15 @@ class CachedContrastive(nn.Module):
     ) -> None:
         super(CachedContrastive, self).__init__()
         self.model = model
-        self.score_metric = score_metric
+        self.score_metric = (
+            score_metric if score_metric is not None else ColBERTScores()
+        )
         self.mini_batch_size = mini_batch_size
+        self.score_mini_batch_size = (
+            score_mini_batch_size
+            if score_mini_batch_size is not None
+            else mini_batch_size
+        )
         self.size_average = size_average
         self.gather_across_devices = gather_across_devices
         self.show_progress_bar = show_progress_bar
@@ -243,9 +261,6 @@ class CachedContrastive(nn.Module):
         ]  # [(nneg * bsz, hdim)]
 
         batch_size = len(embeddings_anchor)
-        labels = torch.tensor(
-            range(batch_size), dtype=torch.long, device=reps[0][0].device
-        )  # (bsz, (1 + nneg) * bsz)  Example a[i] should match with b[i]
         # Possibly gather the embeddings across devices to have more in-batch negatives. For GradCache, we only need to gather them to compute the scores matrix and nowhere else.
         # Note that we only gather the documents embeddings and not the queries embeddings, but are keeping gradients. This is to lower the memory usage, see https://github.com/mlfoundations/open_clip/issues/616
         if self.gather_across_devices:
@@ -259,76 +274,58 @@ class CachedContrastive(nn.Module):
                 masks[0],
                 *[torch.cat(all_gather(mask)) for mask in masks[1:]],
             ]
-            rank = get_rank()
-            # Adjust the labels to match the gathered embeddings positions
-            labels = labels + rank * batch_size
-        losses: list[torch.Tensor] = []
         do_query_expansion = (
             self.model.do_query_expansion
             if hasattr(self.model, "do_query_expansion")
             else self.model.module.do_query_expansion
         )
+
+        N = len(embeddings_other)
+        docs_stacked = torch.stack(embeddings_other, dim=1)
+        docs_mask_stacked = torch.stack(masks[1:], dim=1)
+        q_mask = masks[0] if not do_query_expansion else None
+
+        # Query-major layout: positive for query i is at column i*N.
+        labels = torch.arange(batch_size, device=reps[0][0].device) * N
+        if self.gather_across_devices:
+            labels = labels + get_rank() * batch_size * N
+
+        losses: list[torch.Tensor] = []
         for begin in tqdm.trange(
             0,
             batch_size,
-            self.mini_batch_size,
+            self.score_mini_batch_size,
             desc="Preparing caches",
             disable=not self.show_progress_bar,
         ):
-            end = begin + self.mini_batch_size
-            # We chunk the scores computation to avoid OOM because MaxSim can get expensive with large batch sizes/long documents
-            scores = torch.cat(
-                [
-                    torch.cat(
-                        [
-                            self.score_metric(
-                                embeddings_anchor[begin:end],
-                                group_embeddings[
-                                    g_start : min(
-                                        g_start + self.mini_batch_size,
-                                        len(group_embeddings),
-                                    )
-                                ],
-                                queries_mask=masks[0][begin:end]
-                                if not do_query_expansion
-                                else None,
-                                documents_mask=documents_mask[
-                                    g_start : min(
-                                        g_start + self.mini_batch_size,
-                                        len(group_embeddings),
-                                    )
-                                ],
-                            )
-                            for g_start in range(
-                                0, len(group_embeddings), self.mini_batch_size
-                            )
-                        ],
-                        dim=1,
-                    )
-                    for group_embeddings, documents_mask in zip(
-                        embeddings_other, masks[1:]
-                    )
-                ],
-                dim=1,
+            end = begin + self.score_mini_batch_size
+            scores = self.score_metric(
+                embeddings_anchor[begin:end],
+                docs_stacked,
+                queries_mask=q_mask[begin:end] if q_mask is not None else None,
+                documents_mask=docs_mask_stacked,
             )
-            # We don't want to average the loss across the mini-batch as mini-batch sizes can vary, which would create an issue similar to this one: https://huggingface.co/blog/gradient_accumulation#where-does-it-stem-from
+            # We don't want to average the loss across the mini-batch as mini-batch
+            # sizes can vary, which would create an issue similar to:
+            # https://huggingface.co/blog/gradient_accumulation#where-does-it-stem-from
             loss_mbatch = F.cross_entropy(
                 input=scores / self.temperature,
                 target=labels[begin:end],
                 reduction="sum",
             )
-            # Scale by world size when gathering across device
             if self.gather_across_devices:
                 loss_mbatch *= get_world_size()
 
             if with_backward:
+                # Per-chunk backward releases this chunk's scoring intermediates
+                # before the next chunk is scored, keeping peak memory bounded.
                 loss_mbatch.backward()
                 loss_mbatch = loss_mbatch.detach()
             losses.append(loss_mbatch)
 
         loss = sum(losses)
         if self.size_average:
-            loss /= batch_size
+            loss = loss / batch_size
 
         return loss
 

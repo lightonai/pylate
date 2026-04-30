@@ -203,3 +203,43 @@ def colbert_kd_scores(
 
     scores = scores.max(axis=-1).values.sum(axis=-1)
     return scores
+
+
+class ColBERTScores:
+    """ColBERT contrastive scoring.
+
+    Takes ``(Q_query, Qt, H)`` queries and ``(Q_doc, N, Dt, H)`` stacked
+    per-query document groups and returns the full ``(Q_query, Q_doc * N)``
+    score matrix with query-major ordering: ``scores[i, j*N + k]`` is the
+    score of query ``i`` against the i-th entry of doc group ``j``'s ``k``-th
+    slot. When called with matched ``Q_query == Q_doc``, the positive for
+    query ``i`` sits at column ``i*N``.
+
+    The document dimension is iterated group-by-group internally so that only
+    one ``(Q_query, Q_doc, Qt, Dt)`` intermediate is live at a time.
+    """
+
+    def __call__(
+        self,
+        queries_embeddings: list | np.ndarray | torch.Tensor,
+        documents_embeddings: list | np.ndarray | torch.Tensor,
+        queries_mask: torch.Tensor | None = None,
+        documents_mask: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        queries_embeddings = convert_to_tensor(queries_embeddings)
+        documents_embeddings = convert_to_tensor(documents_embeddings)
+
+        D, N, _, _ = documents_embeddings.shape
+        # Per-group scores: list of N tensors each of shape (Q_query, D).
+        per_group = [
+            colbert_scores(
+                queries_embeddings,
+                documents_embeddings[:, j],
+                queries_mask,
+                documents_mask[:, j] if documents_mask is not None else None,
+            )
+            for j in range(N)
+        ]
+        # Stack to (Q_query, D, N) then flatten to (Q_query, D*N) with
+        # query-major ordering (doc d's k-th slot at column d*N + k).
+        return torch.stack(per_group, dim=2).reshape(-1, D * N)

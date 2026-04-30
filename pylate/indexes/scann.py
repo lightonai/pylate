@@ -83,6 +83,8 @@ class ScaNN(Base):
 
     """
 
+    is_end_to_end_index = False
+
     def __init__(
         self,
         index_name: str | None = "ScaNN_index",

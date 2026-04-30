@@ -90,6 +90,8 @@ class Voyager(Base):
 
     """
 
+    is_end_to_end_index = False
+
     def __init__(
         self,
         index_folder: str = "indexes",
@@ -291,7 +293,6 @@ class Voyager(Base):
         k = min(k, len(embeddings_to_documents_ids))
 
         queries_embeddings = reshape_embeddings(embeddings=queries_embeddings)
-        n_queries = len(queries_embeddings)
 
         indices, distances = self.index.query(
             list(itertools.chain(*queries_embeddings)), k, query_ef=self.ef_search
@@ -300,20 +301,24 @@ class Voyager(Base):
         if len(indices) == 0:
             raise ValueError("Index is empty, add documents before querying.")
 
+        # Split per query on the recorded token counts so variable-length queries
+        # are handled correctly (a single reshape would silently misalign rows
+        # when queries have different numbers of tokens).
+        n_tokens_per_query = [len(q) for q in queries_embeddings]
+        splits = np.cumsum(n_tokens_per_query[:-1])
+
         documents = [
             [
-                [
-                    embeddings_to_documents_ids[token_indice]
-                    for token_indice in tokens_indices
-                ]
-                for tokens_indices in document_indices
+                [embeddings_to_documents_ids[t] for t in tokens_indices]
+                for tokens_indices in chunk
             ]
-            for document_indices in indices.reshape(n_queries, -1, k)
+            for chunk in np.split(indices, splits)
         ]
+        distances_list = [list(chunk) for chunk in np.split(distances, splits)]
 
         return {
             "documents_ids": documents,
-            "distances": distances.reshape(n_queries, -1, k),
+            "distances": distances_list,
         }
 
     def get_documents_embeddings(
