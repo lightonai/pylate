@@ -108,9 +108,7 @@ class BaseRetriever(ABC):
                 k=k_token,
             )
             results.extend(
-                self._score_batch(
-                    batch_queries_embeddings, hits, k=k, device=device
-                )
+                self._score_batch(batch_queries_embeddings, hits, k=k, device=device)
             )
         return results
 
