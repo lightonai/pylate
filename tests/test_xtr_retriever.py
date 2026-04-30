@@ -47,7 +47,7 @@ def test_xtr_retrieve_subset_not_supported() -> None:
 
 
 def test_xtr_retrieve_e2e_with_scann() -> None:
-    retriever = retrieve.XTR(index=_build_tiny_scann_index(), verbose=False)
+    retriever = retrieve.XTR(index=_build_tiny_scann_index())
     queries = [
         torch.randn(3, 8, dtype=torch.float32),
         torch.randn(2, 8, dtype=torch.float32),
@@ -76,7 +76,7 @@ def test_xtr_retrieve_e2e_with_scann() -> None:
 def test_xtr_retrieve_single_query_2d_input() -> None:
     """A single query passed as a 2D tensor (num_tokens, dim) should be
     treated as one query, not num_tokens queries."""
-    retriever = retrieve.XTR(index=_build_tiny_scann_index(), verbose=False)
+    retriever = retrieve.XTR(index=_build_tiny_scann_index())
     single_query = torch.randn(4, 8, dtype=torch.float32)  # 2D, not wrapped in list
 
     results = retriever.retrieve(

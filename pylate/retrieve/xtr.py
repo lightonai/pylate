@@ -3,7 +3,6 @@ from __future__ import annotations
 import numpy as np
 import torch
 
-from ..indexes.base import Base as BaseIndex
 from ..rank import RerankResult, score_xtr
 from .base import BaseRetriever
 
@@ -20,8 +19,6 @@ class XTR(BaseRetriever):
     ----------
     index
         The index to use for retrieval.
-    verbose
-        Show a progress bar during retrieval.
 
     Examples
     --------
@@ -90,13 +87,6 @@ class XTR(BaseRetriever):
     default_k_token = 10_000
     default_batch_size = 1
     progress_desc = "Retrieving documents (XTR)"
-
-    def __init__(self, index: BaseIndex, verbose: bool = False) -> None:
-        super().__init__(index=index)
-        self.verbose = verbose
-
-    def _show_progress(self) -> bool:
-        return self.verbose
 
     def _validate_subset_token_path(
         self, subset: list[list[str]] | list[str] | None
