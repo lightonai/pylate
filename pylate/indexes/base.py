@@ -1,17 +1,18 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import ClassVar
 
 
 class Base(ABC):
     """Base class for all indexes. Indexes are used to store and retrieve embeddings."""
 
-    # True for indexes whose ``__call__`` returns final ranked results
-    # (PLAID-style end-to-end). False for token-level indexes whose
-    # ``__call__`` returns per-token neighbours and still need a separate
-    # scoring/reranking step.
-    is_end_to_end_index: ClassVar[bool] = False
+    @property
+    @abstractmethod
+    def is_end_to_end_index(self) -> bool:
+        """True for indexes whose ``__call__`` returns final ranked results
+        (PLAID-style end-to-end). False for token-level indexes whose
+        ``__call__`` returns per-token neighbours and still need a separate
+        scoring/reranking step."""
 
     @abstractmethod
     def __init__(

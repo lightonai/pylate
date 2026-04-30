@@ -90,6 +90,8 @@ class Voyager(Base):
 
     """
 
+    is_end_to_end_index = False
+
     def __init__(
         self,
         index_folder: str = "indexes",
