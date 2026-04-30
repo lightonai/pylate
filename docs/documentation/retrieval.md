@@ -247,6 +247,40 @@ index = indexes.PLAID(
 ```
 
 
+## XTR Retrieval
+
+PyLate's token-index retrievers (e.g. `retrieve.ColBERT` on a `ScaNN` or `Voyager` index) all share the same first stage: for each query token, the index returns its top-`k_token` document tokens with similarity scores. What differs is the **scoring step that turns those hits into a per-document score**. `retrieve.ColBERT` pools the candidate documents from the hits, fetches their cached embeddings from the index, and re-scores them with the full MaxSim. [XTR](https://arxiv.org/abs/2304.01982) (conteXtual Token Retrieval) instead **scores documents directly from the per-token-hit scores** themselves — for each query token, a document gets credit for the maximum score it received in that token's top-`k_token` list, summed across query tokens, with the **minimum retrieved score** imputed for query tokens that didn't surface any of its tokens (matching the original XTR paper).
+
+Swapping `retrieve.ColBERT` for `retrieve.XTR` on the same token index gives you XTR-style scoring with no re-embedding step, no full MaxSim rerank, and no need for the index to keep the original document embeddings around in `ScaNN`. Due to the coarser approximation of the scores, XTR extends its default token retrieval parameter `k_token` to `10_000`, greater than ColBERT's `100`:
+
+```python
+from pylate import indexes, retrieve
+
+index = indexes.ScaNN(
+    index_folder="pylate-xtr-index",
+    index_name="my_documents",
+    override=True,
+    store_embeddings=False,  # XTR does not need cached document embeddings, ColBERT does.
+)
+
+# Encode and add documents to the index...
+
+retriever = retrieve.XTR(index=index)
+
+# Encode queries...
+
+results = retriever.retrieve(
+    queries_embeddings=queries_embeddings,
+    k=100,
+    k_token=10_000,
+)
+
+print(results)
+```
+
+???+ info "`store_embeddings=False`"
+    Because XTR scores documents straight from the index hits, the original document embeddings are never read again at retrieval time. Setting `store_embeddings=False` keeps the on-disk index much smaller — no need for `ScaNN` tostore the original document embeddings.
+
 ## Reranking
 
 To perform reranking on top of your first-stage retrieval pipeline without building an index, you can simply use `rank.rerank` function which takes the queries and documents embeddings along with the documents ids to rerank them:
