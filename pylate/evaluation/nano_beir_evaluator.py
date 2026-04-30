@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from typing import Literal
 
-from sentence_transformers.evaluation.NanoBEIREvaluator import (
+from sentence_transformers.sentence_transformer.evaluation.nano_beir import (
     NanoBEIREvaluator as NanoBEIREvaluatorST,
 )
 from sentence_transformers.util import is_datasets_available

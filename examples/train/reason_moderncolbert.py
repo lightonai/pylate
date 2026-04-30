@@ -91,7 +91,7 @@ def main():
         args=args,
         train_dataset=train_dataset,
         loss=train_loss,
-        data_collator=utils.ColBERTCollator(model.tokenize),
+        data_collator=utils.ColBERTCollator(model.preprocess),
     )
 
     trainer.train()
