@@ -4,7 +4,6 @@ import copy
 import json
 import logging
 import math
-import os
 import string
 import warnings
 from collections import OrderedDict
@@ -502,7 +501,9 @@ class ColBERT(SentenceTransformer):
                 return True
             # list of dicts or tuples of strings are text inputs
             if isinstance(first, (dict, tuple)):
-                return isinstance(first, tuple) and all(isinstance(s, str) for s in first)
+                return isinstance(first, tuple) and all(
+                    isinstance(s, str) for s in first
+                )
         return False
 
     @deprecated_kwargs(sentences="inputs")
@@ -1096,6 +1097,8 @@ class ColBERT(SentenceTransformer):
             Task identifier (for compatibility with Router-based models). Defaults to None.
         texts
             Deprecated alias for `inputs`. Use `inputs` instead.
+        **kwargs
+            Additional keyword arguments (ignored, kept for API compatibility).
 
         Returns
         -------
@@ -1242,7 +1245,10 @@ class ColBERT(SentenceTransformer):
             self.query_length = model_config["query_length"]
         if "document_length" in model_config and self.document_length is None:
             self.document_length = model_config["document_length"]
-        if "attend_to_expansion_tokens" in model_config and self.attend_to_expansion_tokens is None:
+        if (
+            "attend_to_expansion_tokens" in model_config
+            and self.attend_to_expansion_tokens is None
+        ):
             self.attend_to_expansion_tokens = model_config["attend_to_expansion_tokens"]
         if "skiplist_words" in model_config and self.skiplist_words is None:
             self.skiplist_words = model_config["skiplist_words"]

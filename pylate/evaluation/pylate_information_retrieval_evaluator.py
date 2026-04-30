@@ -8,7 +8,9 @@ from contextlib import nullcontext
 from typing import TYPE_CHECKING
 
 import torch
-from sentence_transformers.sentence_transformer.evaluation import InformationRetrievalEvaluator
+from sentence_transformers.sentence_transformer.evaluation import (
+    InformationRetrievalEvaluator,
+)
 from torch import Tensor
 from tqdm import trange
 

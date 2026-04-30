@@ -6,13 +6,11 @@ using a Vision-Language Model (VLM) as the backbone.
 
 from __future__ import annotations
 
-from datasets import load_dataset
 from sentence_transformers import (
-    SentenceTransformerTrainer,
     SentenceTransformerTrainingArguments,
 )
 
-from pylate import losses, models, utils
+from pylate import losses, models
 
 # Define the base VLM model
 model_name = "Qwen/Qwen2-VL-2B-Instruct"  # Replace with your VLM of choice
