@@ -9,10 +9,10 @@ from typing import TYPE_CHECKING, Any, Literal
 
 import torch
 import transformers
+from sentence_transformers import __version__ as sentence_transformers_version
 from sentence_transformers.sentence_transformer.model_card import (
     SentenceTransformerModelCardData,
 )
-from sentence_transformers import __version__ as sentence_transformers_version
 from sentence_transformers.util import (
     is_accelerate_available,
     is_datasets_available,
@@ -27,7 +27,9 @@ logger = logging.getLogger(__name__)
 if TYPE_CHECKING:
     from sentence_transformers.base.evaluation import SentenceEvaluator
     from sentence_transformers.sentence_transformer.model import SentenceTransformer
-    from sentence_transformers.sentence_transformer.trainer import SentenceTransformerTrainer
+    from sentence_transformers.sentence_transformer.trainer import (
+        SentenceTransformerTrainer,
+    )
 
 
 IGNORED_FIELDS = ["model", "trainer", "eval_results_dict"]
@@ -245,9 +247,7 @@ class PylateModelCardData(SentenceTransformerModelCardData):
         # Add some additional metadata stored in the model itself
         super_dict["document_length"] = self.model.document_length
         super_dict["query_length"] = self.model.query_length
-        super_dict["output_dimensionality"] = (
-            self.model.get_embedding_dimension()
-        )
+        super_dict["output_dimensionality"] = self.model.get_embedding_dimension()
         super_dict["model_string"] = str(self.model)
 
         if self.model.similarity_fn_name:

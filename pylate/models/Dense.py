@@ -210,7 +210,9 @@ class Dense(DenseSentenceTransformer):
         config["activation_function"] = fullname(self.activation_function)
         return config
 
-    def save(self, output_path: str, *args, safe_serialization: bool = True, **kwargs) -> None:
+    def save(
+        self, output_path: str, *args, safe_serialization: bool = True, **kwargs
+    ) -> None:
         self.save_config(output_path)
         self.save_torch_weights(output_path, safe_serialization=safe_serialization)
 
@@ -237,7 +239,9 @@ class Dense(DenseSentenceTransformer):
         config = cls.load_config(model_name_or_path=model_name_or_path, **hub_kwargs)
         if "activation_function" in config:
             if trust_remote_code or config["activation_function"].startswith("torch."):
-                config["activation_function"] = import_from_string(config["activation_function"])()
+                config["activation_function"] = import_from_string(
+                    config["activation_function"]
+                )()
             else:
                 logger.warning(
                     f"Activation function path '{config['activation_function']}' is not trusted, "
@@ -247,5 +251,7 @@ class Dense(DenseSentenceTransformer):
                 )
                 del config["activation_function"]
         model = cls(**config)
-        model = cls.load_torch_weights(model_name_or_path=model_name_or_path, model=model, **hub_kwargs)
+        model = cls.load_torch_weights(
+            model_name_or_path=model_name_or_path, model=model, **hub_kwargs
+        )
         return model

@@ -106,7 +106,9 @@ class ColBERTCollator(BaseDataCollator):
         elif tokenize_fn is not None:
             actual_fn = tokenize_fn
         else:
-            raise ValueError("Either `preprocess_fn` or `tokenize_fn` must be provided.")
+            raise ValueError(
+                "Either `preprocess_fn` or `tokenize_fn` must be provided."
+            )
 
         if valid_label_columns is None:
             valid_label_columns = ["label", "scores"]
@@ -185,7 +187,9 @@ class ColBERTCollator(BaseDataCollator):
                 texts = [prompt + text for text in texts]
 
             is_query = "query" in column_name or "anchor" in column_name
-            tokenized = self.preprocess_fn(texts, is_query=is_query, pad=True, task=task)
+            tokenized = self.preprocess_fn(
+                texts, is_query=is_query, pad=True, task=task
+            )
 
             for key, value in tokenized.items():
                 batch[f"{column_name}_{key}"] = value
