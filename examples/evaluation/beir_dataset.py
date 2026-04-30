@@ -1,4 +1,11 @@
-"""Evaluation script for BEIR datasets with a PLAID index."""
+"""Evaluation script for BEIR datasets.
+
+Supported `(--retriever, --index)` combinations:
+- `colbert, plaid` — ColBERT MaxSim with the end-to-end PLAID pipeline.
+- `colbert, scann` — token-level ScaNN hits, MaxSim rerank against cached embeddings.
+- `xtr, scann` — token-level ScaNN hits, XTR scoring (sum + min-imputation).
+
+"""
 
 from __future__ import annotations
 
@@ -44,7 +51,23 @@ if __name__ == "__main__":
         default="nfcorpus",
         help="Name of the dataset to evaluate on (default: 'fiqa')",
     )
+    parser.add_argument(
+        "--retriever",
+        choices=["colbert", "xtr"],
+        default="colbert",
+        help="Retriever to use (default: 'colbert')",
+    )
+    parser.add_argument(
+        "--index",
+        choices=["plaid", "scann"],
+        default="plaid",
+        help="Index to use (default: 'plaid')",
+    )
     args = parser.parse_args()
+
+    if args.retriever == "xtr" and args.index == "plaid":
+        raise ValueError("XTR + PLAID is not supported. Please use `--index scann` or `--retriever colbert` instead.")
+
     dataset_name = args.dataset_name
     model_name = "lightonai/GTE-ModernColBERT-v1"
     model = models.ColBERT(
@@ -72,12 +95,26 @@ if __name__ == "__main__":
             split="dev" if "msmarco" in dataset_name else "test",
         )
 
-    index = indexes.PLAID(
-        override=True,
-        index_name=f"{dataset_name}_{model_name.split('/')[-1]}",
-    )
+    if args.index == "plaid":
+        index = indexes.PLAID(
+            override=True,
+            index_name=f"{dataset_name}_{model_name.split('/')[-1]}",
+        )
+    elif args.index == "scann":
+        index = indexes.ScaNN(
+            override=True,
+            index_name=f"{dataset_name}_{model_name.split('/')[-1]}",
+            store_embeddings=(args.retriever == "colbert"),
+        )
+    else:
+        raise ValueError(f"Invalid index: {args.index}. Please use `--index plaid` or `--index scann` instead.")
 
-    retriever = retrieve.ColBERT(index=index)
+    if args.retriever == "colbert":
+        retriever = retrieve.ColBERT(index=index)
+    elif args.retriever == "xtr":
+        retriever = retrieve.XTR(index=index)
+    else:
+        raise ValueError(f"Invalid retriever: {args.retriever}. Please use `--retriever colbert` or `--retriever xtr` instead.")
 
     documents_embeddings = model.encode(
         sentences=[document["text"] for document in documents],
@@ -97,7 +134,7 @@ if __name__ == "__main__":
         batch_size=32,
     )
 
-    scores = retriever.retrieve(queries_embeddings=queries_embeddings, k=20)
+    scores = retriever.retrieve(queries_embeddings=queries_embeddings, k=100)
 
     # Remove query_id from scores, needed for FiQA dataset
     for (query_id, query), query_scores in zip(queries.items(), scores):
@@ -110,7 +147,6 @@ if __name__ == "__main__":
         scores=scores,
         qrels=qrels,
         queries=list(queries.keys()),
-        # queries=queries,
         metrics=["map", "ndcg@10", "ndcg@100", "recall@10", "recall@100"],
     )
 
