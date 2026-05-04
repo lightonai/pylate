@@ -92,14 +92,14 @@ trainer.train()
 
 ???+ tip
     Please note that temperature parameter has a [very high importance in contrastive learning](https://openaccess.thecvf.com/content/CVPR2021/papers/Wang_Understanding_the_Behaviour_of_Contrastive_Loss_CVPR_2021_paper.pdf). A low temperature allows to focus more on the hardest elements in the batch, creating more discriminative representations but is more sensible to false negative. A temperature around 0.02 is often used in the literature:
-    `python     train_loss = losses.Contrastive(model=model, temperature=0.02)`     
+    `python     train_loss = losses.Contrastive(model=model, temperature=0.02)`
 
 ???+ tip
     As contrastive learning is not compatible with gradient accumulation, you can leverage [GradCache](https://arxiv.org/abs/2101.06983) to emulate bigger batch sizes without requiring more memory by using the `CachedContrastiveLoss` to define a mini_batch_size while increasing the `per_device_train_batch_size`:
-    `python     train_loss = losses.CachedContrastive(             model=model, mini_batch_size=mini_batch_size     )`     
+    `python     train_loss = losses.CachedContrastive(             model=model, mini_batch_size=mini_batch_size     )`
 ???+ tip
     Finally, if you are in a multi-GPU setting, you can gather all the elements from the different GPUs to create even bigger batch sizes by setting `gather_across_devices` to `True` (for both `Contrastive` and `CachedContrastive` losses):
-    `python     train_loss = losses.Contrastive(model=model, gather_across_devices=True)`     
+    `python     train_loss = losses.Contrastive(model=model, gather_across_devices=True)`
 
 ???+ tip
     Please note that for multi-GPU training, running `python training.py` **will use Data Parallel (DP) by default**. We strongly suggest using using Distributed Data Parallelism (DDP) using accelerate or torchrun: `accelerate launch --num_processes num_gpu training.py`.
@@ -232,7 +232,7 @@ The rest of the training script (dataset, `SentenceTransformerTrainer`, `ColBERT
 
 ### Knowledge-Distillation XTR
 
-XTR's knowledge distillation score function slots in to replace ColBERT's in the same way as in the contrastive setting. 
+XTR's knowledge distillation score function slots in to replace ColBERT's in the same way as in the contrastive setting.
 
 ```python
 from pylate import losses, models, scores
@@ -340,4 +340,3 @@ PyLate is built on top of SentenceTransformer, so you can use the same arguments
 | callbacks   | `List[transformers.TrainerCallback]`, *optional*                                                  | A list of callbacks to customize the training loop. Adds to the list of default callbacks. To remove a default callback, use the `Trainer.remove_callback` method.                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | optimizers  | `Tuple[torch.optim.Optimizer, torch.optim.lr_scheduler.LambdaLR]`, *optional*, defaults to `(None, None)` | A tuple containing the optimizer and scheduler to use. Defaults to an instance of `torch.optim.AdamW` for the model and a scheduler given by `transformers.get_linear_schedule_with_warmup`, controlled by `args`.                                                                                                                                                                                                                                                                                                                                                                      |
 ```
-

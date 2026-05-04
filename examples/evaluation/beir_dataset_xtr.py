@@ -1,4 +1,7 @@
-"""Evaluation script for BEIR datasets with a PLAID index."""
+"""Evaluation script for BEIR datasets using XTR retrieval over a ScaNN index.
+
+For the ColBERT + PLAID pipeline, see `beir_dataset.py`.
+"""
 
 from __future__ import annotations
 
@@ -45,6 +48,7 @@ if __name__ == "__main__":
         help="Name of the dataset to evaluate on (default: 'fiqa')",
     )
     args = parser.parse_args()
+
     dataset_name = args.dataset_name
     model_name = "lightonai/GTE-ModernColBERT-v1"
     model = models.ColBERT(
@@ -72,12 +76,13 @@ if __name__ == "__main__":
             split="dev" if "msmarco" in dataset_name else "test",
         )
 
-    index = indexes.PLAID(
+    index = indexes.ScaNN(
         override=True,
         index_name=f"{dataset_name}_{model_name.split('/')[-1]}",
+        store_embeddings=False,
     )
 
-    retriever = retrieve.ColBERT(index=index)
+    retriever = retrieve.XTR(index=index)
 
     documents_embeddings = model.encode(
         sentences=[document["text"] for document in documents],
