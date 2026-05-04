@@ -97,7 +97,7 @@ if __name__ == "__main__":
         batch_size=32,
     )
 
-    scores = retriever.retrieve(queries_embeddings=queries_embeddings, k=100)
+    scores = retriever.retrieve(queries_embeddings=queries_embeddings, k=20)
 
     # Remove query_id from scores, needed for FiQA dataset
     for (query_id, query), query_scores in zip(queries.items(), scores):
@@ -110,6 +110,7 @@ if __name__ == "__main__":
         scores=scores,
         qrels=qrels,
         queries=list(queries.keys()),
+        # queries=queries,
         metrics=["map", "ndcg@10", "ndcg@100", "recall@10", "recall@100"],
     )
 
