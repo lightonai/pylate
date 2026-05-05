@@ -11,6 +11,7 @@ from typing import Any, Iterable, Literal, Optional
 
 import numpy as np
 import torch
+import torch.nn.functional as F
 from numpy import ndarray
 from scipy.cluster import hierarchy
 from sentence_transformers import SentenceTransformer
@@ -1177,20 +1178,36 @@ class ColBERT(SentenceTransformer):
         prefix_id = self.query_prefix_id if is_query else self.document_prefix_id
         # The only case where prefix_id is None is when prefix was an empty string. Else it's a the id corresponding the prefix set (eventually defaulting to [D] or [Q])
         use_prefix = prefix_id is not None
-        self._first_module().max_seq_length = (
-            max_length - 1 if use_prefix else max_length
-        )
-
-        # Pad queries (if query expansion) and handle padding for documents if specified
-        tokenize_args = (
-            {"padding": "max_length"}
-            if pad or (is_query and self.do_query_expansion)
-            else {}
-        )
+        target_length = max_length - 1 if use_prefix else max_length
+        first_module = self._first_module()
+        first_module.max_seq_length = target_length
 
         # Tokenize the texts using the transformer module's preprocess
-        first_module = self._first_module()
-        tokenized_outputs = first_module.preprocess(inputs, **tokenize_args)
+        tokenized_outputs = first_module.preprocess(inputs)
+
+        # TODO: discuss if this is the best solution. ST v5.4's Transformer.preprocess no
+        # longer accepts padding kwargs (it always pads to longest-in-batch), so pad-to-
+        # max-length is done manually here. Required for query expansion (queries must
+        # reach `query_length` with [MASK] tokens; pad_token_id is set to mask_token_id
+        # at init) and for users who request `pad=True` (e.g. for the XTR-style
+        # `torch.stack` across positives/negatives in Contrastive/CachedContrastive).
+        # Alternative worth considering: pad in the loss after embedding, only up to
+        # max-seq-len in the batch — cheaper memory but moves the constraint into the
+        # loss instead of preprocess.
+        if pad or (is_query and self.do_query_expansion):
+            n = target_length - tokenized_outputs["input_ids"].size(1)
+            if n > 0:
+                pad_id = first_module.tokenizer.pad_token_id
+                tokenized_outputs["input_ids"] = F.pad(
+                    tokenized_outputs["input_ids"], (0, n), value=pad_id
+                )
+                tokenized_outputs["attention_mask"] = F.pad(
+                    tokenized_outputs["attention_mask"], (0, n), value=0
+                )
+                if "token_type_ids" in tokenized_outputs:
+                    tokenized_outputs["token_type_ids"] = F.pad(
+                        tokenized_outputs["token_type_ids"], (0, n), value=0
+                    )
 
         if use_prefix:
             # Insert prefix token and update attention mask
