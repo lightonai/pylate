@@ -491,6 +491,10 @@ class ColBERT(SentenceTransformer):
             tensors=[input_ids[:, :1], prefix_tensor, input_ids[:, 1:]], dim=1
         )
 
+    _MULTIMODAL_KEYS = frozenset(
+        {"image", "images", "pixel_values", "audio", "video"}
+    )
+
     @staticmethod
     def _is_text_input(inputs) -> bool:
         """Check whether inputs are text (strings) vs multimodal (images, etc)."""
@@ -500,11 +504,12 @@ class ColBERT(SentenceTransformer):
             first = inputs[0]
             if isinstance(first, str):
                 return True
-            # list of dicts or tuples of strings are text inputs
-            if isinstance(first, (dict, tuple)):
-                return isinstance(first, tuple) and all(
-                    isinstance(s, str) for s in first
-                )
+            if isinstance(first, tuple):
+                return all(isinstance(s, str) for s in first)
+            if isinstance(first, dict):
+                return not any(
+                    k in ColBERT._MULTIMODAL_KEYS for k in first
+                ) and all(isinstance(v, str) for v in first.values())
         return False
 
     @deprecated_kwargs(sentences="inputs")
