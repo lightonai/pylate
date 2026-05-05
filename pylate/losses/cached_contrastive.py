@@ -8,6 +8,10 @@ from typing import Callable, Iterable, Optional
 import torch
 import torch.nn.functional as F
 import tqdm
+from sentence_transformers.sentence_transformer.losses.cached_multiple_negatives_ranking import (
+    _create_minibatch,
+    _get_batch_size,
+)
 from torch import Tensor, nn
 from torch.utils.checkpoint import get_device_states, set_device_states
 
@@ -134,6 +138,9 @@ class CachedContrastive(nn.Module):
     >>> assert isinstance(loss.item(), float)
     """
 
+    # Enables per-sample media counting in Transformer.preprocess for VLM minibatching
+    requires_media_counts = True
+
     def __init__(
         self,
         model: ColBERT,
@@ -181,14 +188,18 @@ class CachedContrastive(nn.Module):
         """
         grad_context = nullcontext if with_grad else torch.no_grad
         random_state_context = nullcontext() if random_state is None else random_state
-        sentence_feature_minibatch = {
-            k: v[begin:end] for k, v in sentence_feature.items()
-        }
+        sentence_feature_minibatch = _create_minibatch(sentence_feature, begin, end)
         with random_state_context:
             with grad_context():
                 # If we need a new random-state copy, create it
                 random_state = (
-                    RandContext(*sentence_feature_minibatch.values())
+                    RandContext(
+                        *(
+                            v
+                            for v in sentence_feature_minibatch.values()
+                            if isinstance(v, torch.Tensor)
+                        )
+                    )
                     if copy_random_state
                     else None
                 )
@@ -208,7 +219,7 @@ class CachedContrastive(nn.Module):
         """Yields chunks of embeddings (and corresponding RandContext) for the given
         sentence_feature, respecting the mini_batch_size limit.
         """
-        bsz = next(iter(sentence_feature.values())).size(0)
+        bsz = _get_batch_size(sentence_feature)
         for i, b in enumerate(
             tqdm.trange(
                 0,
