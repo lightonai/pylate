@@ -470,6 +470,17 @@ class ColBERT(SentenceTransformer):
         if not self.do_query_expansion:
             self.attend_to_expansion_tokens = False
 
+        # TODO: verify — capture the construction-time tokenizer cap so multimodal
+        # preprocess can restore it (see `_preprocess_multimodal`). Mirrors what
+        # colpali_engine does: image processing leaves `model_max_length` alone
+        # and relies on `max_pixels` / `max_num_visual_tokens` to bound the
+        # visual block. The text path here mutates `first_module.max_seq_length`
+        # per call (to `query_length` / `document_length`), which would otherwise
+        # leak into a subsequent multimodal call and truncate the expanded
+        # `<|image_pad|>` block below the visual budget.
+        first_module = self._first_module()
+        self._multimodal_max_seq_length = getattr(first_module, "max_seq_length", None)
+
     @staticmethod
     def load(input_path) -> "ColBERT":
         return ColBERT(model_name_or_path=input_path)
@@ -1260,6 +1271,19 @@ class ColBERT(SentenceTransformer):
         For multimodal inputs, we skip prefix token insertion and query expansion
         since the VLM processor handles special tokens natively.
 
+        TODO: verify — restores the construction-time tokenizer cap captured in
+        ``__init__``. The text branch of ``preprocess`` mutates
+        ``first_module.max_seq_length`` to ``query_length`` /
+        ``document_length`` per call, and that propagates onto the underlying
+        tokenizer's ``model_max_length``. Without restoring here, a prior text
+        encode (e.g. a text query at ``query_length=32``) leaves the cap at 32,
+        the VLM processor's `<|image_pad|>` expansion runs *before*
+        tokenization, and the tokenizer truncates the expanded block —
+        ``processor._check_special_mm_tokens`` then raises a count mismatch.
+        ``colpali_engine`` avoids this by never touching ``model_max_length``
+        in its image/text processing paths and bounding the visual block via
+        ``max_pixels`` / ``max_num_visual_tokens`` instead.
+
         Parameters
         ----------
         inputs
@@ -1269,6 +1293,8 @@ class ColBERT(SentenceTransformer):
             or add metadata for downstream processing.
         """
         first_module = self._first_module()
+        if self._multimodal_max_seq_length is not None:
+            first_module.max_seq_length = self._multimodal_max_seq_length
         return first_module.preprocess(inputs)
 
     def save(
