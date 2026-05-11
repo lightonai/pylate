@@ -21,7 +21,6 @@ from sentence_transformers import (
 
 from pylate import losses, models
 
-
 # AgentIR's official query-side instruction prefix. Matches train.sh in the
 # AgentIR repo, where bash double-quoted "\n" is a literal backslash-n (2
 # chars), NOT a real newline. Tevatron receives that literal as-is and
@@ -34,7 +33,9 @@ INSTRUCT_PREFIX = (
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Train Agent-ModernColBERT on AgentIR-data.")
+    parser = argparse.ArgumentParser(
+        description="Train Agent-ModernColBERT on AgentIR-data."
+    )
     parser.add_argument("--learning_rate", type=float, default=3e-6)
     parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--mini_batch_size", type=int, default=8)
@@ -113,7 +114,9 @@ def load_train_dataset(data_cache_dir: str) -> Dataset:
     max_negatives = min(min_negatives, 50)
     print(f"Min negatives across dataset: {min_negatives}, using {max_negatives}")
 
-    print("Converting passages to text columns and prepending Instruct prefix to queries...")
+    print(
+        "Converting passages to text columns and prepending Instruct prefix to queries..."
+    )
     raw = raw.map(
         lambda x: _convert_negatives_to_columns(x, max_negatives),
         remove_columns=["query_id", "positive_passages", "negative_passages"],
