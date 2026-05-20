@@ -1,4 +1,12 @@
-"""Evaluation script for BEIR datasets with a PLAID index."""
+"""Evaluation script for BEIR datasets using a WARP index, paired with an
+XTR-trained model.
+
+WARP is an end-to-end multi-vector retrieval engine (like PLAID), so the
+`retrieve.XTR` wrapper short-circuits to the index's own scoring rather than
+running a separate XTR scoring pass on top of token-level hits.
+
+For the ColBERT + PLAID pipeline, see `beir_dataset.py`.
+"""
 
 from __future__ import annotations
 
@@ -45,8 +53,9 @@ if __name__ == "__main__":
         help="Name of the dataset to evaluate on (default: 'fiqa')",
     )
     args = parser.parse_args()
+
     dataset_name = args.dataset_name
-    model_name = "lightonai/GTE-ModernColBERT-v1"
+    model_name = "robro612/ModernBERT-XTR"
     model = models.ColBERT(
         model_name_or_path=model_name,
         document_length=300,
@@ -72,12 +81,12 @@ if __name__ == "__main__":
             split="dev" if "msmarco" in dataset_name else "test",
         )
 
-    index = indexes.PLAID(
+    index = indexes.WARP(
         override=True,
         index_name=f"{dataset_name}_{model_name.split('/')[-1]}",
     )
 
-    retriever = retrieve.ColBERT(index=index)
+    retriever = retrieve.XTR(index=index)
 
     documents_embeddings = model.encode(
         sentences=[document["text"] for document in documents],

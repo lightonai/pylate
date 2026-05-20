@@ -409,6 +409,8 @@ Sample Output:
 ]
 ```
 
+Also note that a [WARP](https://github.com/pau-mensa/xtr-warp-rs) backend is also available via `indexes.WARP` (install with `pip install "pylate[warp]"`). WARP is an index to be used with [XTR-trained models](https://lightonai.github.io/pylate/documentation/training/#xtr-training) and might not work well with every model. It uses approximations that make retrieval faster and cheaper but can degrade performance on models that were not trained for them; see the [retrieval documentation](https://lightonai.github.io/pylate/documentation/retrieval/#xtr-retrieval) for the model compatibility notes and a concrete example.
+
 &nbsp;
 
 ## Reranking

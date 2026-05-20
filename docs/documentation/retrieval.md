@@ -246,6 +246,131 @@ index = indexes.PLAID(
 )
 ```
 
+---
+
+## XTR Retrieval
+
+[XTR](https://arxiv.org/abs/2304.01982) (conteXtual Token Retrieval, Lee et al. NeurIPS 2023) is a multi-vector retrieval approach that changes both how the model is trained and how documents are scored. PyLate exposes XTR retrieval through the **WARP** backend, which packages it as a fast end-to-end IVF index via the [`xtr-warp-rs`](https://github.com/pau-mensa/xtr-warp-rs) Rust engine ([Jha et al., SIGIR 2025](https://arxiv.org/abs/2501.17788)). For best results, pair WARP with a model trained on the XTR objective via `pylate.scores.XTRScores`. See [XTR Training](training.md#xtr-training) for the training side.
+
+### How XTR scoring works
+
+The classic ColBERT scoring step pools the candidate documents returned by a first-stage index, fetches their full embeddings, and re-scores them with the full MaxSim. [XTR](https://arxiv.org/abs/2605.00646) instead **scores documents directly from the per-token-hit scores** themselves: for each query token, a document gets credit for the maximum score it received in that token's top-`k_token` list, summed across query tokens, with the **minimum retrieved score** imputed for query tokens that did not surface any of its tokens (matching the original XTR paper). In PyLate, you can select between using ColBERT (full MaxSim scoring) or XTR (min score imputation) simply by using `retrieve.ColBERT` or `retrieve.XTR`.
+
+WARP implements this scoring natively, with aggressive IVF-based approximations on top.
+
+### WARP (end-to-end)
+
+WARP is the equivalent of PLAID for XTR retrieval, and `xtr-warp-rs` is an implementation of WARP based on FastPLAID. It is faster than FastPLAID because it uses more approximations. Latency and memory footprint at retrieval time go down, and retrieval quality stays competitive on standard IR benchmarks. Use WARP when search latency or RAM is your bottleneck.
+
+#### Model compatibility
+
+Unlike PLAID, WARP does not work equally well with every multi-vector model: its centroid-pruning approximations rely on a relatively flat token-score distribution, which standard ColBERT training does not always produce. When the model fits, WARP is both fast and accurate; when it does not, recall can drop noticeably.
+
+[Jha et al. (2026)](https://arxiv.org/abs/2605.00646) show that training with the [XTR](https://arxiv.org/abs/2304.01982) objective flattens the score distribution and recovers the model's retrieval quality on IVF-based engines, WARP included. PyLate supports XTR training natively as a drop-in replacement for ColBERT's score function. See [XTR Training](training.md#xtr-training) for how to wire `scores.XTRScores` (or `scores.XTRKDScores` for distillation) into your loss.
+
+In practice, you should benchmark both PLAID and WARP on your own data with your own model and pick whichever gives you the best speed/recall trade-off for your use case.
+
+#### Installation
+
+WARP is an optional dependency; install it explicitly:
+
+```bash
+pip install "pylate[warp]"
+```
+
+Wheels are torch-version-suffixed (`xtr-warp-rs == 2.0.2.290` ships against torch 2.9.0, `2.0.2.280` against 2.8.0, etc.). The pylate extra resolves to the build that matches your installed torch.
+
+#### Indexing and retrieval
+
+The API mirrors `indexes.PLAID`. The `add_documents` / `__call__` contract is the same, so the only line that changes from a PLAID setup is the index constructor:
+
+```python
+from pylate import indexes, models, retrieve
+
+documents_ids = ["doc_001", "doc_002", "doc_003"]
+documents = [
+    "ColBERT computes a contextualized embedding for each token of the query and document, then performs a fast late interaction between them.",
+    "PLAID compresses ColBERT token vectors via product quantization to deliver sub-200 ms latency on large corpora.",
+    "WARP is a multi-vector retrieval engine that prunes the centroid space per token and uses an error-aware merge to cut per-query work.",
+]
+
+# 1. Load an XTR-trained model. WARP works with any ColBERT model, but
+#    XTR-trained checkpoints recover the recall WARP would otherwise lose
+#    on its centroid-pruning approximations (see "Model compatibility" above).
+model = models.ColBERT(model_name_or_path="robro612/ModernBERT-XTR")
+
+# 2. Initialize the WARP index
+index = indexes.WARP(
+    index_folder="pylate-warp-index",
+    index_name="my_documents",
+    override=True,
+)
+
+# 3. Encode and add documents
+documents_embeddings = model.encode(
+    documents,
+    batch_size=32,
+    is_query=False,
+    show_progress_bar=True,
+)
+index.add_documents(
+    documents_ids=documents_ids,
+    documents_embeddings=documents_embeddings,
+)
+
+# 4. Retrieve. retrieve.XTR / retrieve.ColBERT are interchangeable on
+#    end-to-end indexes like WARP. Both short-circuit to the index's
+#    own scoring path. retrieve.XTR is named here to make intent explicit.
+retriever = retrieve.XTR(index=index)
+queries_embeddings = model.encode(
+    ["What is late interaction?", "How does WARP differ from PLAID?"],
+    batch_size=32,
+    is_query=True,
+)
+scores = retriever.retrieve(queries_embeddings=queries_embeddings, k=10)
+print(scores)
+```
+
+#### Tuning
+
+All search and indexing hyperparameters are flat keyword arguments on `indexes.WARP(...)`, the same constructor style as `indexes.PLAID`. `n_ivf_probe` shares its name and meaning with the PLAID parameter; the others are WARP-specific.
+
+PyLate ships with conservative defaults for the search knobs (`n_ivf_probe=32`, `t_prime=100_000`) that prioritize retrieval quality. This is slower than what the engine can do at full tilt, but avoids the situation where a user gets a low nDCG number on a fresh install and assumes either WARP or their model is broken.
+
+##### Search-time parameters
+
+| Parameter | Default | Higher value | Lower value | When to change |
+|---|---|---|---|---|
+| `n_ivf_probe` | `32` | More inverted-list probes per token → higher recall, slower | Fewer probes → faster, lower recall | Drop to `None` (auto-tune) for the fastest preset; raise toward `64+` only if recall is lagging on hard queries |
+| `t_prime` | `100_000` | Larger candidate pool before scoring → higher recall, slower | Smaller pool → faster, lower recall | Same as `n_ivf_probe`. The two are usually tuned together |
+| `bound` | `None` | More centroids considered per query token → higher recall, slower | n/a | Leave on auto unless profiling shows the per-token centroid step dominates |
+| `max_candidates` | `None` | Larger final-sort window → higher recall, slower | n/a | Cap if final-sort latency is the bottleneck |
+| `centroid_score_threshold` | `None` | Stricter pruning → faster, may drop recall | Looser pruning → higher recall, slower | Tune empirically on a held-out query set |
+
+##### Going faster
+
+Setting both `n_ivf_probe` and `t_prime` back to `None` switches WARP to its full auto-tune mode, which is significantly faster (roughly 5–10× on a typical corpus) at a small recall cost (around 2–3% relative drop on standard IR benchmarks):
+
+```python
+index = indexes.WARP(
+    index_folder="pylate-warp-index",
+    index_name="my_documents",
+    n_ivf_probe=None,
+    t_prime=None,
+)
+```
+
+The auto-tuner derives the values from index density (`num_embeddings / num_partitions`), `top_k`, and the per-query token count. See the [upstream source](https://github.com/pau-mensa/xtr-warp-rs/blob/main/python/xtr_warp/hyperparams.py) for the formulas.
+
+##### Indexing parameters
+
+| Parameter | Default | Higher value | Lower value | When to change |
+|---|---|---|---|---|
+| `nbits` | `4` | More bits per code → higher precision, larger index | Fewer bits → smaller index, lower precision | Lower (e.g. `2`) when on-disk size matters more than the last bit of recall |
+| `kmeans_niters` | `4` | Better centroid placement → marginally higher recall, slower index build | Faster build, slightly worse centroids | Raise for production indexes that you build once and serve for a long time |
+| `max_points_per_centroid` | `256` | Larger / less-balanced clusters | Smaller / more-balanced clusters, slower build | Rarely needed; touches K-means cluster size |
+
+`min_outliers` and `max_growth_rate` only matter for incremental `add_documents` calls on an already-built index; they control when WARP grows its centroid codebook to absorb out-of-distribution embeddings. Defaults are fine for most workloads.
 
 ## Reranking
 
