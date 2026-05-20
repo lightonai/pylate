@@ -49,9 +49,16 @@ class PLAID(Base):
         The number of samples to use for K-means clustering.
         If None, it defaults to a value based on the number of documents.
         This parameter can be adjusted to balance between speed, memory usage and clustering quality.
+    seed
+        Random seed for K-means reproducibility. FastPlaid backend only.
+    use_triton
+        Whether to use triton kernels when computing kmeans using fast-plaid. Triton kernels are faster, but yields some variance due to race condition, set to false to get 100% reproducible results. If unset, will use triton kernels if possible.
     batch_size
         The internal batch size used for processing queries.
         A larger batch size might improve throughput on powerful GPUs but can consume more memory.
+    num_threads
+        Number of CPU worker processes used during search. Ignored on CUDA and
+        with the Stanford PLAID backend. If None, fast-plaid's default is used.
     show_progress
         If set to True, a progress bar will be displayed during search operations.
     device
@@ -60,8 +67,12 @@ class PLAID(Base):
         If CUDA is not available, it defaults to "cpu".
         Can be a single device string (e.g., "cuda:0" or "cpu").
         Can be a list of device strings (e.g., ["cuda:0", "cuda:1"]).
-    use_triton
-        Whether to use triton kernels when computing kmeans using fast-plaid. Triton kernels are faster, but yields some variance due to race condition, set to false to get 100% reproducible results. If unset, will use triton kernels if possible.
+    low_memory
+        If True, index tensors are kept on CPU and moved to the target device
+        only when needed, reducing VRAM usage at the cost of slower search.
+        If False (default), tensors stay on the search device for faster
+        search but higher VRAM usage. No effect when device is "cpu" or with
+        the Stanford PLAID backend. FastPlaid backend only.
     **kwargs
         Additional arguments. Stanford PLAID specific parameters (embedding_size, nranks,
         index_bsize, ndocs, centroid_score_threshold, ncells, search_batch_size) are
@@ -90,8 +101,6 @@ class PLAID(Base):
     ...    documents_ids=range(len(documents_embeddings)),
     ...    documents_embeddings=documents_embeddings
     ... )
-    Computing centroids of embeddings.
-    Creating FastPlaid index.
 
     >>> queries_embeddings = model.encode(
     ...     ["search query", "hello world"],
@@ -126,13 +135,16 @@ class PLAID(Base):
         nbits: int = 4,
         kmeans_niters: int = 4,
         max_points_per_centroid: int = 256,
+        n_samples_kmeans: int | None = None,
+        seed: int = 42,
+        use_triton: bool | None = None,
         n_ivf_probe: int = 8,
         n_full_scores: int = 8192,
-        n_samples_kmeans: int | None = None,
         batch_size: int = 1 << 18,
+        num_threads: int | None = None,
         show_progress: bool = True,
         device: str | list[str] | None = None,
-        use_triton: bool | None = None,
+        low_memory: bool = False,
         **kwargs,
     ) -> None:
         self.use_fast = use_fast
@@ -174,13 +186,16 @@ class PLAID(Base):
                 nbits=nbits,
                 kmeans_niters=kmeans_niters,
                 max_points_per_centroid=max_points_per_centroid,
+                n_samples_kmeans=n_samples_kmeans,
+                seed=seed,
+                use_triton=use_triton,
                 n_ivf_probe=n_ivf_probe,
                 n_full_scores=n_full_scores,
-                n_samples_kmeans=n_samples_kmeans,
                 batch_size=batch_size,
+                num_threads=num_threads,
                 show_progress=show_progress,
                 device=device,
-                use_triton=use_triton,
+                low_memory=low_memory,
             )
         else:
             logging.info("📚 Index with Stanford backend.")
@@ -234,6 +249,33 @@ class PLAID(Base):
             The document IDs to remove.
         """
         self._index.remove_documents(documents_ids)
+        return self
+
+    def update_documents(
+        self,
+        documents_ids: list[str],
+        documents_embeddings: list[np.ndarray | torch.Tensor],
+    ) -> "PLAID":
+        """Update document embeddings for the given document IDs.
+
+        Only supported with the FastPlaid backend (``use_fast=True``).
+
+        Parameters
+        ----------
+        documents_ids
+            The document IDs to update.
+        documents_embeddings
+            The new embeddings for each document.
+        """
+        if not self.use_fast:
+            raise NotImplementedError(
+                "update_documents is only supported with the FastPlaid backend. "
+                "Set use_fast=True to use it."
+            )
+        self._index.update_documents(
+            documents_ids=documents_ids,
+            documents_embeddings=documents_embeddings,
+        )
         return self
 
     def __call__(

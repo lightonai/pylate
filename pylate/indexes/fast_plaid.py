@@ -48,9 +48,16 @@ class FastPlaid(Base):
         The number of samples to use for K-means clustering.
         If None, it defaults to a value based on the number of documents.
         This parameter can be adjusted to balance between speed, memory usage and clustering quality.
+    seed
+        Random seed for K-means reproducibility.
+    use_triton
+        Whether to use triton kernels when computing kmeans using fast-plaid. Triton kernels are faster, but yields some variance due to race condition, set to false to get 100% reproducible results. If unset, will use triton kernels if possible.
     batch_size
         The internal batch size used for processing queries.
         A larger batch size might improve throughput on powerful GPUs but can consume more memory.
+    num_threads
+        Number of CPU worker processes used during search. Ignored on CUDA.
+        If None, fast-plaid's default is used.
     show_progress
         If set to True, a progress bar will be displayed during search operations.
     device
@@ -59,8 +66,10 @@ class FastPlaid(Base):
         If CUDA is not available, it defaults to "cpu".
         Can be a single device string (e.g., "cuda:0" or "cpu").
         Can be a list of device strings (e.g., ["cuda:0", "cuda:1"]).
-    use_triton
-        Whether to use triton kernels when computing kmeans using fast-plaid. Triton kernels are faster, but yields some variance due to race condition, set to false to get 100% reproducible results. If unset, will use triton kernels if possible.
+    low_memory
+        If True, index tensors are kept on CPU and moved to the target device only when needed,
+        reducing VRAM usage at the cost of slower search. If False (default), tensors stay on GPU
+        for faster search but higher VRAM usage. No effect when device is "cpu".
 
     """
 
@@ -74,26 +83,36 @@ class FastPlaid(Base):
         nbits: int = 4,
         kmeans_niters: int = 4,
         max_points_per_centroid: int = 256,
+        n_samples_kmeans: int | None = None,
+        seed: int = 42,
+        use_triton: bool | None = None,
         n_ivf_probe: int = 8,
         n_full_scores: int = 8192,
-        n_samples_kmeans: int | None = None,
         batch_size: int = 1 << 18,
+        num_threads: int | None = None,
         show_progress: bool = True,
         device: str | list[str] | None = None,
-        use_triton: bool | None = None,
+        low_memory: bool = False,
     ) -> None:
         self.index_folder = index_folder
         self.index_name = index_name
+
+        # Indexing hyperparameters
         self.nbits = nbits
         self.kmeans_niters = kmeans_niters
         self.max_points_per_centroid = max_points_per_centroid
+        self.n_samples_kmeans = n_samples_kmeans
+        self.seed = seed
+        self.use_triton = use_triton
+
+        # Search hyperparameters
         self.n_ivf_probe = n_ivf_probe
         self.n_full_scores = n_full_scores
-        self.n_samples_kmeans = n_samples_kmeans
         self.batch_size = batch_size
+        self.num_threads = num_threads
+
         self.show_progress = show_progress
         self.device = device
-        self.use_triton = use_triton
 
         # Create the index directory structure
         self.index_path = os.path.join(index_folder, index_name)
@@ -117,7 +136,7 @@ class FastPlaid(Base):
 
         # Initialize or load the fast-plaid index
         self.fast_plaid = search.FastPlaid(
-            index=self.fast_plaid_index_path, device=device
+            index=self.fast_plaid_index_path, device=device, low_memory=low_memory
         )
         # Check if index already exists
         self.is_indexed = os.path.exists(self.documents_ids_to_plaid_ids_path)
@@ -177,6 +196,7 @@ class FastPlaid(Base):
                 max_points_per_centroid=self.max_points_per_centroid,
                 nbits=self.nbits,
                 n_samples_kmeans=self.n_samples_kmeans,
+                seed=self.seed,
                 use_triton_kmeans=self.use_triton,
             )
             plaid_ids = list(range(len(documents_embeddings_torch)))
@@ -187,7 +207,14 @@ class FastPlaid(Base):
                 "Adding documents to existing index. This uses fast-plaid's update method "
                 "which does not recompute centroids and may result in slightly lower accuracy."
             )
-            self.fast_plaid.update(documents_embeddings=documents_embeddings_torch)
+            self.fast_plaid.update(
+                documents_embeddings=documents_embeddings_torch,
+                kmeans_niters=self.kmeans_niters,
+                max_points_per_centroid=self.max_points_per_centroid,
+                n_samples_kmeans=self.n_samples_kmeans,
+                seed=self.seed,
+                use_triton_kmeans=self.use_triton,
+            )
             # Assign new plaid IDs starting from current_max_id + 1
             plaid_ids = list(
                 range(
@@ -248,6 +275,41 @@ class FastPlaid(Base):
         )
 
         return self
+
+    def update_documents(
+        self,
+        documents_ids: list[str],
+        documents_embeddings: list[np.ndarray | torch.Tensor],
+    ) -> "FastPlaid":
+        """Update document embeddings for the given document IDs.
+
+        fast-plaid does not provide an in-place update by passage ID, so this
+        is implemented as ``remove_documents`` followed by ``add_documents``:
+        document IDs are preserved (callers can keep using the same keys),
+        but the underlying plaid IDs may change. Documents in
+        ``documents_ids`` that are not yet in the index are simply added.
+
+        Parameters
+        ----------
+        documents_ids
+            The document IDs to update.
+        documents_embeddings
+            The new embeddings for each document, in the same order as
+            ``documents_ids``.
+        """
+        if isinstance(documents_ids, str):
+            documents_ids = [documents_ids]
+        documents_ids = list(documents_ids)
+
+        existing = self._load_documents_ids_to_plaid_ids()
+        to_remove = [doc_id for doc_id in documents_ids if doc_id in existing]
+        if to_remove:
+            self.remove_documents(to_remove)
+
+        return self.add_documents(
+            documents_ids=documents_ids,
+            documents_embeddings=documents_embeddings,
+        )
 
     def __call__(
         self,
@@ -322,6 +384,7 @@ class FastPlaid(Base):
             n_full_scores=self.n_full_scores,
             show_progress=self.show_progress,
             subset=plaid_subset,
+            n_processes=self.num_threads,
         )
 
         # Convert results to expected format

@@ -44,8 +44,6 @@ class ColBERT(BaseRetriever):
     ...     documents_ids=documents_ids,
     ...     documents_embeddings=documents_embeddings,
     ... )
-    Computing centroids of embeddings.
-    Creating FastPlaid index.
 
     >>> retriever = retrieve.ColBERT(index=index)
 

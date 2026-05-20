@@ -350,6 +350,55 @@ def test_fast_plaid_reload_after_delete():
     shutil.rmtree(f"test_indexes_{random_hash}")
 
 
+def test_fast_plaid_update_documents():
+    """Test updating document embeddings while preserving document IDs."""
+    random_hash = uuid.uuid4().hex
+
+    index = indexes.PLAID(
+        index_folder=f"test_indexes_{random_hash}",
+        index_name=f"fast_plaid_{random_hash}",
+        override=True,
+        use_fast=True,
+        nbits=2,
+        kmeans_niters=1,
+    )
+
+    model = models.ColBERT(
+        model_name_or_path="lightonai/GTE-ModernColBERT-v1",
+        device="cpu",
+        model_kwargs={"attn_implementation": "eager"},
+    )
+
+    documents = [
+        "Document about apples and their nutritional benefits.",
+        "Document about bananas and their vitamin content.",
+        "Document about cherries and antioxidants.",
+    ]
+    embeddings = model.encode(documents, is_query=False)
+    index.add_documents(documents_ids=["A", "B", "C"], documents_embeddings=embeddings)
+
+    # Replace B's embedding with something about space
+    new_embedding = model.encode(
+        ["Document about rockets and space exploration."], is_query=False
+    )
+    index.update_documents(documents_ids=["B"], documents_embeddings=new_embedding)
+
+    # B should rank for a space query
+    space_query = model.encode(["rockets and space"], is_query=True)
+    matches = index(space_query, k=3)
+    returned_ids = [m["id"] for m in matches[0]]
+    assert "B" in returned_ids
+
+    # All three documents should still be present
+    fruit_query = model.encode(["fruits and nutrition"], is_query=True)
+    matches = index(fruit_query, k=10)
+    assert {m["id"] for m in matches[0]} == {"A", "B", "C"}
+
+    # Cleanup
+    del index
+    shutil.rmtree(f"test_indexes_{random_hash}")
+
+
 if __name__ == "__main__":
     # Run tests
     test_fast_plaid_delete_reindexing()
@@ -363,3 +412,5 @@ if __name__ == "__main__":
     test_fast_plaid_delete_nonexistent()
 
     test_fast_plaid_reload_after_delete()
+
+    test_fast_plaid_update_documents()
