@@ -138,7 +138,17 @@ class CachedContrastive(nn.Module):
     >>> assert isinstance(loss.item(), float)
     """
 
-    # Enables per-sample media counting in Transformer.preprocess for VLM minibatching
+    # Enables per-sample media counting in Transformer.preprocess for VLM minibatching.
+    # VLM processors (e.g. Qwen2/2.5/3-VL) return `pixel_values` flat across the batch —
+    # shape `(total_visual_tokens, hidden)` — rather than `(batch, max_patches, hidden)`,
+    # so a plain `[begin:end]` slice cannot recover per-sample tensors when this loss
+    # chunks the batch into minibatches for gradcache. Setting this flag makes the
+    # ST trainer flip `track_media_counts = True` on the multimodal Transformer, which
+    # then attaches `num_images_per_sample` / `num_videos_per_sample` alongside
+    # `pixel_values` / `image_grid_thw`. `_create_minibatch` uses those counts to slice
+    # by visual-token offsets instead of by a leading batch dim. This is PyLate/ST's
+    # equivalent of colpali_engine's `torch.split` + `pad_sequence` workaround
+    # (see `ColQwen2_5_Processor.process_images`), without the padding overhead.
     requires_media_counts = True
 
     def __init__(
