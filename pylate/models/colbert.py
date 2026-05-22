@@ -27,6 +27,7 @@ from transformers.utils import cached_file
 from ..hf_hub.model_card import PylateModelCardData
 from ..scores import SimilarityFunction
 from ..utils import _start_multi_process_pool
+from ._chat_templates import COLPALI_CHAT_TEMPLATES, COLPALI_TEMPLATE_NAME
 from .Dense import Dense
 
 logger = logging.getLogger(__name__)
@@ -249,6 +250,14 @@ class ColBERT(SentenceTransformer):
             model_card_data=model_card_data,
             backend=backend,
         )
+
+        # Wire a ColPali-faithful chat template into the multimodal preprocessor.
+        # Priority: explicit user override in processor_kwargs > template saved
+        # in `additional_chat_templates/sentence_transformers.jinja` on the
+        # checkpoint > built-in registry default for this `config.model_type` >
+        # leave the processor's existing chat_template untouched.
+        self._configure_chat_template(user_processor_kwargs=processor_kwargs)
+
         hidden_size = self[0].get_embedding_dimension()
 
         # Add a linear projection layer to the model in order to project the embeddings to the desired size.
@@ -502,9 +511,7 @@ class ColBERT(SentenceTransformer):
             tensors=[input_ids[:, :1], prefix_tensor, input_ids[:, 1:]], dim=1
         )
 
-    _MULTIMODAL_KEYS = frozenset(
-        {"image", "images", "pixel_values", "audio", "video"}
-    )
+    _MULTIMODAL_KEYS = frozenset({"image", "images", "pixel_values", "audio", "video"})
 
     @staticmethod
     def _is_text_input(inputs) -> bool:
@@ -518,9 +525,9 @@ class ColBERT(SentenceTransformer):
             if isinstance(first, tuple):
                 return all(isinstance(s, str) for s in first)
             if isinstance(first, dict):
-                return not any(
-                    k in ColBERT._MULTIMODAL_KEYS for k in first
-                ) and all(isinstance(v, str) for v in first.values())
+                return not any(k in ColBERT._MULTIMODAL_KEYS for k in first) and all(
+                    isinstance(v, str) for v in first.values()
+                )
         return False
 
     @deprecated_kwargs(sentences="inputs")
@@ -1296,6 +1303,149 @@ class ColBERT(SentenceTransformer):
         if self._multimodal_max_seq_length is not None:
             first_module.max_seq_length = self._multimodal_max_seq_length
         return first_module.preprocess(inputs)
+
+    def _configure_chat_template(
+        self,
+        user_processor_kwargs: dict | None,
+    ) -> None:
+        """Configure a ColPali-faithful chat template on the multimodal processor.
+
+        Run once at construction time, after the parent SentenceTransformer init
+        has loaded the processor. The resolution order is:
+
+        1. **User override at construction**: ``processor_kwargs["chat_template"]``
+           contains a ``chat_template`` entry. Install the user's value under
+           the ``"sentence_transformers"`` slot so ``save_pretrained`` persists
+           it to disk for downstream usage, then rewire the ST kwarg to resolve
+           through the slot. The one exception is when the user's value *is* the
+           slot name — that means "use whatever the slot already holds", so we
+           fall through to cases (2)–(4) to populate it.
+        2. **Persisted ColPali pin**: the loaded module has
+           ``processing_kwargs["chat_template"]["chat_template"] == "sentence_transformers"``
+           in ``sentence_bert_config.json``. This is exactly the shape a prior
+           ``save_pretrained`` of an installed ColBERT writes. Any *other* value
+           (raw Jinja, different named template, unrelated kwarg) is treated as
+           a non-ColPali setup and falls through to the registry — the user
+           gets ColPali-faithful preprocessing by default.
+        3. **Persisted HF processor template**: ``processor.chat_template`` is
+           already a dict containing ``"sentence_transformers"``. HF's
+           ``from_pretrained`` loaded it from
+           ``additional_chat_templates/sentence_transformers.jinja``. Covers
+           checkpoints with the HF half but no ST-side wiring.
+        4. **Registry default**: a built-in entry exists for
+           ``config.model_type``. Install it under the ``"sentence_transformers"``
+           key, preserving the model's original template as ``"default"``.
+        5. **Fallback**: leave ``processor.chat_template`` untouched.
+
+        When option 3 or 4 fires, we also set
+        ``processing_kwargs["chat_template"]["chat_template"] = "sentence_transformers"``
+        on the multimodal Transformer so every ``apply_chat_template`` call
+        resolves the named template. HF's ``processor.save_pretrained`` writes
+        named entries to ``additional_chat_templates/<name>.jinja``
+        automatically, and ST persists the kwarg via
+        ``sentence_bert_config.json``; together they make save/reload land in
+        case (2) or (3) on the next construction.
+        """
+        first_module = self._first_module()
+        processor = getattr(first_module, "processor", None)
+        if processor is None:
+            return
+
+        # (1) Honor any explicit chat_template the user passed at construction time.
+        user_chat_kwargs = (
+            (user_processor_kwargs or {}).get("chat_template")
+            if isinstance(user_processor_kwargs, dict)
+            else None
+        )
+        # If the user passed a chat_template value, install it under our named
+        # slot so ``save_pretrained`` persists it to disk for downstream usage,
+        # and rewire the ST kwarg to resolve through the slot. Skip the install
+        # only when the user's value is literally our slot name — that means
+        # "use whatever the slot holds", so we fall through to cases (2)–(4) to
+        # fill the slot from persisted state or the registry.
+        if isinstance(user_chat_kwargs, dict) and "chat_template" in user_chat_kwargs:
+            user_value = user_chat_kwargs["chat_template"]
+            if user_value != COLPALI_TEMPLATE_NAME:
+                self._install_named_template(processor, user_value)
+                self._set_chat_template_name(first_module)
+                return
+
+        # (2) Respect a chat template already persisted on the ST module — but
+        # ONLY when it's our named pin. ``sentence_bert_config.json`` round-trips
+        # ``processing_kwargs`` (``Transformer.config_keys`` includes it), and a
+        # prior ``save_pretrained`` of an installed ColBERT lands here as
+        # ``{"chat_template": "sentence_transformers"}``. Any other value (a
+        # raw Jinja string, a different named template, or an unrelated kwarg
+        # like ``add_generation_prompt``) is *not* a ColPali pin — fall through
+        # to the registry so the user gets ColPali-faithful preprocessing.
+        module_chat_kwargs = getattr(first_module, "processing_kwargs", {}).get(
+            "chat_template"
+        )
+        if (
+            isinstance(module_chat_kwargs, dict)
+            and module_chat_kwargs.get("chat_template") == COLPALI_TEMPLATE_NAME
+        ):
+            return
+
+        existing = getattr(processor, "chat_template", None)
+
+        # (3) Reuse a previously-saved sentence_transformers template on the
+        # processor itself — HF's ``from_pretrained`` loads it back from
+        # ``additional_chat_templates/sentence_transformers.jinja``. This covers
+        # checkpoints that ship the HF half but not (yet) the ST-side wiring
+        # (e.g. a single-vector ST checkpoint saved before PyLate's install ran).
+        if isinstance(existing, dict) and COLPALI_TEMPLATE_NAME in existing:
+            self._set_chat_template_name(first_module)
+            return
+
+        # (4) Register a built-in default for known ColPali backbones.
+        model_type = getattr(getattr(first_module, "model", None), "config", None)
+        model_type = getattr(model_type, "model_type", None)
+        template = COLPALI_CHAT_TEMPLATES.get(model_type) if model_type else None
+        if template is None:
+            return  # (5) leave the processor's chat_template alone
+
+        self._install_named_template(processor, template)
+        self._set_chat_template_name(first_module)
+
+    @staticmethod
+    def _install_named_template(processor, template: str) -> None:
+        """Install ``template`` under the ``sentence_transformers`` slot of
+        ``processor.chat_template``, preserving the model's original template as
+        the ``default`` key. HF's ``processor.save_pretrained`` walks this dict
+        and writes ``chat_template.jinja`` (default) plus
+        ``additional_chat_templates/sentence_transformers.jinja`` (named entry).
+        """
+        existing = getattr(processor, "chat_template", None)
+        if isinstance(existing, dict):
+            updated = dict(existing)
+            updated[COLPALI_TEMPLATE_NAME] = template
+            # Preserve whatever was already the default key; if none, materialize
+            # one so apply_chat_template(chat_template=None) still works.
+            updated.setdefault("default", existing.get("default", template))
+        elif isinstance(existing, str) and existing:
+            updated = {"default": existing, COLPALI_TEMPLATE_NAME: template}
+        else:
+            # No existing template — use ours as both default and named entry so
+            # save_pretrained writes both files.
+            updated = {"default": template, COLPALI_TEMPLATE_NAME: template}
+        processor.chat_template = updated
+
+    @staticmethod
+    def _set_chat_template_name(first_module) -> None:
+        """Point ST's ``apply_chat_template`` call at our named template.
+
+        Writes a fresh inner dict instead of mutating in place so we never
+        accidentally mutate a dict the caller still references (the user's
+        original ``processor_kwargs["chat_template"]``).
+        """
+        if not hasattr(first_module, "processing_kwargs"):
+            return
+        existing = first_module.processing_kwargs.get("chat_template", {})
+        first_module.processing_kwargs["chat_template"] = {
+            **existing,
+            "chat_template": COLPALI_TEMPLATE_NAME,
+        }
 
     def save(
         self,
