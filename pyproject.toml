@@ -114,6 +114,7 @@ binary = false
 locale = "en"
 extend-ignore-words-re = [
     "arange",
+    "thw",
 ]
 extend-ignore-re = [
     "xlm-mlm-ende-1024",
