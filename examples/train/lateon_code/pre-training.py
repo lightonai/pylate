@@ -12,7 +12,9 @@ from sentence_transformers import (
     SentenceTransformerTrainer,
     SentenceTransformerTrainingArguments,
 )
-from sentence_transformers.training_args import MultiDatasetBatchSamplers
+from sentence_transformers.sentence_transformer.training_args import (
+    MultiDatasetBatchSamplers,
+)
 
 from pylate import losses, models
 
@@ -237,7 +239,7 @@ def main():
         },
     )
     data_collator = ColBERTCollatorSampleNeg(
-        tokenize_fn=model.tokenize, num_negatives=15
+        tokenize_fn=model.preprocess, num_negatives=15
     )
     # Initialize and run trainer
     trainer = SentenceTransformerTrainer(

@@ -8,7 +8,9 @@ from contextlib import nullcontext
 from typing import TYPE_CHECKING
 
 import torch
-from sentence_transformers.evaluation import InformationRetrievalEvaluator
+from sentence_transformers.sentence_transformer.evaluation import (
+    InformationRetrievalEvaluator,
+)
 from torch import Tensor
 from tqdm import trange
 
@@ -44,7 +46,7 @@ class PyLateInformationRetrievalEvaluator(InformationRetrievalEvaluator):
         with (
             nullcontext()
             if self.truncate_dim is None
-            else model.truncate_sentence_embeddings(self.truncate_dim)
+            else model.truncate_embeddings(self.truncate_dim)
         ):
             query_embeddings = torch.nn.utils.rnn.pad_sequence(
                 model.encode(
@@ -81,7 +83,7 @@ class PyLateInformationRetrievalEvaluator(InformationRetrievalEvaluator):
                 with (
                     nullcontext()
                     if self.truncate_dim is None
-                    else corpus_model.truncate_sentence_embeddings(self.truncate_dim)
+                    else corpus_model.truncate_embeddings(self.truncate_dim)
                 ):
                     sub_corpus_embeddings = torch.nn.utils.rnn.pad_sequence(
                         corpus_model.encode(

@@ -7,7 +7,9 @@ from sentence_transformers import (
     SentenceTransformerTrainer,
     SentenceTransformerTrainingArguments,
 )
-from sentence_transformers.training_args import MultiDatasetBatchSamplers
+from sentence_transformers.sentence_transformer.training_args import (
+    MultiDatasetBatchSamplers,
+)
 
 from pylate import evaluation, losses, models, utils
 
@@ -195,7 +197,7 @@ def main():
         loss=train_loss,
         evaluator=dev_evaluator,
         data_collator=utils.ColBERTCollator(
-            tokenize_fn=model.tokenize,
+            preprocess_fn=model.preprocess,
             prompts=(
                 {"query": QUERY_PROMPT, "document": CORPUS_PROMPT}
                 if not args.no_prompts

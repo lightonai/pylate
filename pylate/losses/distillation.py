@@ -33,11 +33,11 @@ class Distillation(torch.nn.Module):
 
     >>> distillation = losses.Distillation(model=model)
 
-    >>> query = model.tokenize([
+    >>> query = model.preprocess([
     ...     "fruits are healthy.",
     ... ], is_query=True)
 
-    >>> documents = model.tokenize([
+    >>> documents = model.preprocess([
     ...     "fruits are good for health.",
     ...     "fruits are bad for health."
     ... ], is_query=False)

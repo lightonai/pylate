@@ -1,14 +1,12 @@
 from __future__ import annotations
 
-import json
 import logging
 import os
 
 import torch
 from safetensors import safe_open
-from safetensors.torch import load_model as load_safetensors_model
-from sentence_transformers.models import Dense as DenseSentenceTransformer
-from sentence_transformers.util import import_from_string
+from sentence_transformers.base.modules import Dense as DenseSentenceTransformer
+from sentence_transformers.util import fullname, import_from_string
 from torch import nn
 from transformers.utils import cached_file
 
@@ -28,6 +26,8 @@ class Dense(DenseSentenceTransformer):
         Size of the output embeddings after linear projection
     bias
         Add a bias vector
+    activation_function
+        Activation function applied after the linear layer.
     init_weight
         Initial value for the matrix of the linear layer
     init_bias
@@ -55,6 +55,16 @@ class Dense(DenseSentenceTransformer):
 
     """
 
+    config_keys: list[str] = [
+        "in_features",
+        "out_features",
+        "bias",
+        "activation_function",
+        "module_input_name",
+        "module_output_name",
+        "use_residual",
+    ]
+
     def __init__(
         self,
         in_features: int,
@@ -64,9 +74,18 @@ class Dense(DenseSentenceTransformer):
         init_weight: torch.Tensor = None,
         init_bias: torch.Tensor = None,
         use_residual: bool = False,
+        module_input_name: str = "token_embeddings",
+        module_output_name: str | None = None,
     ) -> None:
         super(Dense, self).__init__(
-            in_features, out_features, bias, activation_function, init_weight, init_bias
+            in_features,
+            out_features,
+            bias,
+            activation_function,
+            init_weight,
+            init_bias,
+            module_input_name=module_input_name,
+            module_output_name=module_output_name or module_input_name,
         )
         self.use_residual = use_residual
         if use_residual and self.in_features != self.out_features:
@@ -74,14 +93,14 @@ class Dense(DenseSentenceTransformer):
 
     def forward(self, features: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """Performs linear projection on the token embeddings."""
-        token_embeddings = features["token_embeddings"]
+        token_embeddings = features[self.module_input_name]
         projected_embeddings = self.activation_function(self.linear(token_embeddings))
         if self.use_residual:
             residual_embeddings = token_embeddings
             if self.in_features != self.out_features:
                 residual_embeddings = self.residual(token_embeddings)
             projected_embeddings = projected_embeddings + residual_embeddings
-        features["token_embeddings"] = projected_embeddings
+        features[self.module_output_name] = projected_embeddings
         return features
 
     @staticmethod
@@ -90,9 +109,10 @@ class Dense(DenseSentenceTransformer):
         Our Dense model does not have the activation function.
         """
         config = dense.get_config_dict()
-        config["activation_function"] = import_from_string(
-            config["activation_function"]
-        )()
+        if "activation_function" in config:
+            act_fn = config["activation_function"]
+            if isinstance(act_fn, str):
+                config["activation_function"] = import_from_string(act_fn)()
         model = Dense(**config)
         model.load_state_dict(dense.state_dict())
         return model
@@ -186,28 +206,52 @@ class Dense(DenseSentenceTransformer):
         return model
 
     def get_config_dict(self):
-        return {**super().get_config_dict(), "use_residual": self.use_residual}
+        config = super().get_config_dict()
+        config["activation_function"] = fullname(self.activation_function)
+        return config
 
-    @staticmethod
-    def load(input_path) -> "Dense":
+    def save(
+        self, output_path: str, *args, safe_serialization: bool = True, **kwargs
+    ) -> None:
+        self.save_config(output_path)
+        self.save_torch_weights(output_path, safe_serialization=safe_serialization)
+
+    @classmethod
+    def load(
+        cls,
+        model_name_or_path: str,
+        subfolder: str = "",
+        token: bool | str | None = None,
+        cache_folder: str | None = None,
+        revision: str | None = None,
+        local_files_only: bool = False,
+        trust_remote_code: bool = False,
+        **kwargs,
+    ) -> "Dense":
         """Load a Dense layer."""
-        with open(os.path.join(input_path, "config.json")) as fIn:
-            config = json.load(fIn)
-
-        config["activation_function"] = import_from_string(
-            config["activation_function"]
-        )()
-
-        model = Dense(**config)
-
-        if os.path.exists(os.path.join(input_path, "model.safetensors")):
-            load_safetensors_model(model, os.path.join(input_path, "model.safetensors"))
-            return model
-
-        model.load_state_dict(
-            torch.load(
-                os.path.join(input_path, "pytorch_model.bin"),
-                map_location=torch.device("cpu"),
-            )
+        hub_kwargs = {
+            "subfolder": subfolder,
+            "token": token,
+            "cache_folder": cache_folder,
+            "revision": revision,
+            "local_files_only": local_files_only,
+        }
+        config = cls.load_config(model_name_or_path=model_name_or_path, **hub_kwargs)
+        if "activation_function" in config:
+            if trust_remote_code or config["activation_function"].startswith("torch."):
+                config["activation_function"] = import_from_string(
+                    config["activation_function"]
+                )()
+            else:
+                logger.warning(
+                    f"Activation function path '{config['activation_function']}' is not trusted, "
+                    "falling back to the default activation function (Identity). "
+                    "Please load the model with `trust_remote_code=True` to allow loading custom activation "
+                    "functions via the configuration."
+                )
+                del config["activation_function"]
+        model = cls(**config)
+        model = cls.load_torch_weights(
+            model_name_or_path=model_name_or_path, model=model, **hub_kwargs
         )
         return model

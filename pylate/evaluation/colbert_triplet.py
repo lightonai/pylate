@@ -5,7 +5,7 @@ import logging
 import os
 from contextlib import nullcontext
 
-from sentence_transformers.evaluation import TripletEvaluator
+from sentence_transformers.sentence_transformer.evaluation import TripletEvaluator
 
 from ..models import ColBERT
 from ..scores import colbert_scores_pairwise
@@ -201,7 +201,7 @@ class ColBERTTripletEvaluator(TripletEvaluator):
         with (
             nullcontext()
             if self.truncate_dim is None
-            else model.truncate_sentence_embeddings(truncate_dim=self.truncate_dim)
+            else model.truncate_embeddings(truncate_dim=self.truncate_dim)
         ):
             embeddings_anchors = model.encode(
                 sentences=self.anchors,

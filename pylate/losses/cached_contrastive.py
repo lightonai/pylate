@@ -8,6 +8,10 @@ from typing import Callable, Iterable, Optional
 import torch
 import torch.nn.functional as F
 import tqdm
+from sentence_transformers.sentence_transformer.losses.cached_multiple_negatives_ranking import (
+    _create_minibatch,
+    _get_batch_size,
+)
 from torch import Tensor, nn
 from torch.utils.checkpoint import get_device_states, set_device_states
 
@@ -116,15 +120,15 @@ class CachedContrastive(nn.Module):
 
     >>> loss = losses.CachedContrastive(model=model, mini_batch_size=1)
 
-    >>> anchors = model.tokenize([
+    >>> anchors = model.preprocess([
     ...     "fruits are healthy.", "chips are not healthy."
     ... ], is_query=True)
 
-    >>> positives = model.tokenize([
+    >>> positives = model.preprocess([
     ...     "fruits are good for health.", "chips are not good for health."
     ... ], is_query=False, pad=True)
 
-    >>> negatives = model.tokenize([
+    >>> negatives = model.preprocess([
     ...     "fruits are bad for health.", "chips are good for health."
     ... ], is_query=False, pad=True)
 
@@ -133,6 +137,19 @@ class CachedContrastive(nn.Module):
     >>> loss = loss(sentence_features=sentence_features)
     >>> assert isinstance(loss.item(), float)
     """
+
+    # Enables per-sample media counting in Transformer.preprocess for VLM minibatching.
+    # VLM processors (e.g. Qwen2/2.5/3-VL) return `pixel_values` flat across the batch —
+    # shape `(total_visual_tokens, hidden)` — rather than `(batch, max_patches, hidden)`,
+    # so a plain `[begin:end]` slice cannot recover per-sample tensors when this loss
+    # chunks the batch into minibatches for gradcache. Setting this flag makes the
+    # ST trainer flip `track_media_counts = True` on the multimodal Transformer, which
+    # then attaches `num_images_per_sample` / `num_videos_per_sample` alongside
+    # `pixel_values` / `image_grid_thw`. `_create_minibatch` uses those counts to slice
+    # by visual-token offsets instead of by a leading batch dim. This is PyLate/ST's
+    # equivalent of colpali_engine's `torch.split` + `pad_sequence` workaround
+    # (see `ColQwen2_5_Processor.process_images`), without the padding overhead.
+    requires_media_counts = True
 
     def __init__(
         self,
@@ -181,14 +198,18 @@ class CachedContrastive(nn.Module):
         """
         grad_context = nullcontext if with_grad else torch.no_grad
         random_state_context = nullcontext() if random_state is None else random_state
-        sentence_feature_minibatch = {
-            k: v[begin:end] for k, v in sentence_feature.items()
-        }
+        sentence_feature_minibatch = _create_minibatch(sentence_feature, begin, end)
         with random_state_context:
             with grad_context():
                 # If we need a new random-state copy, create it
                 random_state = (
-                    RandContext(*sentence_feature_minibatch.values())
+                    RandContext(
+                        *(
+                            v
+                            for v in sentence_feature_minibatch.values()
+                            if isinstance(v, torch.Tensor)
+                        )
+                    )
                     if copy_random_state
                     else None
                 )
@@ -208,8 +229,7 @@ class CachedContrastive(nn.Module):
         """Yields chunks of embeddings (and corresponding RandContext) for the given
         sentence_feature, respecting the mini_batch_size limit.
         """
-        input_ids = sentence_feature["input_ids"]
-        bsz = input_ids.size(0)
+        bsz = _get_batch_size(sentence_feature)
         for i, b in enumerate(
             tqdm.trange(
                 0,
