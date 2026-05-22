@@ -123,6 +123,7 @@ locale = "en"
 extend-ignore-words-re = [
     "arange",
     "(?i)^lik$",
+    "thw",
 ]
 extend-ignore-re = [
     "xlm-mlm-ende-1024",
