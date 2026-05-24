@@ -507,7 +507,8 @@ class ColBERT(SentenceTransformer):
         is_query: bool = True,
         pool_factor: int = 1,
         protected_tokens: int = 1,
-    ) -> list[torch.Tensor] | ndarray | torch.Tensor:
+        return_token_ids: bool = False,
+    ) -> list[torch.Tensor] | ndarray | torch.Tensor | tuple:
         """
         Computes sentence embeddings.
 
@@ -554,8 +555,19 @@ class ColBERT(SentenceTransformer):
             to 1, no pooling is done; if set to 2, 50% of the tokens are kept; if set to 3, 33%, and so on. Defaults to 1.
         protected_tokens
             The number of tokens at the beginning of the sequence that should not be pooled. Defaults to 1 (CLS token).
+        return_token_ids
+            If True, also returns the vocabulary token IDs of the kept tokens as a list of uint32 numpy arrays (one per
+            document/query). Each array aligns 1-to-1 with the token embeddings for that document after masking
+            (skiplist + attention mask). When True, the return value is a tuple ``(embeddings, token_ids)``.
+            Defaults to False.
 
         """
+        if return_token_ids and pool_factor > 1:
+            raise ValueError(
+                "return_token_ids=True is not compatible with pool_factor > 1: "
+                "pooling merges tokens so IDs no longer align 1-to-1 with embeddings."
+            )
+
         if isinstance(sentences, list):
             # If we have a list of list of sentences, we encode each list separately.
             if isinstance(sentences[0], list):
@@ -652,6 +664,7 @@ class ColBERT(SentenceTransformer):
         self.to(device)
 
         all_embeddings = []
+        all_token_ids: list[torch.Tensor] = []
         length_sorted_idx = np.argsort([-self._text_length(sen) for sen in sentences])
         sentences_sorted = [sentences[int(idx)] for idx in length_sorted_idx]
 
@@ -737,6 +750,10 @@ class ColBERT(SentenceTransformer):
                         # We only keep the original tokens and prune padding tokens
                         masks = out_features["attention_mask"].bool()
 
+                if return_token_ids:
+                    for ids, mask in zip(features["input_ids"], masks):
+                        all_token_ids.append(ids[mask].cpu())
+
                 embeddings = []
                 for (
                     token_embedding,
@@ -777,6 +794,8 @@ class ColBERT(SentenceTransformer):
             )
 
         all_embeddings = [all_embeddings[idx] for idx in np.argsort(length_sorted_idx)]
+        if return_token_ids:
+            all_token_ids = [all_token_ids[idx] for idx in np.argsort(length_sorted_idx)]
 
         if precision and precision != "float32":
             all_embeddings = quantize_embeddings(
@@ -800,6 +819,11 @@ class ColBERT(SentenceTransformer):
                 for embedding in all_embeddings
             ]
 
+        if return_token_ids:
+            token_ids_out = [ids.numpy().astype(np.uint32) for ids in all_token_ids]
+            if input_was_string:
+                return all_embeddings[0], token_ids_out[0]
+            return all_embeddings, token_ids_out
         return all_embeddings[0] if input_was_string else all_embeddings
 
     def pool_embeddings_hierarchical(
