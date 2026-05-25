@@ -178,7 +178,8 @@ class TachiomIndex(Base):
         self._int_to_doc_id: dict | None = None
         self.is_indexed = os.path.exists(self._tachiom_path)
         if self.is_indexed:
-            self._index = self._Tachiom.load(self._tachiom_path)
+            self._ensure_loaded()
+            self._ensure_mappings()
 
     def _ensure_loaded(self) -> None:
         if self._index is None:
@@ -239,14 +240,9 @@ class TachiomIndex(Base):
             )
             return self
 
-        logger.warning(
-            "TachiomIndex is built once from all documents. "
-            "Subsequent calls to add_documents will have no effect — "
-            "pass all documents you want indexed in this call."
-        )
-
         embeddings_f32 = [self._to_f32(e) for e in documents_embeddings]
         new_doclens = np.array([e.shape[0] for e in embeddings_f32], dtype=np.int32)
+
         new_vectors_u16 = (
             np.vstack(embeddings_f32).astype(np.float16).view(np.uint16)
         )
@@ -272,20 +268,20 @@ class TachiomIndex(Base):
         self._save_mappings(doc_id_to_int, int_to_doc_id)
 
         token_ids_cont = np.ascontiguousarray(new_token_ids, dtype=np.uint32)
-        _p = self._auto_build_params(
+        params = self._auto_build_params(
             token_ids_cont,
             total_centroids=self.total_centroids,
             tac_micro_threshold=self.tac_micro_threshold,
             tac_small_threshold=self.tac_small_threshold,
         )
-        total_centroids = _p["total_centroids"]
-        micro_threshold = _p["tac_micro_threshold"]
-        small_threshold = _p["tac_small_threshold"]
+        total_centroids = params["total_centroids"]
+        micro_threshold = params["tac_micro_threshold"]
+        small_threshold = params["tac_small_threshold"]
         # Store resolved values so __repr__ can show the actual config used.
         self.total_centroids = total_centroids
         self.tac_micro_threshold = micro_threshold
         self.tac_small_threshold = small_threshold
-        logger.info(
+        logger.debug(
             "TachiomIndex: %d docs, %d tokens, dim=%d — "
             "total_centroids=%d, micro_threshold=%d, small_threshold=%d",
             len(new_doclens), len(new_token_ids), embeddings_f32[0].shape[1],
