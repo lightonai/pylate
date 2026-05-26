@@ -372,6 +372,38 @@ The auto-tuner derives the values from index density (`num_embeddings / num_part
 
 `min_outliers` and `max_growth_rate` only matter for incremental `add_documents` calls on an already-built index; they control when WARP grows its centroid codebook to absorb out-of-distribution embeddings. Defaults are fine for most workloads.
 
+## TACHIOM Retrieval
+
+[TACHIOM](https://github.com/TusKANNy/tachiom) ([Martinico et al., SIGIR 2026](https://arxiv.org/abs/2604.28142)) is a fast end-to-end multi-vector retrieval engine that combines Token-Aware Clustering (TAC), Product Quantisation, and HNSW. On ColBERTv2.0, it significantly outperforms WARP across build time, retrieval quality, search latency, and index size, running entirely on CPU. Generalization to other encoders is an ongoing area of research. If you use TACHIOM in your research, please cite [Martinico et al., SIGIR 2026](https://arxiv.org/abs/2604.28142).
+
+TAC groups token embeddings by their vocabulary ID before k-means, giving each token type its own centroid budget. This improves clustering quality over standard k-means and speeds up the build. At query time, HNSW retrieves the most relevant centroids per query token, producing a candidate set that is then re-scored with late-interaction MaxSim.
+
+TACHIOM is an optional dependency; install it explicitly:
+
+```bash
+pip install "pylate[tachiom]"
+```
+
+The API mirrors `indexes.PLAID`. Pass `return_token_ids=True` to `model.encode` to also return vocabulary token IDs, then pass them to `add_documents` to enable TAC:
+
+```python
+from pylate import indexes, models
+
+model = models.ColBERT(model_name_or_path="colbert-ir/colbertv2.0")
+
+# Build
+index = indexes.TachiomIndex(index_folder="pylate-tachiom-index", index_name="my-corpus")
+
+embeddings, token_ids = model.encode(documents, is_query=False, return_token_ids=True)
+index.add_documents(documents_ids, embeddings, documents_token_ids=token_ids)
+
+# Search
+queries_embeddings = model.encode(queries, is_query=True)
+results = index(queries_embeddings, k=10)
+```
+
+All build and search hyperparameters are optional with corpus-adaptive defaults — zero-parameter builds work well out of the box on ColBERTv2.0. See the `TachiomIndex` docstring for the full parameter reference.
+
 ## Reranking
 
 To perform reranking on top of your first-stage retrieval pipeline without building an index, you can simply use `rank.rerank` function which takes the queries and documents embeddings along with the documents ids to rerank them:

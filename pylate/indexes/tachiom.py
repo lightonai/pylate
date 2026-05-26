@@ -103,6 +103,23 @@ class TachiomIndex(Base):
     num_threads
         Worker threads for ``batch_search``. 0 = rayon default (all cores),
         1 = single-threaded, n = custom pool of size n.
+
+    References
+    ----------
+    - [Martinico et al., "Efficient Multivector Retrieval with Token-Aware Clustering and Hierarchical Indexing", SIGIR 2026](https://arxiv.org/abs/2604.28142)
+    - [TACHIOM GitHub repository](https://github.com/TusKANNy/tachiom)
+
+    If you use TACHIOM in your research, please cite::
+
+        @misc{martinico2026efficientmultivectorretrievaltokenaware,
+              title={Efficient Multivector Retrieval with Token-Aware Clustering and Hierarchical Indexing},
+              author={Silvio Martinico and Franco Maria Nardini and Cosimo Rulli and Rossano Venturini},
+              year={2026},
+              eprint={2604.28142},
+              archivePrefix={arXiv},
+              primaryClass={cs.IR},
+              url={https://arxiv.org/abs/2604.28142},
+        }
     """
 
     is_end_to_end_index = True
