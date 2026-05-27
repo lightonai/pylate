@@ -36,8 +36,10 @@ def _mask_to_lengths(mask: Optional[torch.Tensor]) -> Optional[torch.Tensor]:
     None if `mask` is None."""
     if mask is None:
         return None
-    # mask is typically FP16/FP32 with 0.0/1.0 values; sum along last dim.
-    return mask.sum(dim=-1).to(torch.int32).contiguous()
+    # mask is 0/1 but may be bf16/fp16: summing in that dtype rounds wrong
+    # (bf16 represents integers exactly only up to 256, so a 365-token row
+    # sums to 364). Force exact integer accumulation with dtype=int64.
+    return mask.sum(dim=-1, dtype=torch.int64).to(torch.int32).contiguous()
 
 
 def _inputs_supported(Q: torch.Tensor, D: torch.Tensor) -> bool:
