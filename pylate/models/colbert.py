@@ -1119,42 +1119,38 @@ class ColBERT(SentenceTransformer):
         if inputs is None:
             raise ValueError("Either `inputs` or `texts` must be provided.")
 
-        if not self._is_text_input(inputs):
-            return self._first_module().preprocess(inputs)
-
-        # Set max sequence length based on whether the input is a query or document
         max_length = self.query_length if is_query else self.document_length
         prefix_id = self.query_prefix_id if is_query else self.document_prefix_id
-        # The only case where prefix_id is None is when prefix was an empty string. Else it's a the id corresponding the prefix set (eventually defaulting to [D] or [Q])
         use_prefix = prefix_id is not None
         target_length = max_length - 1 if use_prefix else max_length
-        first_module = self._first_module()
 
         text_kwargs: dict[str, Any] = {"max_length": target_length}
         if pad or (is_query and self.do_query_expansion):
             text_kwargs["padding"] = "max_length"
 
-        tokenized_outputs = first_module.preprocess(
+        # For multimodal inputs (images, etc.), skip text processing_kwargs:
+        # VLM processors expand visual placeholders (e.g. <|image_pad|>) in the
+        # text string *before* tokenization, so max_length would truncate the
+        # expanded visual tokens. The visual token budget is controlled upstream
+        # by image processor settings (max_pixels, longest_edge, etc.), not by
+        # tokenizer max_length.
+        tokenized_outputs = self._first_module().preprocess(
             inputs,
-            processing_kwargs={"text": text_kwargs},
+            processing_kwargs={"text": text_kwargs} if self._is_text_input(inputs) else None,
         )
 
         if use_prefix:
-            # Insert prefix token and update attention mask
             tokenized_outputs["input_ids"] = self.insert_prefix_token(
                 tokenized_outputs["input_ids"], prefix_id
             )
             tokenized_outputs["attention_mask"] = self.insert_prefix_token(
                 tokenized_outputs["attention_mask"], 1
             )
-
-            # Update token type IDs if they exist
             if "token_type_ids" in tokenized_outputs:
                 tokenized_outputs["token_type_ids"] = self.insert_prefix_token(
                     tokenized_outputs["token_type_ids"], 0
                 )
 
-        # Adjust attention mask for expansion tokens if required
         if is_query and self.attend_to_expansion_tokens:
             tokenized_outputs["attention_mask"].fill_(1)
 
