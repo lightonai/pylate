@@ -166,6 +166,3 @@ uv.lock
 indexes/*
 pylate-index/*
 /docs/api/
-
-# Local bench raw outputs (regenerable from scripts/sky_benchmark.yaml)
-bench_results/
