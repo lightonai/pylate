@@ -5,6 +5,7 @@ import os
 import numpy as np
 import torch
 
+from ..utils.maxsim import maxsim_inbatch, maxsim_kd
 from ..utils.tensor import convert_to_tensor
 
 # FlashUnsupported is the only exception we silently fall back on; real bugs
@@ -138,21 +139,12 @@ def colbert_scores(
                 raise
             # auto: silently fall back to torch path
 
-    scores = torch.einsum(
-        "ash,bth->abst",
-        queries_embeddings,
-        documents_embeddings,
+    return maxsim_inbatch(
+        query=queries_embeddings,
+        doc=documents_embeddings,
+        query_mask=convert_to_tensor(queries_mask) if queries_mask is not None else None,
+        doc_mask=convert_to_tensor(documents_mask) if documents_mask is not None else None,
     )
-
-    if queries_mask is not None:
-        queries_mask = convert_to_tensor(queries_mask)
-        scores = scores * queries_mask.unsqueeze(1).unsqueeze(3)
-
-    if documents_mask is not None:
-        documents_mask = convert_to_tensor(documents_mask)
-        scores = scores * documents_mask.unsqueeze(0).unsqueeze(2)
-    scores = scores.max(axis=-1).values.sum(axis=-1)
-    return scores
 
 
 def colbert_scores_pairwise(
@@ -306,22 +298,12 @@ def colbert_kd_scores(
             if resolved == "flash":
                 raise
 
-    scores = torch.einsum(
-        "ash,abth->abst",
-        queries_embeddings,
-        documents_embeddings,
+    return maxsim_kd(
+        query=queries_embeddings,
+        doc=documents_embeddings,
+        query_mask=convert_to_tensor(queries_mask) if queries_mask is not None else None,
+        doc_mask=convert_to_tensor(documents_mask) if documents_mask is not None else None,
     )
-
-    if queries_mask is not None:
-        queries_mask = convert_to_tensor(queries_mask)
-        scores = scores * queries_mask.unsqueeze(1).unsqueeze(3)
-
-    if documents_mask is not None:
-        mask = convert_to_tensor(documents_mask)
-        scores = scores * mask.unsqueeze(2)
-
-    scores = scores.max(axis=-1).values.sum(axis=-1)
-    return scores
 
 
 class ColBERTScores:
