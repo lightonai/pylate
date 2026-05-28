@@ -820,8 +820,12 @@ class ColBERT(SentenceTransformer):
             ]
 
         if return_token_ids:
-            # all_token_ids holds int64 CPU tensors; tachiom expects uint32.
-            token_ids_out = [ids.numpy().astype(np.uint32) for ids in all_token_ids]
+            if convert_to_tensor:
+                # torch has no uint32; int32 covers all vocab sizes in practice.
+                token_ids_out = [ids.to(torch.int32) for ids in all_token_ids]
+            else:
+                # all_token_ids holds int64 CPU tensors; tachiom expects uint32.
+                token_ids_out = [ids.numpy().astype(np.uint32) for ids in all_token_ids]
             if input_was_string:
                 return all_embeddings[0], token_ids_out[0]
             return all_embeddings, token_ids_out
