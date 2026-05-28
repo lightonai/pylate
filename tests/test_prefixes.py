@@ -98,28 +98,19 @@ class TestTokenizePrefixInsertion:
         assert input_ids[0, 1].item() == model_custom_prefix.document_prefix_id
 
     def test_seq_length_with_custom_prefix(self, model_custom_prefix):
-        """Custom prefix should also reduce max_seq_length by 1."""
-        model_custom_prefix.tokenize(["hello world"], is_query=True)
-        assert (
-            model_custom_prefix._first_module().max_seq_length
-            == model_custom_prefix.query_length - 1
-        )
+        """With custom prefix, output length should not exceed query_length."""
+        tokens = model_custom_prefix.tokenize(["hello world"], is_query=True)
+        assert tokens["input_ids"].shape[1] <= model_custom_prefix.query_length
 
     def test_seq_length_with_prefix(self, model_with_prefix):
-        """With prefix, max_seq_length should be max_length - 1."""
-        model_with_prefix.tokenize(["hello world"], is_query=True)
-        assert (
-            model_with_prefix._first_module().max_seq_length
-            == model_with_prefix.query_length - 1
-        )
+        """With prefix, output length should not exceed query_length."""
+        tokens = model_with_prefix.tokenize(["hello world"], is_query=True)
+        assert tokens["input_ids"].shape[1] <= model_with_prefix.query_length
 
     def test_seq_length_without_prefix(self, model_without_prefix):
-        """Without prefix, max_seq_length should be max_length (no -1)."""
-        model_without_prefix.tokenize(["hello world"], is_query=True)
-        assert (
-            model_without_prefix._first_module().max_seq_length
-            == model_without_prefix.query_length
-        )
+        """Without prefix, output length should not exceed query_length."""
+        tokens = model_without_prefix.tokenize(["hello world"], is_query=True)
+        assert tokens["input_ids"].shape[1] <= model_without_prefix.query_length
 
     def test_output_length_difference(self, model_with_prefix, model_without_prefix):
         """With prefix, document tokenization has one extra token (the prefix)."""

@@ -11,7 +11,6 @@ from typing import Any, Iterable, Literal, Optional
 
 import numpy as np
 import torch
-import torch.nn.functional as F
 from numpy import ndarray
 from scipy.cluster import hierarchy
 from sentence_transformers import SentenceTransformer
@@ -479,16 +478,6 @@ class ColBERT(SentenceTransformer):
         if not self.do_query_expansion:
             self.attend_to_expansion_tokens = False
 
-        # TODO: verify — capture the construction-time tokenizer cap so multimodal
-        # preprocess can restore it (see `_preprocess_multimodal`). Mirrors what
-        # colpali_engine does: image processing leaves `model_max_length` alone
-        # and relies on `max_pixels` / `max_num_visual_tokens` to bound the
-        # visual block. The text path here mutates `first_module.max_seq_length`
-        # per call (to `query_length` / `document_length`), which would otherwise
-        # leak into a subsequent multimodal call and truncate the expanded
-        # `<|image_pad|>` block below the visual budget.
-        first_module = self._first_module()
-        self._multimodal_max_seq_length = getattr(first_module, "max_seq_length", None)
 
     @staticmethod
     def load(input_path) -> "ColBERT":
@@ -691,12 +680,7 @@ class ColBERT(SentenceTransformer):
         ):
             inputs_batch = inputs_sorted[start_index : start_index + batch_size]
 
-            # Use preprocess for both text and multimodal inputs
-            if is_text:
-                features = self.preprocess(inputs=inputs_batch, is_query=is_query)
-            else:
-                # Multimodal path: use the base transformer's preprocess directly
-                features = self._preprocess_multimodal(inputs_batch, is_query=is_query)
+            features = self.preprocess(inputs=inputs_batch, is_query=is_query)
 
             if self.device.type == "hpu":
                 features = self._pad_features_for_hpu(features)
@@ -1135,9 +1119,8 @@ class ColBERT(SentenceTransformer):
         if inputs is None:
             raise ValueError("Either `inputs` or `texts` must be provided.")
 
-        # For multimodal inputs, delegate to the multimodal preprocessing path
         if not self._is_text_input(inputs):
-            return self._preprocess_multimodal(inputs, is_query=is_query)
+            return self._first_module().preprocess(inputs)
 
         # Set max sequence length based on whether the input is a query or document
         max_length = self.query_length if is_query else self.document_length
@@ -1146,34 +1129,15 @@ class ColBERT(SentenceTransformer):
         use_prefix = prefix_id is not None
         target_length = max_length - 1 if use_prefix else max_length
         first_module = self._first_module()
-        first_module.max_seq_length = target_length
 
-        # Tokenize the texts using the transformer module's preprocess
-        tokenized_outputs = first_module.preprocess(inputs)
-
-        # TODO: discuss if this is the best solution. ST v5.4's Transformer.preprocess no
-        # longer accepts padding kwargs (it always pads to longest-in-batch), so pad-to-
-        # max-length is done manually here. Required for query expansion (queries must
-        # reach `query_length` with [MASK] tokens; pad_token_id is set to mask_token_id
-        # at init) and for users who request `pad=True` (e.g. for the XTR-style
-        # `torch.stack` across positives/negatives in Contrastive/CachedContrastive).
-        # Alternative worth considering: pad in the loss after embedding, only up to
-        # max-seq-len in the batch — cheaper memory but moves the constraint into the
-        # loss instead of preprocess.
+        text_kwargs: dict[str, Any] = {"max_length": target_length}
         if pad or (is_query and self.do_query_expansion):
-            n = target_length - tokenized_outputs["input_ids"].size(1)
-            if n > 0:
-                pad_id = first_module.tokenizer.pad_token_id
-                tokenized_outputs["input_ids"] = F.pad(
-                    tokenized_outputs["input_ids"], (0, n), value=pad_id
-                )
-                tokenized_outputs["attention_mask"] = F.pad(
-                    tokenized_outputs["attention_mask"], (0, n), value=0
-                )
-                if "token_type_ids" in tokenized_outputs:
-                    tokenized_outputs["token_type_ids"] = F.pad(
-                        tokenized_outputs["token_type_ids"], (0, n), value=0
-                    )
+            text_kwargs["padding"] = "max_length"
+
+        tokenized_outputs = first_module.preprocess(
+            inputs,
+            processing_kwargs={"text": text_kwargs},
+        )
 
         if use_prefix:
             # Insert prefix token and update attention mask
@@ -1210,42 +1174,6 @@ class ColBERT(SentenceTransformer):
             Use :meth:`preprocess` instead.
         """
         return self.preprocess(inputs=texts, is_query=is_query, pad=pad, task=task)
-
-    def _preprocess_multimodal(
-        self,
-        inputs: list,
-        is_query: bool = True,
-    ) -> dict[str, torch.Tensor]:
-        """Preprocess multimodal inputs (images, etc.) by delegating to the base transformer's preprocessor.
-
-        For multimodal inputs, we skip prefix token insertion and query expansion
-        since the VLM processor handles special tokens natively.
-
-        TODO: verify — restores the construction-time tokenizer cap captured in
-        ``__init__``. The text branch of ``preprocess`` mutates
-        ``first_module.max_seq_length`` to ``query_length`` /
-        ``document_length`` per call, and that propagates onto the underlying
-        tokenizer's ``model_max_length``. Without restoring here, a prior text
-        encode (e.g. a text query at ``query_length=32``) leaves the cap at 32,
-        the VLM processor's `<|image_pad|>` expansion runs *before*
-        tokenization, and the tokenizer truncates the expanded block —
-        ``processor._check_special_mm_tokens`` then raises a count mismatch.
-        ``colpali_engine`` avoids this by never touching ``model_max_length``
-        in its image/text processing paths and bounding the visual block via
-        ``max_pixels`` / ``max_num_visual_tokens`` instead.
-
-        Parameters
-        ----------
-        inputs
-            A list of multimodal inputs to preprocess.
-        is_query
-            Whether the inputs are queries. Can be used to set different max lengths
-            or add metadata for downstream processing.
-        """
-        first_module = self._first_module()
-        if self._multimodal_max_seq_length is not None:
-            first_module.max_seq_length = self._multimodal_max_seq_length
-        return first_module.preprocess(inputs)
 
     def _configure_chat_template(
         self,
