@@ -6,6 +6,9 @@ import numpy as np
 import torch
 
 from ..utils.tensor import convert_to_tensor
+# FlashUnsupported is the only exception we silently fall back on; real bugs
+# (assertions, OOMs, etc.) inside the flash path are *not* caught.
+from ._flash_backend import FlashUnsupported
 
 # Env override: PYLATE_SCORES_BACKEND={auto,torch,flash}
 _BACKEND_ENV = os.environ.get("PYLATE_SCORES_BACKEND", "auto").lower()
@@ -126,7 +129,7 @@ def colbert_scores(
                 queries_mask=queries_mask,
                 documents_mask=documents_mask,
             )
-        except Exception:
+        except FlashUnsupported:
             if resolved == "flash":
                 raise
             # auto: silently fall back to torch path
@@ -202,7 +205,7 @@ def colbert_scores_pairwise(
             return colbert_scores_pairwise_flash(
                 queries_embeddings, documents_embeddings
             )
-        except Exception:
+        except FlashUnsupported:
             if resolved == "flash":
                 raise
 
@@ -295,7 +298,7 @@ def colbert_kd_scores(
                 queries_mask=queries_mask,
                 documents_mask=documents_mask,
             )
-        except Exception:
+        except FlashUnsupported:
             if resolved == "flash":
                 raise
 

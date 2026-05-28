@@ -17,6 +17,48 @@ import torch
 _IMPORT_OK = None  # tri-state: None = not checked yet, True/False after first check
 
 
+class FlashUnsupported(Exception):
+    """Raised when the flash backend cannot run on the given inputs and the
+    caller should fall back to the native PyTorch path. Other exceptions
+    (assertion failures, real bugs in the kernel, OOMs, etc.) are *not*
+    caught and will propagate to the user.
+
+    Reasons: non-CUDA tensors, empty tensors, the flash-maxsim package not
+    installed, or any other input-validation failure inside this backend.
+    """
+
+
+def _next_pow2(n: int) -> int:
+    """Smallest power of two at or above ``n`` (``n``-clamped to ``>=1``)."""
+    n = max(int(n), 1)
+    return 1 << (n - 1).bit_length()
+
+
+def _bucket_lq(
+    Q: torch.Tensor,
+    q_lengths: Optional[torch.Tensor],
+) -> tuple[torch.Tensor, Optional[torch.Tensor]]:
+    """Pad ``Q``'s ``L_q`` dimension up to the next power of two so distinct
+    upstream lengths reuse the same Triton autotune entry (avoids per-step
+    recompilation when query lengths vary across batches; #212 review thread).
+
+    Mathematically a no-op: a zero query row contributes
+    ``max_j <0, D_j> = 0`` to the sum-of-maxes, and zero gradient to
+    :math:`D`. If ``q_lengths`` is provided, it still points inside the
+    original :math:`L_q` range and the kernel's per-query masking is
+    preserved unchanged.
+    """
+    Lq = Q.shape[-2]
+    Lq_pad = _next_pow2(Lq)
+    if Lq_pad == Lq:
+        return Q, q_lengths
+    pad = Lq_pad - Lq
+    # F.pad pads from the last dimension: (left, right, top, bottom). We want
+    # to pad along L_q (second-to-last), bottom only.
+    Q_padded = torch.nn.functional.pad(Q, (0, 0, 0, pad))
+    return Q_padded, q_lengths
+
+
 def is_available() -> bool:
     """Return True if flash-maxsim is importable and CUDA is available."""
     global _IMPORT_OK
@@ -65,7 +107,7 @@ def colbert_scores_flash(
 ) -> torch.Tensor:
     """`colbert_scores` via flash-maxsim. Returns [Nq, B] scores."""
     if not _inputs_supported(queries_embeddings, documents_embeddings):
-        raise RuntimeError("flash backend not applicable at this shape")
+        raise FlashUnsupported("flash backend not applicable at this shape")
 
     needs_grad = queries_embeddings.requires_grad or documents_embeddings.requires_grad
 
@@ -75,12 +117,13 @@ def colbert_scores_flash(
     if needs_grad:
         from flash_maxsim import flash_maxsim_batched_train
 
+        Q_bucketed, q_lens_bucketed = _bucket_lq(queries_embeddings, q_lens)
         return flash_maxsim_batched_train(
-            queries_embeddings,
+            Q_bucketed,
             documents_embeddings,
             shared_docs=True,
             doc_lengths=d_lens,
-            query_lengths=q_lens,
+            query_lengths=q_lens_bucketed,
         )
 
     # No-grad path. flash_maxsim_batched's forward kernel does not mask padded
@@ -89,14 +132,15 @@ def colbert_scores_flash(
     Q = queries_embeddings
     if queries_mask is not None:
         Q = Q * queries_mask.unsqueeze(-1).to(Q.dtype)
+    Q_bucketed, q_lens_bucketed = _bucket_lq(Q, q_lens)
     from flash_maxsim import flash_maxsim_batched
 
     return flash_maxsim_batched(
-        Q,
+        Q_bucketed,
         documents_embeddings,
         doc_lengths=d_lens,
         shared_docs=True,
-        query_lengths=q_lens,
+        query_lengths=q_lens_bucketed,
     )
 
 
@@ -107,7 +151,7 @@ def colbert_scores_pairwise_flash(
     """`colbert_scores_pairwise` via flash-maxsim varlen — replaces the
     Python `for` loop with a single fused kernel."""
     if not _inputs_supported(queries_embeddings, documents_embeddings):
-        raise RuntimeError("flash backend not applicable at this shape")
+        raise FlashUnsupported("flash backend not applicable at this shape")
 
     from flash_maxsim import flash_maxsim_varlen, pack_pairs
 
@@ -128,7 +172,7 @@ def colbert_kd_scores_flash(
 ) -> torch.Tensor:
     """`colbert_kd_scores` via flash-maxsim (shared_docs=False)."""
     if not _inputs_supported(queries_embeddings, documents_embeddings):
-        raise RuntimeError("flash backend not applicable at this shape")
+        raise FlashUnsupported("flash backend not applicable at this shape")
 
     needs_grad = queries_embeddings.requires_grad or documents_embeddings.requires_grad
 
@@ -139,24 +183,26 @@ def colbert_kd_scores_flash(
         Nq, B, Ld = documents_mask.shape
         d_lens = documents_mask.sum(dim=-1).reshape(Nq * B).to(torch.int32).contiguous()
 
+    Q_bucketed, q_lens_bucketed = _bucket_lq(queries_embeddings, q_lens)
+
     if needs_grad:
         from flash_maxsim import flash_maxsim_batched_train
 
         return flash_maxsim_batched_train(
-            queries_embeddings,
+            Q_bucketed,
             documents_embeddings,
             shared_docs=False,
             doc_lengths=d_lens,
-            query_lengths=q_lens,
+            query_lengths=q_lens_bucketed,
         )
     else:
         from flash_maxsim import flash_maxsim_batched_train
 
         with torch.no_grad():
             return flash_maxsim_batched_train(
-                queries_embeddings,
+                Q_bucketed,
                 documents_embeddings,
                 shared_docs=False,
                 doc_lengths=d_lens,
-                query_lengths=q_lens,
+                query_lengths=q_lens_bucketed,
             )
