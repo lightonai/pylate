@@ -374,7 +374,7 @@ The auto-tuner derives the values from index density (`num_embeddings / num_part
 
 ## TACHIOM Retrieval
 
-[TACHIOM](https://github.com/TusKANNy/tachiom) ([Martinico et al., SIGIR 2026](https://arxiv.org/abs/2604.28142)) is a fast end-to-end multi-vector retrieval engine that combines Token-Aware Clustering (TAC), Product Quantisation, and HNSW. On ColBERTv2.0, it significantly outperforms WARP across build time, retrieval quality, search latency, and index size, running entirely on CPU. Generalization to other encoders is an ongoing area of research. If you use TACHIOM in your research, please cite [Martinico et al., SIGIR 2026](https://arxiv.org/abs/2604.28142).
+[TACHIOM](https://github.com/TusKANNy/tachiom) ([Martinico et al., SIGIR 2026](https://arxiv.org/abs/2604.28142)) is a fast end-to-end multi-vector retrieval engine that combines Token-Aware Clustering (TAC), Product Quantisation, and HNSW. On ColBERTv2.0, it outperforms WARP across all dimensions (build time, retrieval quality, search latency, and index size), and outperforms PLAID on efficiency (build time, search latency, and index size) with comparable retrieval quality — all running on CPU. Generalization to other encoders is an ongoing area of research. If you use TACHIOM in your research, please cite [Martinico et al., SIGIR 2026](https://arxiv.org/abs/2604.28142).
 
 TAC groups token embeddings by their vocabulary ID before k-means, giving each token type its own centroid budget. This improves clustering quality over standard k-means and speeds up the build. At query time, HNSW retrieves the most relevant centroids per query token, producing a candidate set that is then re-scored with late-interaction MaxSim.
 
