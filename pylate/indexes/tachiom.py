@@ -40,6 +40,9 @@ class TachiomIndex(Base):
         Name of the index sub-folder inside ``index_folder``.
     override
         Delete and recreate the index directory if it already exists.
+    center_dataset
+        Subtract the global mean token vector from all document vectors before
+        building the index. Default: ``True``. May improve HNSW quality.
     total_centroids
         TAC coarse-centroid budget. ``None`` (default) auto-computes as
         ``max(2^round(log2(n_tokens/128)), ceil(min_tac_budget * 1.1))``,
@@ -130,6 +133,7 @@ class TachiomIndex(Base):
         index_name: str = "tachiom",
         override: bool = False,
         # Build hyperparams
+        center_dataset: bool = True,
         total_centroids: int | None = None,
         tac_n_iter: int = 10,
         tac_micro_threshold: int | None = None,
@@ -162,6 +166,7 @@ class TachiomIndex(Base):
         self.index_folder = index_folder
         self.index_name = index_name
 
+        self.center_dataset = center_dataset
         self.total_centroids = total_centroids
         self.tac_n_iter = tac_n_iter
         self.tac_micro_threshold = tac_micro_threshold
@@ -308,6 +313,7 @@ class TachiomIndex(Base):
             vectors=new_vectors_u16,
             token_ids=token_ids_cont,
             doclens=new_doclens,
+            center_dataset=self.center_dataset,
             total_centroids=total_centroids,
             tac_n_iter=self.tac_n_iter,
             tac_micro_threshold=micro_threshold,
@@ -421,7 +427,9 @@ class TachiomIndex(Base):
 
         Embeddings are reconstructed from stored PQ codes via
         ``approx = coarse_centroid + norm * PQ_residual`` and are therefore
-        approximate (PQ lossy compression).
+        approximate (PQ lossy compression). When the index was built with
+        ``center_dataset=True`` (the default), the dataset mean is added back
+        so that the returned embeddings are in the original embedding space.
 
         Parameters
         ----------
@@ -457,7 +465,8 @@ class TachiomIndex(Base):
             f"  path={self.index_path!r},\n"
             f"  docs={self._index.len}, tokens={self._index.n_tokens}, dim={self._index.dim},\n"
             f"  — build —\n"
-            f"  total_centroids={self.total_centroids}, "
+            f"  center_dataset={self.center_dataset}, "
+            f"total_centroids={self.total_centroids}, "
             f"tac_n_iter={self.tac_n_iter}, "
             f"tac_micro_threshold={self.tac_micro_threshold}, "
             f"tac_small_threshold={self.tac_small_threshold},\n"
