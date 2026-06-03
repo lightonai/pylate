@@ -20,7 +20,7 @@ from pylate.scores import (
     colbert_scores,
     colbert_scores_pairwise,
 )
-from pylate.scores._lik_backend import LikUnsupported
+from pylate.scores._lik_backend import LIKUnsupported
 
 _LIK_INSTALLED = importlib.util.find_spec("late_interaction_kernels") is not None
 _HAS_CUDA = torch.cuda.is_available()
@@ -75,21 +75,21 @@ def test_lik_device_rejects_bad_head_dim(head_dim: int) -> None:
     not a multiple of 8, 264: too large)."""
     query = torch.randn(2, 4, head_dim)
     doc = torch.randn(3, 5, head_dim)
-    with pytest.raises(LikUnsupported):
+    with pytest.raises(LIKUnsupported):
         _lik_backend._lik_device(query, doc)
 
 
 def test_lik_device_rejects_unsupported_dtype() -> None:
     query = torch.randn(2, 4, EMBEDDING_DIM, dtype=torch.float64)
     doc = torch.randn(3, 5, EMBEDDING_DIM, dtype=torch.float64)
-    with pytest.raises(LikUnsupported):
+    with pytest.raises(LIKUnsupported):
         _lik_backend._lik_device(query, doc)
 
 
 def test_lik_device_rejects_empty_tensor() -> None:
     query = torch.randn(0, 4, EMBEDDING_DIM)
     doc = torch.randn(3, 5, EMBEDDING_DIM)
-    with pytest.raises(LikUnsupported):
+    with pytest.raises(LIKUnsupported):
         _lik_backend._lik_device(query, doc)
 
 
@@ -97,7 +97,7 @@ def test_lik_device_rejects_cpu() -> None:
     """A well-shaped fp32 CPU tensor still has no accelerator to run on."""
     query = torch.randn(2, 4, EMBEDDING_DIM)
     doc = torch.randn(3, 5, EMBEDDING_DIM)
-    with pytest.raises(LikUnsupported):
+    with pytest.raises(LIKUnsupported):
         _lik_backend._lik_device(query, doc)
 
 
@@ -242,12 +242,12 @@ def test_training_smoke() -> None:
 
 @requires_lik
 def test_lik_unsupported_strict_propagates() -> None:
-    """backend='lik' (strict) re-raises LikUnsupported instead of falling back."""
+    """backend='lik' (strict) re-raises LIKUnsupported instead of falling back."""
     query = torch.zeros(
         2, 4, 100, device="cuda", dtype=torch.float16
     )  # head dim 100: not a multiple of 8
     doc = torch.zeros(3, 5, 100, device="cuda", dtype=torch.float16)
-    with pytest.raises(LikUnsupported):
+    with pytest.raises(LIKUnsupported):
         colbert_scores(query, doc, backend="lik")
 
 

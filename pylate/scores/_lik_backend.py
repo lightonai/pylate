@@ -4,7 +4,7 @@ This module is imported lazily by ``pylate.scores.colbert`` when the user
 selects the ``lik`` backend (or ``auto`` and the inputs/environment support
 it). It provides drop-in equivalents for the three public scoring functions,
 routing CUDA Ampere+ to LIK's fused Triton kernels and Apple Silicon to its
-MPS kernels, and falls back (via :class:`LikUnsupported`) to the caller's
+MPS kernels, and falls back (via :class:`LIKUnsupported`) to the caller's
 pure-torch path otherwise.
 
 Requires: ``pip install "pylate[lik]"`` (``late-interaction-kernels>=0.4.0``).
@@ -23,7 +23,7 @@ _KERNEL_SUPPORTED_DTYPES: frozenset[torch.dtype] = frozenset(
 _IMPORT_OK: bool | None = None
 
 
-class LikUnsupported(Exception):
+class LIKUnsupported(Exception):
     """Raised when the LIK backend cannot run on the given inputs and the
     caller should fall back to the pure-torch path.
 
@@ -88,7 +88,7 @@ def colbert_scores_pairwise_lik(
     # maxsim_pairs is a CUDA Triton kernel with no MPS equivalent; let the
     # caller's torch loop handle Apple Silicon.
     if device != "cuda":
-        raise LikUnsupported("pairwise LIK path is CUDA-only")
+        raise LIKUnsupported("pairwise LIK path is CUDA-only")
 
     from late_interaction_kernels import maxsim_pairs
 
@@ -103,13 +103,13 @@ def colbert_kd_scores_lik(
 ) -> torch.Tensor:
     """``colbert_kd_scores`` via LIK. Returns ``[Nq, B]`` scores."""
     if documents_embeddings.dim() != 4:
-        raise LikUnsupported("KD path expects a 4-D documents tensor")
+        raise LIKUnsupported("KD path expects a 4-D documents tensor")
 
     device: str = _lik_device(queries_embeddings, documents_embeddings)
     # LIK's MPS kernel only handles the 3-D in-batch layout; the 4-D KD doc
     # has no MPS path, so defer Apple Silicon KD to the caller's torch loop.
     if device != "cuda":
-        raise LikUnsupported("KD layout is CUDA-only")
+        raise LIKUnsupported("KD layout is CUDA-only")
 
     q_mask: torch.Tensor | None = _mask_as_bool(queries_mask)
     d_mask: torch.Tensor | None = _mask_as_bool(documents_mask)
@@ -134,25 +134,25 @@ def _mask_as_bool(mask: torch.Tensor | None) -> torch.Tensor | None:
 
 def _lik_device(query: torch.Tensor, doc: torch.Tensor) -> str:
     """Validate that LIK can run on these inputs and return the device kind
-    (``"cuda"`` or ``"mps"``). Raise :class:`LikUnsupported` otherwise."""
+    (``"cuda"`` or ``"mps"``). Raise :class:`LIKUnsupported` otherwise."""
     if query.numel() == 0 or doc.numel() == 0:
-        raise LikUnsupported("empty input tensor")
+        raise LIKUnsupported("empty input tensor")
     if query.device != doc.device:
-        raise LikUnsupported("queries and documents on different devices")
+        raise LIKUnsupported("queries and documents on different devices")
     if query.dtype not in _KERNEL_SUPPORTED_DTYPES:
-        raise LikUnsupported(f"unsupported dtype {query.dtype}")
+        raise LIKUnsupported(f"unsupported dtype {query.dtype}")
 
     # Triton MMA tiles need a head dim ≥ 8 and a multiple of 8; shared memory
     # caps it at 256.
     head_dim: int = query.shape[-1]
     if head_dim < 8 or head_dim > _KERNEL_MAX_HEAD_DIM or head_dim % 8 != 0:
-        raise LikUnsupported(f"unsupported head dim {head_dim}")
+        raise LIKUnsupported(f"unsupported head dim {head_dim}")
 
     if query.is_cuda:
         # bf16 tensor cores require Ampere or newer.
         if torch.cuda.get_device_capability(query.device)[0] < 8:
-            raise LikUnsupported("LIK kernels require CUDA capability >= 8 (Ampere+)")
+            raise LIKUnsupported("LIK kernels require CUDA capability >= 8 (Ampere+)")
         return "cuda"
     if query.device.type == "mps":
         return "mps"
-    raise LikUnsupported("LIK backend requires CUDA or MPS inputs")
+    raise LIKUnsupported("LIK backend requires CUDA or MPS inputs")

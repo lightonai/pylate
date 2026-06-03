@@ -7,11 +7,11 @@ import torch
 
 from ..utils.tensor import convert_to_tensor
 
-# FlashUnsupported / LikUnsupported are the only exceptions we silently fall
+# FlashUnsupported / LIKUnsupported are the only exceptions we silently fall
 # back on; real bugs (assertions, OOMs, etc.) inside the kernel paths are
 # *not* caught.
 from ._flash_backend import FlashUnsupported
-from ._lik_backend import LikUnsupported
+from ._lik_backend import LIKUnsupported
 
 
 def _resolve_backend(backend: str | None) -> str:
@@ -181,7 +181,7 @@ def colbert_scores(
                 queries_mask=queries_mask,
                 documents_mask=documents_mask,
             )
-        except LikUnsupported:
+        except LIKUnsupported:
             if resolved == "lik":
                 raise
             # auto: silently fall back to the torch path below.
@@ -259,7 +259,7 @@ def colbert_scores_pairwise(
             from ._lik_backend import colbert_scores_pairwise_lik
 
             return colbert_scores_pairwise_lik(queries_embeddings, documents_embeddings)
-        except LikUnsupported:
+        except LIKUnsupported:
             if resolved == "lik":
                 raise
 
@@ -369,7 +369,7 @@ def colbert_kd_scores(
                 queries_mask=queries_mask,
                 documents_mask=documents_mask,
             )
-        except LikUnsupported:
+        except LIKUnsupported:
             if resolved == "lik":
                 raise
 
