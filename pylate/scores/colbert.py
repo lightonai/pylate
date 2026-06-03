@@ -5,12 +5,13 @@ import os
 import numpy as np
 import torch
 
-from ..utils.maxsim import maxsim_inbatch, maxsim_kd
 from ..utils.tensor import convert_to_tensor
 
-# FlashUnsupported is the only exception we silently fall back on; real bugs
-# (assertions, OOMs, etc.) inside the flash path are *not* caught.
+# FlashUnsupported / LikUnsupported are the only exceptions we silently fall
+# back on; real bugs (assertions, OOMs, etc.) inside the kernel paths are
+# *not* caught.
 from ._flash_backend import FlashUnsupported
+from ._lik_backend import LikUnsupported
 
 
 def _resolve_backend(backend: str | None) -> str:
@@ -24,16 +25,16 @@ def _resolve_backend(backend: str | None) -> str:
     if backend is None:
         backend = os.environ.get("PYLATE_SCORES_BACKEND", "auto")
     backend = backend.lower()
-    if backend not in ("auto", "torch", "flash"):
+    if backend not in ("auto", "torch", "flash", "lik"):
         raise ValueError(
-            f"backend must be one of 'auto', 'torch', 'flash'; got {backend!r}"
+            f"backend must be one of 'auto', 'torch', 'flash', 'lik'; got {backend!r}"
         )
     return backend
 
 
 def _try_flash(backend: str, *tensors: torch.Tensor) -> bool:
     """Decide whether to dispatch to the flash-maxsim backend."""
-    if backend == "torch":
+    if backend not in ("auto", "flash"):
         return False
     if not all(isinstance(t, torch.Tensor) and t.is_cuda for t in tensors):
         if backend == "flash":
@@ -51,6 +52,32 @@ def _try_flash(backend: str, *tensors: torch.Tensor) -> bool:
         if backend == "flash":
             raise RuntimeError(
                 "backend='flash' requested but `flash-maxsim` is not installed"
+            )
+        return False
+    return True
+
+
+def _try_lik(backend: str, *tensors: torch.Tensor) -> bool:
+    """Decide whether to dispatch to the late-interaction-kernels backend."""
+    if backend not in ("auto", "lik"):
+        return False
+    on_accelerator = all(
+        isinstance(t, torch.Tensor) and (t.is_cuda or t.device.type == "mps")
+        for t in tensors
+    )
+    if not on_accelerator:
+        if backend == "lik":
+            raise RuntimeError(
+                "backend='lik' requires CUDA or MPS tensors; got a CPU/non-tensor input"
+            )
+        return False
+    from . import _lik_backend
+
+    if not _lik_backend.is_available():
+        if backend == "lik":
+            raise RuntimeError(
+                "backend='lik' requested but `late-interaction-kernels` is not "
+                'installed; run `pip install "pylate[lik]"`'
             )
         return False
     return True
@@ -77,9 +104,11 @@ def colbert_scores(
     documents_mask
         The mask for the documents embeddings. Shape: (batch_size, num tokens documents)
     backend
-        Scoring backend: ``"auto"`` (default, flash when available + CUDA, else torch),
-        ``"torch"`` (original pure-torch path), or ``"flash"`` (requires
-        ``pip install flash-maxsim>=0.2.1`` and CUDA inputs; raises otherwise).
+        Scoring backend: ``"auto"`` (default — tries flash, then LIK, whichever
+        is installed and on a supported device, else torch), ``"torch"`` (original
+        pure-torch path), ``"flash"`` (requires ``pip install pylate[flash-maxsim]``
+        and CUDA inputs; raises otherwise), or ``"lik"`` (requires
+        ``pip install "pylate[lik]"`` and CUDA/MPS inputs; raises otherwise).
         Override via env var ``PYLATE_SCORES_BACKEND``.
 
     Examples
@@ -122,6 +151,10 @@ def colbert_scores(
     """
     queries_embeddings = convert_to_tensor(queries_embeddings)
     documents_embeddings = convert_to_tensor(documents_embeddings)
+    if queries_mask is not None:
+        queries_mask = convert_to_tensor(queries_mask)
+    if documents_mask is not None:
+        documents_mask = convert_to_tensor(documents_mask)
 
     resolved = _resolve_backend(backend)
     if _try_flash(resolved, queries_embeddings, documents_embeddings):
@@ -137,14 +170,35 @@ def colbert_scores(
         except FlashUnsupported:
             if resolved == "flash":
                 raise
-            # auto: silently fall back to torch path
+            # auto: try LIK next, else the torch path below.
+    if _try_lik(resolved, queries_embeddings, documents_embeddings):
+        try:
+            from ._lik_backend import colbert_scores_lik
 
-    return maxsim_inbatch(
-        query=queries_embeddings,
-        doc=documents_embeddings,
-        query_mask=convert_to_tensor(queries_mask) if queries_mask is not None else None,
-        doc_mask=convert_to_tensor(documents_mask) if documents_mask is not None else None,
+            return colbert_scores_lik(
+                queries_embeddings,
+                documents_embeddings,
+                queries_mask=queries_mask,
+                documents_mask=documents_mask,
+            )
+        except LikUnsupported:
+            if resolved == "lik":
+                raise
+            # auto: silently fall back to the torch path below.
+
+    scores = torch.einsum(
+        "ash,bth->abst",
+        queries_embeddings,
+        documents_embeddings,
     )
+
+    if queries_mask is not None:
+        scores = scores * queries_mask.unsqueeze(1).unsqueeze(3)
+
+    if documents_mask is not None:
+        scores = scores * documents_mask.unsqueeze(0).unsqueeze(2)
+    scores = scores.max(axis=-1).values.sum(axis=-1)
+    return scores
 
 
 def colbert_scores_pairwise(
@@ -190,11 +244,7 @@ def colbert_scores_pairwise(
 
     """
     resolved = _resolve_backend(backend)
-    if (
-        isinstance(queries_embeddings, torch.Tensor)
-        and isinstance(documents_embeddings, torch.Tensor)
-        and _try_flash(resolved, queries_embeddings, documents_embeddings)
-    ):
+    if _try_flash(resolved, queries_embeddings, documents_embeddings):
         try:
             from ._flash_backend import colbert_scores_pairwise_flash
 
@@ -203,6 +253,14 @@ def colbert_scores_pairwise(
             )
         except FlashUnsupported:
             if resolved == "flash":
+                raise
+    if _try_lik(resolved, queries_embeddings, documents_embeddings):
+        try:
+            from ._lik_backend import colbert_scores_pairwise_lik
+
+            return colbert_scores_pairwise_lik(queries_embeddings, documents_embeddings)
+        except LikUnsupported:
+            if resolved == "lik":
                 raise
 
     scores = []
@@ -282,6 +340,10 @@ def colbert_kd_scores(
     """
     queries_embeddings = convert_to_tensor(queries_embeddings)
     documents_embeddings = convert_to_tensor(documents_embeddings)
+    if queries_mask is not None:
+        queries_mask = convert_to_tensor(queries_mask)
+    if documents_mask is not None:
+        documents_mask = convert_to_tensor(documents_mask)
 
     resolved = _resolve_backend(backend)
     if _try_flash(resolved, queries_embeddings, documents_embeddings):
@@ -297,13 +359,34 @@ def colbert_kd_scores(
         except FlashUnsupported:
             if resolved == "flash":
                 raise
+    if _try_lik(resolved, queries_embeddings, documents_embeddings):
+        try:
+            from ._lik_backend import colbert_kd_scores_lik
 
-    return maxsim_kd(
-        query=queries_embeddings,
-        doc=documents_embeddings,
-        query_mask=convert_to_tensor(queries_mask) if queries_mask is not None else None,
-        doc_mask=convert_to_tensor(documents_mask) if documents_mask is not None else None,
+            return colbert_kd_scores_lik(
+                queries_embeddings,
+                documents_embeddings,
+                queries_mask=queries_mask,
+                documents_mask=documents_mask,
+            )
+        except LikUnsupported:
+            if resolved == "lik":
+                raise
+
+    scores = torch.einsum(
+        "ash,abth->abst",
+        queries_embeddings,
+        documents_embeddings,
     )
+
+    if queries_mask is not None:
+        scores = scores * queries_mask.unsqueeze(1).unsqueeze(3)
+
+    if documents_mask is not None:
+        scores = scores * documents_mask.unsqueeze(2)
+
+    scores = scores.max(axis=-1).values.sum(axis=-1)
+    return scores
 
 
 class ColBERTScores:
@@ -326,6 +409,7 @@ class ColBERTScores:
         documents_embeddings: list | np.ndarray | torch.Tensor,
         queries_mask: torch.Tensor | None = None,
         documents_mask: torch.Tensor | None = None,
+        backend: str | None = None,
     ) -> torch.Tensor:
         queries_embeddings = convert_to_tensor(queries_embeddings)
         documents_embeddings = convert_to_tensor(documents_embeddings)
@@ -338,6 +422,7 @@ class ColBERTScores:
                 documents_embeddings[:, j],
                 queries_mask,
                 documents_mask[:, j] if documents_mask is not None else None,
+                backend=backend,
             )
             for j in range(N)
         ]
