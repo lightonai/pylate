@@ -149,7 +149,11 @@ MAX_STEPS = 3125
 SEED = 42
 EVAL_STEPS = 200
 DDP_TIMEOUT = 14400  # 4h
-GRADIENT_CHECKPOINTING = True  # required to fit activations at 35B
+GRADIENT_CHECKPOINTING = False  # ZeRO-3 shards to ~28 GB/rank, leaving ~52 GB free —
+# enough to hold full activations at mini_batch_size=1 without checkpointing. Disabling
+# it removes the reentrant recompute-forward (~1/3 less compute/step). Re-enable if you
+# raise mini_batch_size / seq length and OOM; the use_reentrant=True kwarg below only
+# takes effect when this is True.
 
 # ── Data paths ───────────────────────────────────────────────────────────────
 # KD metadata (queries / documents / scores) now lives on the Hub as three
