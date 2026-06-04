@@ -10,14 +10,16 @@ from ..utils.tensor import convert_to_tensor
 # (assertions, OOMs, etc.) inside the flash path are *not* caught.
 from ._flash_backend import FlashUnsupported
 
-# Env override: PYLATE_SCORES_BACKEND={auto,torch,flash}
-_BACKEND_ENV = os.environ.get("PYLATE_SCORES_BACKEND", "auto").lower()
-
-
 def _resolve_backend(backend: str | None) -> str:
-    """Resolve the effective backend from an explicit arg or the env override."""
+    """Resolve the effective backend from an explicit arg or the env override.
+
+    The env var `PYLATE_SCORES_BACKEND` is read on every call (not just at
+    import time) so users can switch backends at runtime by
+    `os.environ["PYLATE_SCORES_BACKEND"] = "torch"` and the next score call
+    will pick it up — per @raphaelsty's PR #212 review.
+    """
     if backend is None:
-        backend = _BACKEND_ENV
+        backend = os.environ.get("PYLATE_SCORES_BACKEND", "auto")
     backend = backend.lower()
     if backend not in ("auto", "torch", "flash"):
         raise ValueError(
