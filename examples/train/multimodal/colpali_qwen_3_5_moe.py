@@ -142,18 +142,20 @@ TEMPERATURE = 0.02
 
 # ── Trainer config ───────────────────────────────────────────────────────────
 BATCH_SIZE = 64  # global (split across GPUs). Reduce if OOM at 35B.
-MINI_BATCH_SIZE = 1  # GradCache minibatch — keep at 1 for the 35B backbone.
+MINI_BATCH_SIZE = 8  # GradCache minibatch. Per-device batch is 8 (BATCH_SIZE=64,
+# split_batches across 8 GPUs), so mbs=8 = ONE forward chunk per tower instead of 8 ->
+# ~8x fewer ZeRO-3 per-layer param all-gathers (the dominant per-step cost). Checkpointing
+# keeps per-chunk activations bounded so this fits the ~52 GB/rank headroom. Drop to 4 if OOM.
 LEARNING_RATE = 3e-5
 WARMUP_RATIO = 0.005
 MAX_STEPS = 3125
 SEED = 42
 EVAL_STEPS = 200
 DDP_TIMEOUT = 14400  # 4h
-GRADIENT_CHECKPOINTING = False  # ZeRO-3 shards to ~28 GB/rank, leaving ~52 GB free —
-# enough to hold full activations at mini_batch_size=1 without checkpointing. Disabling
-# it removes the reentrant recompute-forward (~1/3 less compute/step). Re-enable if you
-# raise mini_batch_size / seq length and OOM; the use_reentrant=True kwarg below only
-# takes effect when this is True.
+GRADIENT_CHECKPOINTING = True  # required at 35B. Tried False (52 GB/rank free under
+# ZeRO-3) but it OOMs: ColPali docs are IMAGES, so each doc expands into a large number
+# of vision tokens -> long sequences -> full-layer activations across all 40 layers blow
+# past the headroom. Checkpointing bounds activations to layer boundaries.
 
 # ── Data paths ───────────────────────────────────────────────────────────────
 # KD metadata (queries / documents / scores) now lives on the Hub as three
