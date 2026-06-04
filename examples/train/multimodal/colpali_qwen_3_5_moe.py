@@ -469,6 +469,15 @@ def main() -> None:
         bf16=True,
         fp16=False,
         gradient_checkpointing=GRADIENT_CHECKPOINTING,
+        # ZeRO-3 all-gathers each layer's params via forward pre-hooks and releases
+        # them after. Non-reentrant checkpointing (the transformers default) recomputes
+        # the layer in the backward WITHOUT re-triggering those hooks, so the params are
+        # still released ([0]-shaped shards) at recompute time -> CheckpointError
+        # ("recomputed metadata ... shape [0]"). Reentrant checkpointing re-runs the full
+        # forward on recompute, re-firing the gather hooks. (FSDP wanted the opposite;
+        # see fsdp_8gpu.yaml.) PEFT calls enable_input_require_grads, so the usual
+        # "no input requires grad" reentrant pitfall does not apply here.
+        gradient_checkpointing_kwargs={"use_reentrant": True},
         batch_sampler=NoDuplicatesBatchSampler,
         accelerator_config={"split_batches": True},
         multi_dataset_batch_sampler="proportional",
