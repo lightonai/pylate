@@ -291,7 +291,7 @@ def build_vidore_evaluator() -> SequentialEvaluator:
                 if qid in queries:
                     relevant_docs.setdefault(qid, set()).add(str(r["corpus-id"]))
 
-        sub_name = f"{BENCHMARK_NAME}:{_short_dataset_name(repo)}"
+        sub_name = f"{BENCHMARK_NAME}_{_short_dataset_name(repo)}"
         sub_evaluators.append(
             evaluation.PyLateInformationRetrievalEvaluator(
                 queries=queries,
