@@ -507,8 +507,8 @@ class ColBERT(SentenceTransformer):
         is_query: bool = True,
         pool_factor: int = 1,
         protected_tokens: int = 1,
-        return_token_ids: bool = False,
-    ) -> list[torch.Tensor] | ndarray | torch.Tensor | tuple:
+        output_value: str | None = "token_embeddings",
+    ) -> list[torch.Tensor] | ndarray | torch.Tensor | list[dict]:
         """
         Computes sentence embeddings.
 
@@ -555,18 +555,22 @@ class ColBERT(SentenceTransformer):
             to 1, no pooling is done; if set to 2, 50% of the tokens are kept; if set to 3, 33%, and so on. Defaults to 1.
         protected_tokens
             The number of tokens at the beginning of the sequence that should not be pooled. Defaults to 1 (CLS token).
-        return_token_ids
-            If True, also returns the vocabulary token IDs of the kept tokens as a list of uint32 numpy arrays (one per
-            document/query). Each array aligns 1-to-1 with the token embeddings for that document after masking
-            (skiplist + attention mask). When True, the return value is a tuple ``(embeddings, token_ids)``.
-            Defaults to False.
+        output_value
+            Controls the return format. ``"token_embeddings"`` (default): filtered
+            per-document token embeddings — the existing behaviour.
+            ``None``: a list of per-document dicts with keys ``"token_embeddings"``
+            (shape ``[seq_len, dim]``), ``"input_ids"``,
+            ``"attention_mask"``, and ``"masks"`` (combined skiplist + attention mask,
+            bool). The caller applies the mask to obtain aligned embeddings and token
+            IDs. Incompatible with ``pool_factor > 1``.
 
         """
-        if return_token_ids and pool_factor > 1:
+        if output_value not in ("token_embeddings", None):
             raise ValueError(
-                "return_token_ids=True is not compatible with pool_factor > 1: "
-                "pooling merges tokens so IDs no longer align 1-to-1 with embeddings."
+                f"output_value must be 'token_embeddings' or None, got {output_value!r}."
             )
+        if output_value is None and pool_factor > 1:
+            raise ValueError("output_value=None is not compatible with pool_factor > 1.")
 
         if isinstance(sentences, list):
             # If we have a list of list of sentences, we encode each list separately.
@@ -664,7 +668,6 @@ class ColBERT(SentenceTransformer):
         self.to(device)
 
         all_embeddings = []
-        all_token_ids: list[torch.Tensor] = []
         length_sorted_idx = np.argsort([-self._text_length(sen) for sen in sentences])
         sentences_sorted = [sentences[int(idx)] for idx in length_sorted_idx]
 
@@ -750,35 +753,45 @@ class ColBERT(SentenceTransformer):
                         # We only keep the original tokens and prune padding tokens
                         masks = out_features["attention_mask"].bool()
 
-                if return_token_ids:
-                    for ids, mask in zip(features["input_ids"], masks):
-                        all_token_ids.append(ids[mask].cpu())
-
                 embeddings = []
-                for (
-                    token_embedding,
-                    mask,
-                ) in zip(out_features["token_embeddings"], masks):
-                    token_embedding = (
-                        torch.nn.functional.normalize(
-                            input=token_embedding[mask], p=2, dim=1
+                if output_value is None:
+                    for i, mask in enumerate(masks):
+                        token_emb = out_features["token_embeddings"][i]
+                        if normalize_embeddings:
+                            token_emb = torch.nn.functional.normalize(
+                                token_emb, p=2, dim=1
+                            )
+                        embeddings.append({
+                            "token_embeddings": token_emb.cpu(),
+                            "input_ids": features["input_ids"][i].cpu(),
+                            "attention_mask": out_features["attention_mask"][i].cpu(),
+                            "masks": mask.cpu(),
+                        })
+                else:
+                    for (
+                        token_embedding,
+                        mask,
+                    ) in zip(out_features["token_embeddings"], masks):
+                        token_embedding = (
+                            torch.nn.functional.normalize(
+                                input=token_embedding[mask], p=2, dim=1
+                            )
+                            if normalize_embeddings
+                            else token_embedding[mask]
                         )
-                        if normalize_embeddings
-                        else token_embedding[mask]
-                    )
-                    embeddings.append(token_embedding)
+                        embeddings.append(token_embedding)
 
-                # Pool factor must be greater than 1: keeping 1 over pool_factor tokens embeddings.
-                if pool_factor > 1 and not is_query:
-                    embeddings = self.pool_embeddings_hierarchical(
-                        documents_embeddings=embeddings,
-                        pool_factor=pool_factor,
-                        protected_tokens=protected_tokens,
-                    )
+                    # Pool factor must be greater than 1: keeping 1 over pool_factor tokens embeddings.
+                    if pool_factor > 1 and not is_query:
+                        embeddings = self.pool_embeddings_hierarchical(
+                            documents_embeddings=embeddings,
+                            pool_factor=pool_factor,
+                            protected_tokens=protected_tokens,
+                        )
 
-                # fixes for #522 and #487 to avoid oom problems on gpu with large datasets
-                if convert_to_numpy:
-                    embeddings = [embedding.cpu() for embedding in embeddings]
+                    # fixes for #522 and #487 to avoid oom problems on gpu with large datasets
+                    if convert_to_numpy:
+                        embeddings = [embedding.cpu() for embedding in embeddings]
 
                 all_embeddings.extend(embeddings)
 
@@ -794,8 +807,8 @@ class ColBERT(SentenceTransformer):
             )
 
         all_embeddings = [all_embeddings[idx] for idx in np.argsort(length_sorted_idx)]
-        if return_token_ids:
-            all_token_ids = [all_token_ids[idx] for idx in np.argsort(length_sorted_idx)]
+        if output_value is None:
+            return all_embeddings[0] if input_was_string else all_embeddings
 
         if precision and precision != "float32":
             all_embeddings = quantize_embeddings(
@@ -819,16 +832,6 @@ class ColBERT(SentenceTransformer):
                 for embedding in all_embeddings
             ]
 
-        if return_token_ids:
-            if convert_to_tensor:
-                # torch has no uint32; int32 covers all vocab sizes in practice.
-                token_ids_out = [ids.to(torch.int32) for ids in all_token_ids]
-            else:
-                # all_token_ids holds int64 CPU tensors; tachiom expects uint32.
-                token_ids_out = [ids.numpy().astype(np.uint32) for ids in all_token_ids]
-            if input_was_string:
-                return all_embeddings[0], token_ids_out[0]
-            return all_embeddings, token_ids_out
         return all_embeddings[0] if input_was_string else all_embeddings
 
     def pool_embeddings_hierarchical(

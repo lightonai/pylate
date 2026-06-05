@@ -384,7 +384,7 @@ TACHIOM is an optional dependency; install it explicitly:
 pip install "pylate[tachiom]"
 ```
 
-The API mirrors `indexes.PLAID`. Pass `return_token_ids=True` to `model.encode` to also return vocabulary token IDs, then pass them to `add_documents` to enable TAC:
+The API mirrors `indexes.PLAID`. Pass `output_value=None` to `model.encode` to get per-token dicts that include vocabulary token IDs; `add_documents` applies the mask and enables TAC automatically:
 
 ```python
 from pylate import indexes, models
@@ -394,8 +394,8 @@ model = models.ColBERT(model_name_or_path="colbert-ir/colbertv2.0")
 # Build
 index = indexes.TachiomIndex(index_folder="pylate-tachiom-index", index_name="my-corpus")
 
-embeddings, token_ids = model.encode(documents, is_query=False, return_token_ids=True)
-index.add_documents(documents_ids, embeddings, documents_token_ids=token_ids)
+embeddings = model.encode(documents, is_query=False, output_value=None)
+index.add_documents(documents_ids, embeddings)
 
 # Search
 queries_embeddings = model.encode(queries, is_query=True)

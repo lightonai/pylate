@@ -24,10 +24,12 @@ class TachiomIndex(Base):
     index. Token-Aware Clustering groups token embeddings by vocabulary ID before
     k-means, which improves clustering speed and retrieval quality over standard k-means.
 
-    To pass vocabulary token IDs alongside embeddings, encode documents with:
+    Encode documents with ``output_value=None`` to enable Token-Aware Clustering.
+    The returned dicts carry vocabulary token IDs that ``add_documents`` extracts
+    automatically:
 
-        embeddings, token_ids = model.encode(docs, is_query=False, return_token_ids=True)
-        index.add_documents(doc_ids, embeddings, documents_token_ids=token_ids)
+        embeddings = model.encode(docs, is_query=False, output_value=None)
+        index.add_documents(doc_ids, embeddings)
 
     If ``documents_token_ids`` is omitted, all tokens are assigned ID 0 so TAC
     degrades to a single global k-means. A ``UserWarning`` is issued.
@@ -244,14 +246,19 @@ class TachiomIndex(Base):
         documents_ids
             String identifiers for the documents.
         documents_embeddings
-            Per-document token embeddings, each of shape ``(n_tokens, dim)``
-            in float32 or float16.
+            Per-document token embeddings. Either:
+
+            * A list of arrays/tensors, each shape ``(n_tokens, dim)`` float32/float16.
+            * A list of dicts from ``model.encode(..., output_value=None)``, each
+              containing ``"token_embeddings"``, ``"input_ids"``, and ``"masks"``;
+              the mask is applied automatically and ``documents_token_ids`` is ignored.
         documents_token_ids
             Vocabulary token IDs aligned with ``documents_embeddings``, each
             of shape ``(n_tokens,)`` in uint32. Obtain from
-            ``model.encode(..., return_token_ids=True)``. If ``None``, all
-            tokens are assigned ID 0 (TAC degrades to global k-means) and a
-            ``UserWarning`` is issued.
+            ``model.encode(..., output_value=None)`` (preferred) or
+            ``model.encode(...)``. Ignored when ``documents_embeddings`` contains
+            dicts. If ``None`` and dicts are not used, all tokens are assigned ID 0
+            (TAC degrades to global k-means) and a ``UserWarning`` is issued.
         """
         if self.is_indexed:
             warnings.warn(
@@ -262,7 +269,27 @@ class TachiomIndex(Base):
             )
             return self
 
-        embeddings_f32 = [self._to_f32(e) for e in documents_embeddings]
+        if documents_embeddings and isinstance(documents_embeddings[0], dict):
+            if documents_token_ids is not None:
+                warnings.warn(
+                    "documents_token_ids is ignored when documents_embeddings contains dicts "
+                    "(from output_value=None); token IDs are read from the dicts.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+            embeddings_f32 = []
+            documents_token_ids = []
+            for d in documents_embeddings:
+                mask = d["masks"]
+                embeddings_f32.append(self._to_f32(d["token_embeddings"][mask]))
+                ids = d["input_ids"][mask]
+                if isinstance(ids, torch.Tensor):
+                    documents_token_ids.append(ids.cpu().numpy().astype(np.uint32))
+                else:
+                    documents_token_ids.append(np.asarray(ids, dtype=np.uint32))
+        else:
+            embeddings_f32 = [self._to_f32(e) for e in documents_embeddings]
+
         new_doclens = np.array([e.shape[0] for e in embeddings_f32], dtype=np.int32)
 
         new_vectors_u16 = (
@@ -278,7 +305,7 @@ class TachiomIndex(Base):
                 "documents_token_ids not provided; all tokens will be assigned ID 0, "
                 "so TAC degrades to standard k-means over all vectors. "
                 "This is significantly slower than TAC and reduces retrieval quality. "
-                "Pass documents_token_ids from model.encode(..., return_token_ids=True) "
+                "Pass documents_token_ids from model.encode(..., output_value=None) "
                 "to enable Token-Aware Clustering.",
                 UserWarning,
                 stacklevel=2,
