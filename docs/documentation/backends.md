@@ -9,9 +9,10 @@ extra `pip install` and a single kwarg.
 
 | `backend=` | Backend | When it fires |
 |---|---|---|
-| `"auto"` (default) | best available | Tries `flash` on CUDA; falls back to `torch` |
+| `"auto"` (default) | best available | Tries `flash` on CUDA, then `lik`; falls back to `torch` |
 | `"torch"` | the original `einsum` + `max` + `sum` reduction | Always available; CPU + CUDA |
 | `"flash"` | [`flash-maxsim`](https://github.com/roipony/flash-maxsim) fused Triton kernels | CUDA-only; requires `pip install pylate[flash-maxsim]` |
+| `"lik"` | [`late-interaction-kernels`](https://github.com/hcompai/late-interaction-kernels) fused CUDA/MPS kernels | CUDA or MPS; requires `pip install pylate[lik]` |
 
 The selector is non-breaking: omitting `backend=` keeps the legacy `torch`
 behaviour unless the optional dependency is installed *and* the inputs are
@@ -25,6 +26,9 @@ pip install pylate
 
 # Add the flash-maxsim backend
 pip install pylate[flash-maxsim]
+
+# Add the late-interaction-kernels backend
+pip install pylate[lik]
 ```
 
 ## Usage
@@ -42,7 +46,7 @@ scores = colbert_scores(queries, documents, backend="flash")
 Set `PYLATE_SCORES_BACKEND` once; every subsequent score call reads it:
 
 ```bash
-export PYLATE_SCORES_BACKEND=flash    # or "torch", "auto"
+export PYLATE_SCORES_BACKEND=flash    # or "lik", "torch", "auto"
 ```
 
 The env var is read at call time, so flipping it at runtime (e.g.\
@@ -66,14 +70,16 @@ following hold:
 - The shape is one the kernel supports (`_inputs_supported` — checks dtype,
   contiguity, length bounds)
 
-If any precondition fails, `auto` silently falls back to `torch`. If the user
-explicitly requested `backend="flash"`, the same preconditions are checked
-but a precondition failure raises (rather than silently dropping back) so the
-caller knows.
+When `flash` does not fire, `auto` tries `lik` next under the analogous
+preconditions (CUDA *or* MPS inputs, `late-interaction-kernels` importable,
+supported dtype/head-dim). If no kernel backend fires, `auto` silently falls
+back to `torch`. If the user explicitly requested `backend="flash"` or
+`backend="lik"`, the same preconditions are checked but a precondition
+failure raises (rather than silently dropping back) so the caller knows.
 
-The only exception we silently catch is `FlashUnsupported` (raised by
-`_inputs_supported`); kernel assertions, OOMs, and runtime bugs propagate as
-real errors.
+The only exceptions we silently catch are `FlashUnsupported` and
+`LIKUnsupported` (raised by the backends' input gates); kernel assertions,
+OOMs, and runtime bugs propagate as real errors.
 
 ## What you actually get
 
@@ -95,6 +101,8 @@ per-shape numbers.
 
 PyLate is designed to accommodate multiple fused-MaxSim implementations.
 [`late-interaction-kernels` (LIK)](https://github.com/hcompai/late-interaction-kernels)
-is a parallel project covered by PR
-[#222](https://github.com/lightonai/pylate/pull/222); when both are installed
-the selector can be extended (`backend="lik"`) so users pick at runtime.
+is integrated as the `"lik"` backend (PR
+[#222](https://github.com/lightonai/pylate/pull/222)): fused MaxSim for
+in-batch, KD, and pairwise scoring on CUDA (Ampere+), plus an MPS path for
+in-batch scoring on Apple Silicon. When both kernel packages are installed,
+pick at runtime via `backend=` or `PYLATE_SCORES_BACKEND`.
