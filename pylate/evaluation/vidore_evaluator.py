@@ -34,7 +34,7 @@ Use in a training loop:
 from __future__ import annotations
 
 import logging
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from sentence_transformers.sentence_transformer.evaluation.nano_beir import (
     NanoBEIREvaluator as NanoBEIREvaluatorST,
@@ -42,6 +42,9 @@ from sentence_transformers.sentence_transformer.evaluation.nano_beir import (
 from sentence_transformers.util import is_datasets_available
 
 from .pylate_information_retrieval_evaluator import PyLateInformationRetrievalEvaluator
+
+if TYPE_CHECKING:
+    from ..models import ColBERT
 
 logger = logging.getLogger(__name__)
 
@@ -297,3 +300,52 @@ class ViDoREvaluator(NanoBEIREvaluatorST):
             name=human_readable_name,
             **ir_evaluator_kwargs,
         )
+
+    def __call__(
+        self,
+        model: ColBERT,
+        output_path: str | None = None,
+        epoch: int = -1,
+        steps: int = -1,
+        *args,
+        **kwargs,
+    ) -> dict[str, float]:
+        results = super().__call__(model, output_path, epoch, steps, *args, **kwargs)
+
+        # Group evaluated datasets by version
+        version_groups: dict[str, list[str]] = {}
+        for dataset_name in self.dataset_names:
+            for version, datasets in VIDORE_VERSION_DATASETS.items():
+                if dataset_name.lower() in datasets:
+                    version_groups.setdefault(version, []).append(
+                        self._get_human_readable_name(dataset_name)
+                    )
+                    break
+
+        active_versions = [v for v, names in version_groups.items() if names]
+        if len(active_versions) <= 1:
+            return results
+
+        # Compute per-version macro averages
+        num_underscores = self.name.count("_")
+        for version, hr_names in version_groups.items():
+            per_metric: dict[str, list[float]] = {}
+            for hr_name in hr_names:
+                prefix = hr_name + "_"
+                for key, value in results.items():
+                    if key.startswith(prefix):
+                        metric = key.split("_", maxsplit=num_underscores)[-1]
+                        per_metric.setdefault(metric, []).append(value)
+
+            for metric, values in per_metric.items():
+                results[f"ViDoRE_{version}_{metric}"] = sum(values) / len(values)
+
+            ndcg_k = max(self.ndcg_at_k)
+            for score_name in self.score_function_names:
+                ver_key = f"ViDoRE_{version}_{score_name}_ndcg@{ndcg_k}"
+                if ver_key in results:
+                    logger.info(
+                        f"ViDoRE {version} macro NDCG@{ndcg_k}: {results[ver_key]:.4f}"
+                    )
+
+        return results
