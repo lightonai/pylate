@@ -51,7 +51,7 @@ from sentence_transformers import (
 )
 from sentence_transformers.sampler import NoDuplicatesBatchSampler
 from sentence_transformers.sentence_transformer.evaluation import SequentialEvaluator
-from transformers import AutoModelForImageTextToText, TrainerCallback
+from transformers import AutoModelForImageTextToText
 
 # ── Run config ───────────────────────────────────────────────────────────────
 # "native"  — Qwen3.5's own chat template (no system prompt by default).
@@ -250,18 +250,56 @@ def _short_dataset_name(repo: str) -> str:
     return name[: -len("_beir")] if name.endswith("_beir") else name
 
 
-class FSDPEncodeFixCallback(TrainerCallback):
-    """After FSDP wrapping, store a reference to the FSDP wrapper on the inner
-    module so that encode() can call through __call__ (which triggers FSDP's
-    pre-forward hooks to unshard parameters) instead of self.forward()."""
+def _route_encode_forward_through_fsdp(model) -> None:
+    """Make encode() unshard root-owned params under FSDP.
 
-    def on_train_begin(self, args, state, control, model=None, **kwargs):
+    ``model.encode`` (PyLate) calls ``self.forward(input=features)`` on the
+    INNER module directly. Under FSDP that bypasses the root FSDP wrapper's
+    pre-forward hook, so root-owned params (the input embedding, final norm,
+    projection head, ...) stay sharded (1-D) and the embedding lookup dies with
+    ``RuntimeError: 'weight' must be 2-D``. (The nested decoder/vision layers are
+    fine — their own __call__ hooks fire.)
+
+    Training doesn't hit this because the step goes through the wrapper's
+    __call__. We replicate that for eval by rebinding the inner module's
+    ``forward`` to run through ``wrapper.__call__`` (which fires the unshard
+    hooks). A re-entrancy guard breaks the recursion when FSDP then calls the
+    inner module's forward internally.
+
+    ``model`` here is the FSDP root: under FSDP the HF Trainer sets
+    ``self.model = self.model_wrapped`` (trainer.py), and the evaluator is
+    called with ``self.model``. No-op when not FSDP-wrapped or already routed.
+    """
+    try:
         from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
-        if model is not None and isinstance(model, FSDP):
-            # Use object.__setattr__ to avoid nn.Module registering the FSDP
-            # wrapper as a child submodule (circular ref → RecursionError).
-            object.__setattr__(model.module, "_fsdp_wrapper", model)
-            print("FSDPEncodeFixCallback: stored FSDP wrapper reference on inner module")
+    except Exception:
+        return
+    if not isinstance(model, FSDP):
+        return
+    inner = model.module
+    if getattr(inner, "_fsdp_forward_routed", False):
+        return
+
+    orig_forward = inner.forward  # accelerate-wrapped bound forward
+    guard = {"active": False}
+
+    def routed_forward(*args, **kwargs):
+        # When FSDP calls the inner module's forward from inside the wrapper's
+        # __call__, the root is already unsharded — run the real forward.
+        if guard["active"]:
+            return orig_forward(*args, **kwargs)
+        guard["active"] = True
+        try:
+            # wrapper.__call__ -> unshard root -> inner.__call__ -> routed_forward
+            # (guarded) -> orig_forward (real forward, root now 2-D).
+            return model(*args, **kwargs)
+        finally:
+            guard["active"] = False
+
+    # object.__setattr__ so nn.Module doesn't try to register a non-module.
+    object.__setattr__(inner, "forward", routed_forward)
+    object.__setattr__(inner, "_fsdp_forward_routed", True)
+    print("FSDP eval fix: routed encode() forward through the FSDP wrapper")
 
 
 class _MacroEvaluator(SequentialEvaluator):
@@ -274,6 +312,7 @@ class _MacroEvaluator(SequentialEvaluator):
         self.primary_metric = self._macro_key
 
     def __call__(self, model, output_path=None, epoch=-1, steps=-1):
+        _route_encode_forward_through_fsdp(model)
         results = super().__call__(model, output_path, epoch, steps)
         results[self._macro_key] = results.pop("sequential_score")
         self.primary_metric = self._macro_key
@@ -510,7 +549,6 @@ def main() -> None:
         loss=loss,
         data_collator=data_collator,
         evaluator=evaluator,
-        callbacks=[FSDPEncodeFixCallback()],
     )
     log.info("Starting training...")
     trainer.train()
