@@ -71,6 +71,7 @@ VIDORE_V2_DATASETS = {
 
 VIDORE_V3_DATASETS = {
     "finance": "vidore/vidore_v3_finance_en",
+    "financefr": "vidore/vidore_v3_finance_fr",
     "hr": "vidore/vidore_v3_hr",
     "industrial": "vidore/vidore_v3_industrial",
     "pharmaceuticals": "vidore/vidore_v3_pharmaceuticals",
@@ -109,6 +110,7 @@ DATASET_NAME_TO_HUMAN_READABLE = {
     "biomedical": "BiomedicalV2",
     "economics": "EconomicsV2",
     "finance": "FinanceV3",
+    "financefr": "FinanceFrV3",
     "hr": "HRV3",
     "industrial": "IndustrialV3",
     "pharmaceuticals": "PharmaceuticalsV3",
@@ -132,6 +134,7 @@ DatasetNameType = Literal[
     "biomedical",
     "economics",
     "finance",
+    "financefr",
     "hr",
     "industrial",
     "pharmaceuticals",
@@ -160,6 +163,12 @@ class ViDoREvaluator(NanoBEIREvaluatorST):
     versions : list[str] | None
         Benchmark versions to include — any combination of ``"v1"``,
         ``"v2"``, ``"v3"``.  Defaults to ``["v1"]``.
+    language : str | None
+        Filter queries to a single language (v2/v3 contain multilingual
+        queries).  E.g. ``"english"``, ``"french"``, ``"german"``,
+        ``"spanish"``, ``"italian"``, ``"portuguese"``.
+        ``None`` (default) keeps all languages.  V1 datasets have no language
+        column and are always included in full.
     document_prompt : str | None
         Text appended alongside each corpus image
         (e.g. ``"Describe the image."``).  Set to ``None`` to pass raw images.
@@ -179,6 +188,7 @@ class ViDoREvaluator(NanoBEIREvaluatorST):
     >>> evaluator = ViDoREvaluator()                               # all v1
     >>> evaluator = ViDoREvaluator(versions=["v2", "v3"])          # v2 + v3
     >>> evaluator = ViDoREvaluator(dataset_names=["arxivqa"])      # single dataset
+    >>> evaluator = ViDoREvaluator(versions=["v3"], language="french")
     >>> results = evaluator(model)
     >>> print(results[evaluator.primary_metric])
     """
@@ -189,6 +199,7 @@ class ViDoREvaluator(NanoBEIREvaluatorST):
         self,
         dataset_names: list[DatasetNameType | str] | None = None,
         versions: list[VersionType] | None = None,
+        language: str | None = None,
         document_prompt: str | None = "Describe the image.",
         corpus_chunk_size: int = 32,
         ndcg_at_k: list[int] | None = None,
@@ -197,6 +208,7 @@ class ViDoREvaluator(NanoBEIREvaluatorST):
     ) -> None:
         # Must be set before super().__init__ calls _load_dataset
         self.document_prompt = document_prompt
+        self.language = language.lower() if language else None
         self._corpus_chunk_size = corpus_chunk_size
 
         if dataset_names is None:
@@ -271,6 +283,12 @@ class ViDoREvaluator(NanoBEIREvaluatorST):
         cid_col = "corpus-id" if "corpus-id" in corpus_ds.column_names else "corpus_id"
         qrel_qid = "query-id" if "query-id" in qrels_ds.column_names else "query_id"
         qrel_cid = "corpus-id" if "corpus-id" in qrels_ds.column_names else "corpus_id"
+
+        # Filter by language when the column exists and a language was requested
+        if self.language and "language" in queries_ds.column_names:
+            queries_ds = queries_ds.filter(
+                lambda r: r["language"] == self.language
+            )
 
         queries = {str(r[qid_col]): r["query"] for r in queries_ds}
 
