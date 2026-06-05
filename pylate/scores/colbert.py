@@ -6,9 +6,11 @@ import numpy as np
 import torch
 
 from ..utils.tensor import convert_to_tensor
+
 # FlashUnsupported is the only exception we silently fall back on; real bugs
 # (assertions, OOMs, etc.) inside the flash path are *not* caught.
 from ._flash_backend import FlashUnsupported
+
 
 def _resolve_backend(backend: str | None) -> str:
     """Resolve the effective backend from an explicit arg or the env override.

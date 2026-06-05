@@ -184,6 +184,7 @@ def test_lq_bucketing_parity(Lq):
     contribute max_j <0, D_j> = 0 to sum-of-maxes and 0 gradient to D.
     """
     from flash_maxsim import flash_maxsim_batched_train
+
     from pylate.scores._flash_backend import _bucket_lq
 
     B, Ld, d = 16, 180, 128
@@ -202,7 +203,10 @@ def test_lq_bucketing_parity(Lq):
     Q_padded, _ = _bucket_lq(Q_buc_in, None)
     q_lens = torch.full((B,), Lq, device="cuda", dtype=torch.int32)
     flash_maxsim_batched_train(
-        Q_padded, D_buc, shared_docs=True, query_lengths=q_lens,
+        Q_padded,
+        D_buc,
+        shared_docs=True,
+        query_lengths=q_lens,
     ).sum().backward()
 
     # Scores would have matched if we'd captured them, but the grad parity is
@@ -219,6 +223,7 @@ def test_lq_bucketing_collapses_autotune_cache():
     in [8, 8192]). This is what removes the per-step recompilation storm.
     """
     import random
+
     from pylate.scores._flash_backend import _bucket_lq
 
     random.seed(7)
