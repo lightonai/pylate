@@ -5,7 +5,8 @@ the HuggingFace Hub, wraps them in PyLateInformationRetrievalEvaluator instances
 and aggregates NDCG/MRR/Recall across datasets.
 
 Supports three benchmark versions (v1, v2, v3) with per-dataset and per-version
-selection.
+selection.  V2/V3 datasets contain multilingual queries — each language is
+evaluated as a separate sub-evaluator (matching MTEB's per-language scoring).
 
 Examples
 --------
@@ -24,6 +25,10 @@ Specific versions:
 Cherry-pick datasets across versions:
 
 >>> evaluator = evaluation.ViDoREvaluator(dataset_names=["arxivqa", "infovqa", "finance"])
+
+Only French queries on v3:
+
+>>> evaluator = evaluation.ViDoREvaluator(versions=["v3"], language="french")
 
 Use in a training loop:
 
@@ -119,6 +124,18 @@ DATASET_NAME_TO_HUMAN_READABLE = {
     "physics": "PhysicsV3",
 }
 
+VIDORE_V2_LANGUAGES = ["english", "french", "spanish", "german"]
+VIDORE_V3_LANGUAGES = ["english", "french", "spanish", "german", "italian", "portuguese"]
+
+LANGUAGE_SHORT = {
+    "english": "En",
+    "french": "Fr",
+    "spanish": "Es",
+    "german": "De",
+    "italian": "It",
+    "portuguese": "Pt",
+}
+
 DatasetNameType = Literal[
     "arxivqa",
     "docvqa",
@@ -155,6 +172,11 @@ class ViDoREvaluator(NanoBEIREvaluatorST):
     Mirrors :class:`~pylate.evaluation.NanoBEIREvaluator` but loads multimodal
     (image) corpora from the ``vidore/*`` datasets on the HuggingFace Hub.
 
+    V2/V3 datasets contain multilingual queries.  Each language is evaluated
+    as a separate sub-evaluator (matching MTEB).  When ``language`` is set,
+    only that language is evaluated; when ``None`` (default), every available
+    language for each dataset gets its own sub-evaluator.
+
     Parameters
     ----------
     dataset_names : list[str] | None
@@ -164,13 +186,12 @@ class ViDoREvaluator(NanoBEIREvaluatorST):
         Benchmark versions to include — any combination of ``"v1"``,
         ``"v2"``, ``"v3"``.  Defaults to ``["v1"]``.
     language : str | None
-        Filter queries to a single language (v2/v3 contain multilingual
-        queries).  E.g. ``"english"``, ``"french"``, ``"german"``,
-        ``"spanish"``, ``"italian"``, ``"portuguese"``.
-        Defaults to ``"english"`` when v2/v3 datasets are included (mixed-
-        language evaluation is not meaningful).  ``None`` is only valid
-        for v1-only evaluation.  V1 datasets have no language column and
-        are always included in full.
+        Evaluate only this language for v2/v3 multilingual datasets.
+        E.g. ``"english"``, ``"french"``, ``"german"``, ``"spanish"``,
+        ``"italian"``, ``"portuguese"``.
+        ``None`` (default) evaluates every language separately (one
+        sub-evaluator per dataset-language pair, matching MTEB).
+        V1 datasets are monolingual and always included as-is.
     document_prompt : str | None
         Text appended alongside each corpus image
         (e.g. ``"Describe the image."``).  Defaults to ``None`` (raw images,
@@ -190,9 +211,9 @@ class ViDoREvaluator(NanoBEIREvaluatorST):
     Examples
     --------
     >>> evaluator = ViDoREvaluator()                               # all v1
-    >>> evaluator = ViDoREvaluator(versions=["v2", "v3"])          # v2 + v3
-    >>> evaluator = ViDoREvaluator(dataset_names=["arxivqa"])      # single dataset
-    >>> evaluator = ViDoREvaluator(versions=["v3"], language="french")
+    >>> evaluator = ViDoREvaluator(versions=["v2", "v3"])          # v2+v3, all langs
+    >>> evaluator = ViDoREvaluator(versions=["v3"], language="french")  # v3 French only
+    >>> evaluator = ViDoREvaluator(dataset_names=["arxivqa"])      # single v1 dataset
     >>> results = evaluator(model)
     >>> print(results[evaluator.primary_metric])
     """
@@ -226,21 +247,27 @@ class ViDoREvaluator(NanoBEIREvaluatorST):
                     )
                 dataset_names.extend(VIDORE_VERSION_DATASETS[v].keys())
 
-        has_multilingual = any(
-            dn.lower() in {**VIDORE_V2_DATASETS, **VIDORE_V3_DATASETS}
-            for dn in dataset_names
-        )
-        if language is None and has_multilingual:
-            language = "english"
-            logger.warning(
-                "v2/v3 datasets contain multilingual queries — "
-                "defaulting to language='english'. "
-                "Pass language explicitly to evaluate a different language."
-            )
-        self.language = language.lower() if language else None
+        resolved_lang = language.lower() if language else None
+
+        # Expand multilingual datasets (v2/v3) into per-language entries.
+        # Format: "datasetname:language" for multilingual, plain name for v1.
+        expanded_names: list[str] = []
+        for dn in dataset_names:
+            dn_lower = dn.lower()
+            if dn_lower in VIDORE_V2_DATASETS:
+                langs = [resolved_lang] if resolved_lang else VIDORE_V2_LANGUAGES
+                for lang in langs:
+                    expanded_names.append(f"{dn_lower}:{lang}")
+            elif dn_lower in VIDORE_V3_DATASETS:
+                langs = [resolved_lang] if resolved_lang else VIDORE_V3_LANGUAGES
+                for lang in langs:
+                    expanded_names.append(f"{dn_lower}:{lang}")
+            else:
+                expanded_names.append(dn_lower)
+        dataset_names = expanded_names
 
         has_v3 = any(
-            dn.lower() in VIDORE_V3_DATASETS for dn in dataset_names
+            dn.split(":")[0] in VIDORE_V3_DATASETS for dn in dataset_names
         )
         if ndcg_at_k is None:
             ndcg_at_k = [5, 10] if has_v3 else [5]
@@ -268,9 +295,11 @@ class ViDoREvaluator(NanoBEIREvaluatorST):
                 "dataset_names cannot be empty. "
                 "Pass None to evaluate on the default version (v1)."
             )
-        missing = [
-            n for n in self.dataset_names if n.lower() not in ALL_VIDORE_DATASETS
-        ]
+        missing = []
+        for n in self.dataset_names:
+            base = n.split(":")[0].lower()
+            if base not in ALL_VIDORE_DATASETS:
+                missing.append(n)
         if missing:
             raise ValueError(
                 f"Unknown ViDoRe dataset(s): {missing}. "
@@ -278,7 +307,13 @@ class ViDoREvaluator(NanoBEIREvaluatorST):
             )
 
     def _get_human_readable_name(self, dataset_name: str) -> str:
-        name = DATASET_NAME_TO_HUMAN_READABLE[dataset_name.lower()]
+        if ":" in dataset_name:
+            base, lang = dataset_name.rsplit(":", 1)
+            base_hr = DATASET_NAME_TO_HUMAN_READABLE[base.lower()]
+            lang_short = LANGUAGE_SHORT.get(lang, lang.capitalize())
+            name = f"{base_hr}{lang_short}"
+        else:
+            name = DATASET_NAME_TO_HUMAN_READABLE[dataset_name.lower()]
         if self.truncate_dim is not None:
             name += f"_{self.truncate_dim}"
         return name
@@ -293,7 +328,12 @@ class ViDoREvaluator(NanoBEIREvaluatorST):
             )
         from datasets import load_dataset
 
-        dataset_path = ALL_VIDORE_DATASETS[dataset_name.lower()]
+        if ":" in dataset_name:
+            base_name, lang = dataset_name.rsplit(":", 1)
+        else:
+            base_name, lang = dataset_name, None
+
+        dataset_path = ALL_VIDORE_DATASETS[base_name.lower()]
 
         queries_ds = load_dataset(dataset_path, "queries", split="test")
         corpus_ds = load_dataset(dataset_path, "corpus", split="test")
@@ -305,10 +345,9 @@ class ViDoREvaluator(NanoBEIREvaluatorST):
         qrel_qid = "query-id" if "query-id" in qrels_ds.column_names else "query_id"
         qrel_cid = "corpus-id" if "corpus-id" in qrels_ds.column_names else "corpus_id"
 
-        # Filter by language when the column exists and a language was requested
-        if self.language and "language" in queries_ds.column_names:
+        if lang and "language" in queries_ds.column_names:
             queries_ds = queries_ds.filter(
-                lambda r: r["language"] == self.language
+                lambda r: r["language"] == lang
             )
 
         queries = {str(r[qid_col]): r["query"] for r in queries_ds}
@@ -354,8 +393,9 @@ class ViDoREvaluator(NanoBEIREvaluatorST):
         # Group evaluated datasets by version
         version_groups: dict[str, list[str]] = {}
         for dataset_name in self.dataset_names:
+            base = dataset_name.split(":")[0].lower()
             for version, datasets in VIDORE_VERSION_DATASETS.items():
-                if dataset_name.lower() in datasets:
+                if base in datasets:
                     version_groups.setdefault(version, []).append(
                         self._get_human_readable_name(dataset_name)
                     )
