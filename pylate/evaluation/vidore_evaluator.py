@@ -171,12 +171,14 @@ class ViDoREvaluator(NanoBEIREvaluatorST):
         column and are always included in full.
     document_prompt : str | None
         Text appended alongside each corpus image
-        (e.g. ``"Describe the image."``).  Set to ``None`` to pass raw images.
+        (e.g. ``"Describe the image."``).  Defaults to ``None`` (raw images,
+        matching MTEB's processing).
     corpus_chunk_size : int
         Number of corpus documents encoded per forward-pass chunk.
         Keep small (32-64) for image corpora to avoid OOM.
     ndcg_at_k : list[int] | None
-        NDCG cut-offs.  Defaults to ``[5]`` (the ViDoRe canonical metric).
+        NDCG cut-offs.  Defaults to ``[5]`` for v1/v2, ``[5, 10]`` when v3
+        datasets are included (MTEB uses NDCG@10 as main score for v3).
     batch_size : int
         Encoding batch size.
     **kwargs
@@ -200,7 +202,7 @@ class ViDoREvaluator(NanoBEIREvaluatorST):
         dataset_names: list[DatasetNameType | str] | None = None,
         versions: list[VersionType] | None = None,
         language: str | None = None,
-        document_prompt: str | None = "Describe the image.",
+        document_prompt: str | None = None,
         corpus_chunk_size: int = 32,
         ndcg_at_k: list[int] | None = None,
         batch_size: int = 16,
@@ -223,8 +225,13 @@ class ViDoREvaluator(NanoBEIREvaluatorST):
                     )
                 dataset_names.extend(VIDORE_VERSION_DATASETS[v].keys())
 
+        has_v3 = any(
+            dn.lower() in VIDORE_V3_DATASETS for dn in dataset_names
+        )
         if ndcg_at_k is None:
-            ndcg_at_k = [5]
+            ndcg_at_k = [5, 10] if has_v3 else [5]
+        elif has_v3 and 10 not in ndcg_at_k:
+            ndcg_at_k = list(ndcg_at_k) + [10]
 
         super().__init__(
             dataset_names=dataset_names,
@@ -358,11 +365,11 @@ class ViDoREvaluator(NanoBEIREvaluatorST):
             for metric, values in per_metric.items():
                 results[f"ViDoRE_{version}_{metric}"] = sum(values) / len(values)
 
-            ndcg_k = max(self.ndcg_at_k)
+            ndcg_k = 10 if version == "v3" else 5
             for score_name in self.score_function_names:
                 ver_key = f"ViDoRE_{version}_{score_name}_ndcg@{ndcg_k}"
                 if ver_key in results:
-                    logger.info(
+                    logger.warning(
                         f"ViDoRE {version} macro NDCG@{ndcg_k}: {results[ver_key]:.4f}"
                     )
 
