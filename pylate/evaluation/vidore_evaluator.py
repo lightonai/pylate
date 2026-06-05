@@ -167,8 +167,10 @@ class ViDoREvaluator(NanoBEIREvaluatorST):
         Filter queries to a single language (v2/v3 contain multilingual
         queries).  E.g. ``"english"``, ``"french"``, ``"german"``,
         ``"spanish"``, ``"italian"``, ``"portuguese"``.
-        ``None`` (default) keeps all languages.  V1 datasets have no language
-        column and are always included in full.
+        Defaults to ``"english"`` when v2/v3 datasets are included (mixed-
+        language evaluation is not meaningful).  ``None`` is only valid
+        for v1-only evaluation.  V1 datasets have no language column and
+        are always included in full.
     document_prompt : str | None
         Text appended alongside each corpus image
         (e.g. ``"Describe the image."``).  Defaults to ``None`` (raw images,
@@ -210,7 +212,6 @@ class ViDoREvaluator(NanoBEIREvaluatorST):
     ) -> None:
         # Must be set before super().__init__ calls _load_dataset
         self.document_prompt = document_prompt
-        self.language = language.lower() if language else None
         self._corpus_chunk_size = corpus_chunk_size
 
         if dataset_names is None:
@@ -224,6 +225,19 @@ class ViDoREvaluator(NanoBEIREvaluatorST):
                         f"Valid versions: {list(VIDORE_VERSION_DATASETS)}"
                     )
                 dataset_names.extend(VIDORE_VERSION_DATASETS[v].keys())
+
+        has_multilingual = any(
+            dn.lower() in {**VIDORE_V2_DATASETS, **VIDORE_V3_DATASETS}
+            for dn in dataset_names
+        )
+        if language is None and has_multilingual:
+            language = "english"
+            logger.warning(
+                "v2/v3 datasets contain multilingual queries — "
+                "defaulting to language='english'. "
+                "Pass language explicitly to evaluate a different language."
+            )
+        self.language = language.lower() if language else None
 
         has_v3 = any(
             dn.lower() in VIDORE_V3_DATASETS for dn in dataset_names
