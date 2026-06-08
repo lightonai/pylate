@@ -570,6 +570,9 @@ class ColBERT(SentenceTransformer):
                 f"output_value must be 'token_embeddings' or None, got {output_value!r}."
             )
         if output_value is None and pool_factor > 1:
+            # Pooling merges token embeddings, so the per-token input_ids/masks
+            # we would return could no longer be mapped 1-to-1 onto
+            # token_embeddings, the pairing would be ill-defined.
             raise ValueError("output_value=None is not compatible with pool_factor > 1.")
 
         if isinstance(sentences, list):
