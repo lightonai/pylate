@@ -58,6 +58,10 @@ voyager = ["voyager >= 2.0.9; python_version < '3.14'"]
 scann = ["scann >= 1.4.2; python_version < '3.14'"]
 warp = ["xtr-warp-rs == 2.0.3.*"]
 tachiom = ["tachiom"]
+flash-maxsim = ["flash-maxsim >= 0.2.1"]
+lik = [
+    "late-interaction-kernels >=0.4.0,<0.5.0",
+]
 
 
 [dependency-groups]
@@ -107,13 +111,17 @@ filterwarnings = [
 addopts = "--doctest-modules --verbose -ra --cov-config=.coveragerc -m \"not web and not slow\""
 doctest_optionflags = "NORMALIZE_WHITESPACE NUMBER"
 norecursedirs = ["build", "docs", "node_modules", "pylate/server"]
-markers = ["model_loading: marks tests that download large models"]
+markers = [
+    "model_loading: marks tests that download large models",
+    "slow: long-running tests (CUDA parity, training smokes) — opt in with `-m slow`",
+]
 
 [tool.typos.default]
 binary = false
 locale = "en"
 extend-ignore-words-re = [
     "arange",
+    "(?i)^lik$",
 ]
 extend-ignore-re = [
     "xlm-mlm-ende-1024",

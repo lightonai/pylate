@@ -4,4 +4,5 @@ nav:
     - Datasets: datasets.md
     - Retrieval: retrieval.md
     - Evaluation: evaluation.md
+    - Backends: backends.md
     - FastAPI: fastapi.md
