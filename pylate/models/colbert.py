@@ -800,49 +800,49 @@ class ColBERT(SentenceTransformer):
             key: [values[i] for i in idx] for key, values in all_outputs.items()
         }
 
+        if padding:
+            pad_values = {"token_embeddings": 0, "masks": 0, "attention_mask": 0}
+            if "input_ids" in all_outputs:
+                pad_values["input_ids"] = (
+                    self.tokenizer.pad_token_id
+                    if self.tokenizer.pad_token_id is not None
+                    else 0
+                )
+            for key, values in all_outputs.items():
+                padded = torch.nn.utils.rnn.pad_sequence(
+                    sequences=values,
+                    batch_first=True,
+                    padding_value=pad_values[key],
+                )
+                all_outputs[key] = list(torch.split(
+                    tensor=padded, split_size_or_sections=1, dim=0
+                ))
+
+        if precision and precision != "float32":
+            all_outputs["token_embeddings"] = quantize_embeddings(
+                embeddings=all_outputs["token_embeddings"], precision=precision
+            )
+
+        if convert_to_tensor:
+            if not len(all_outputs["token_embeddings"]):
+                return torch.tensor()
+            for key, values in all_outputs.items():
+                if isinstance(values, np.ndarray):
+                    all_outputs[key] = [
+                        torch.from_numpy(ndarray=value) for value in values
+                    ]
+        elif convert_to_numpy:
+            for key, values in all_outputs.items():
+                bloat = values[0].dtype == torch.bfloat16
+                all_outputs[key] = [
+                    value.float().numpy() if bloat else value.numpy()
+                    for value in values
+                ]
+
         # Unwrap to a flat list for the default path; dict stays as-is otherwise.
         if output_value == "token_embeddings":
             all_outputs = all_outputs["token_embeddings"]
-
-            if padding:
-                all_outputs = torch.nn.utils.rnn.pad_sequence(
-                    sequences=all_outputs, batch_first=True, padding_value=0
-                )
-                all_outputs = torch.split(
-                    tensor=all_outputs, split_size_or_sections=1, dim=0
-                )
-
-            if precision and precision != "float32":
-                all_outputs = quantize_embeddings(
-                    embeddings=all_outputs, precision=precision
-                )
-
-            if convert_to_tensor:
-                if not len(all_outputs):
-                    return torch.tensor()
-                if isinstance(all_outputs, np.ndarray):
-                    all_outputs = [
-                        torch.from_numpy(ndarray=embedding)
-                        for embedding in all_outputs
-                    ]
-            elif convert_to_numpy:
-                bloat = all_outputs[0].dtype == torch.bfloat16
-                all_outputs = [
-                    embedding.float().numpy() if bloat else embedding.numpy()
-                    for embedding in all_outputs
-                ]
-
             return all_outputs[0] if input_was_string else all_outputs
-
-        # output_value is None — return the full dict.
-        if convert_to_numpy:
-            all_outputs = {
-                key: [
-                    value.float().numpy() if value.dtype == torch.bfloat16 else value.numpy()
-                    for value in values
-                ]
-                for key, values in all_outputs.items()
-            }
 
         if input_was_string:
             return {key: values[0] for key, values in all_outputs.items()}
