@@ -278,3 +278,24 @@ def test_tachiom_empty_index_raises(tachiom_index, model):
 
     with pytest.raises(ValueError, match="index is empty"):
         index.get_documents_embeddings([["0"]])
+
+
+def test_tachiom_add_documents_too_few_tokens_raises(tachiom_index, model):
+    """Test that a corpus with too few tokens for PQ training raises ValueError."""
+    index, _ = tachiom_index
+
+    # Far fewer than the 256 tokens PQ codebook training requires.
+    documents = [
+        "Document about apples and their nutritional benefits.",
+        "Document about bananas and their vitamin content.",
+        "Document about cherries and antioxidants.",
+        "Document about dates and natural sugars.",
+        "Document about elderberries and immune support.",
+    ]
+    embeddings = model.encode(documents, is_query=False, output_value=None)
+
+    with pytest.raises(ValueError, match="256"):
+        index.add_documents(documents_ids=DOCUMENT_IDS, documents_embeddings=embeddings)
+
+    # The failed build must not leave the index in a partially-built state.
+    assert index.is_indexed is False

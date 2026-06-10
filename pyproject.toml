@@ -57,7 +57,7 @@ api = ["fastapi >= 0.114.1", "uvicorn >= 0.30.6", "batched >= 0.1.2"]
 voyager = ["voyager >= 2.0.9; python_version < '3.14'"]
 scann = ["scann >= 1.4.2; python_version < '3.14'"]
 warp = ["xtr-warp-rs == 2.0.3.*"]
-tachiom = ["tachiom >=0.3.1,<0.4.0"]
+tachiom = ["tachiom >=0.3.3,<0.4.0"]
 flash-maxsim = ["flash-maxsim >= 0.2.1"]
 lik = [
     "late-interaction-kernels >=0.4.0,<0.5.0",
