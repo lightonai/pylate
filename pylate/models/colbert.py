@@ -596,6 +596,7 @@ class ColBERT(SentenceTransformer):
                         is_query=is_query,
                         pool_factor=pool_factor,
                         protected_tokens=protected_tokens,
+                        output_value=output_value,
                     )
 
                     batch_embeddings = (
