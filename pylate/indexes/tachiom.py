@@ -212,9 +212,19 @@ class TachiomIndex(Base):
 
     def _ensure_mappings(self) -> None:
         if self._doc_id_to_int is None:
+            if not os.path.exists(self._doc_id_to_int_path):
+                raise FileNotFoundError(
+                    f"Document ID mapping not found at {self._doc_id_to_int_path}. "
+                    "Please call add_documents before querying."
+                )
             with open(self._doc_id_to_int_path, "rb") as f:
                 self._doc_id_to_int = pickle.load(f)
         if self._int_to_doc_id is None:
+            if not os.path.exists(self._int_to_doc_id_path):
+                raise FileNotFoundError(
+                    f"Document ID mapping not found at {self._int_to_doc_id_path}. "
+                    "Please call add_documents before querying."
+                )
             with open(self._int_to_doc_id_path, "rb") as f:
                 self._int_to_doc_id = pickle.load(f)
 
@@ -329,7 +339,6 @@ class TachiomIndex(Base):
 
         doc_id_to_int = {doc_id: i for i, doc_id in enumerate(documents_ids)}
         int_to_doc_id = {i: doc_id for i, doc_id in enumerate(documents_ids)}
-        self._save_mappings(doc_id_to_int, int_to_doc_id)
 
         token_ids_cont = np.ascontiguousarray(new_token_ids, dtype=np.uint32)
         params = self._auto_build_params(
@@ -372,6 +381,7 @@ class TachiomIndex(Base):
             ef_construction=self.ef_construction,
         )
         self._index.save(self._tachiom_path)
+        self._save_mappings(doc_id_to_int, int_to_doc_id)
         self.is_indexed = True
 
         return self
@@ -486,6 +496,10 @@ class TachiomIndex(Base):
             Nested list matching the input structure. Each array has shape
             ``(n_tokens, dim)`` in float32.
         """
+        if not self.is_indexed:
+            raise ValueError(
+                "The index is empty. Please add documents before retrieving embeddings."
+            )
         self._ensure_loaded()
         self._ensure_mappings()
         return [

@@ -782,11 +782,9 @@ class ColBERT(SentenceTransformer):
                         )
                         batch["masks"].append(mask)
                     else:
-                        #Nb: in the main case, we return _filtered_ (skiplist/padding tokens). In the "None" case, we return everything and leave the filtering to the user
+                        # Nb: in the main case, we return _filtered_ (skiplist/padding tokens). In the "None" case, we return everything and leave the filtering to the user
                         token_emb = (
-                            torch.nn.functional.normalize(
-                                token_emb[mask], p=2, dim=1
-                            )
+                            torch.nn.functional.normalize(token_emb[mask], p=2, dim=1)
                             if normalize_embeddings
                             else token_emb[mask]
                         )
