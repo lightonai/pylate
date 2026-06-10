@@ -573,7 +573,9 @@ class ColBERT(SentenceTransformer):
             # Pooling merges token embeddings, so the per-token input_ids/masks
             # we would return could no longer be mapped 1-to-1 onto
             # token_embeddings, the pairing would be ill-defined.
-            raise ValueError("output_value=None is not compatible with pool_factor > 1.")
+            raise ValueError(
+                "output_value=None is not compatible with pool_factor > 1."
+            )
 
         if isinstance(sentences, list):
             # If we have a list of list of sentences, we encode each list separately.
@@ -674,7 +676,9 @@ class ColBERT(SentenceTransformer):
         all_outputs: dict[str, list] = {"token_embeddings": []}
         if output_value is None:
             all_outputs |= {
-                "input_ids": [], "attention_mask": [], "masks": [],
+                "input_ids": [],
+                "attention_mask": [],
+                "masks": [],
             }
         length_sorted_idx = np.argsort([-self._text_length(sen) for sen in sentences])
         sentences_sorted = [sentences[int(idx)] for idx in length_sorted_idx]
@@ -766,11 +770,11 @@ class ColBERT(SentenceTransformer):
                     batch |= {"input_ids": [], "attention_mask": [], "masks": []}
                 for i, mask in enumerate(masks):
                     token_emb = out_features["token_embeddings"][i]
-                    if normalize_embeddings:
-                        token_emb = torch.nn.functional.normalize(
-                            token_emb, p=2, dim=1
-                        )
                     if output_value is None:
+                        if normalize_embeddings:
+                            token_emb = torch.nn.functional.normalize(
+                                token_emb, p=2, dim=1
+                            )
                         batch["token_embeddings"].append(token_emb)
                         batch["input_ids"].append(features["input_ids"][i])
                         batch["attention_mask"].append(
@@ -779,7 +783,14 @@ class ColBERT(SentenceTransformer):
                         batch["masks"].append(mask)
                     else:
                         #Nb: in the main case, we return _filtered_ (skiplist/padding tokens). In the "None" case, we return everything and leave the filtering to the user
-                        batch["token_embeddings"].append(token_emb[mask])
+                        token_emb = (
+                            torch.nn.functional.normalize(
+                                token_emb[mask], p=2, dim=1
+                            )
+                            if normalize_embeddings
+                            else token_emb[mask]
+                        )
+                        batch["token_embeddings"].append(token_emb)
 
                 if pool_factor > 1 and not is_query:
                     batch["token_embeddings"] = self.pool_embeddings_hierarchical(
@@ -790,7 +801,10 @@ class ColBERT(SentenceTransformer):
 
                 # fixes for #522 and #487 to avoid oom problems on gpu with large datasets
                 if convert_to_numpy:
-                    batch = {key: [value.cpu() for value in values] for key, values in batch.items()}
+                    batch = {
+                        key: [value.cpu() for value in values]
+                        for key, values in batch.items()
+                    }
                 for key in all_outputs:
                     all_outputs[key].extend(batch[key])
 
@@ -814,9 +828,9 @@ class ColBERT(SentenceTransformer):
                     batch_first=True,
                     padding_value=pad_values[key],
                 )
-                all_outputs[key] = list(torch.split(
-                    tensor=padded, split_size_or_sections=1, dim=0
-                ))
+                all_outputs[key] = list(
+                    torch.split(tensor=padded, split_size_or_sections=1, dim=0)
+                )
 
         if precision and precision != "float32":
             all_outputs["token_embeddings"] = quantize_embeddings(

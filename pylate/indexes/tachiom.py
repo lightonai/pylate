@@ -348,8 +348,12 @@ class TachiomIndex(Base):
         logger.debug(
             "TachiomIndex: %d docs, %d tokens, dim=%d — "
             "total_centroids=%d, micro_threshold=%d, small_threshold=%d",
-            len(new_doclens), len(new_token_ids), embeddings_f32[0].shape[1],
-            total_centroids, micro_threshold, small_threshold,
+            len(new_doclens),
+            len(new_token_ids),
+            embeddings_f32[0].shape[1],
+            total_centroids,
+            micro_threshold,
+            small_threshold,
         )
         self._index = self._Tachiom.build_from_arrays(
             vectors=new_vectors_u16,
@@ -375,10 +379,7 @@ class TachiomIndex(Base):
     def __call__(
         self,
         queries_embeddings: (
-            np.ndarray
-            | torch.Tensor
-            | list[np.ndarray]
-            | list[torch.Tensor]
+            np.ndarray | torch.Tensor | list[np.ndarray] | list[torch.Tensor]
         ),
         k: int = 10,
     ) -> list[list[RerankResult]]:
@@ -414,8 +415,7 @@ class TachiomIndex(Base):
             queries_list = [self._to_f32(q) for q in queries_embeddings]
 
         queries_list = [
-            q.squeeze(0) if q.ndim == 3 and q.shape[0] == 1 else q
-            for q in queries_list
+            q.squeeze(0) if q.ndim == 3 and q.shape[0] == 1 else q for q in queries_list
         ]
 
         n_queries = len(queries_list)
@@ -449,7 +449,9 @@ class TachiomIndex(Base):
                 if doc_id == _SENTINEL_DOC_ID:
                     break
                 query_results.append(
-                    RerankResult(id=self._int_to_doc_id[int(doc_id)], score=float(score))
+                    RerankResult(
+                        id=self._int_to_doc_id[int(doc_id)], score=float(score)
+                    )
                 )
             results.append(query_results)
 
