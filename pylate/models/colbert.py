@@ -508,7 +508,7 @@ class ColBERT(SentenceTransformer):
         pool_factor: int = 1,
         protected_tokens: int = 1,
         output_value: str | None = "token_embeddings",
-    ) -> list[torch.Tensor] | ndarray | torch.Tensor | list[dict]:
+    ) -> list[torch.Tensor] | ndarray | torch.Tensor | dict[str, list]:
         """
         Computes sentence embeddings.
 
@@ -558,11 +558,11 @@ class ColBERT(SentenceTransformer):
         output_value
             Controls the return format. ``"token_embeddings"`` (default): filtered
             per-document token embeddings — the existing behaviour.
-            ``None``: a list of per-document dicts with keys ``"token_embeddings"``
-            (shape ``[seq_len, dim]``), ``"input_ids"``,
+            ``None``: a dict with keys ``"token_embeddings"``, ``"input_ids"``,
             ``"attention_mask"``, and ``"masks"`` (combined skiplist + attention mask,
-            bool). The caller applies the mask to obtain aligned embeddings and token
-            IDs. Incompatible with ``pool_factor > 1``.
+            bool), each mapping to a list of per-document tensors/arrays of shape
+            ``[seq_len, ...]``. The caller applies the mask to obtain aligned embeddings
+            and token IDs. Incompatible with ``pool_factor > 1``.
 
         """
         if output_value not in ("token_embeddings", None):
@@ -670,7 +670,7 @@ class ColBERT(SentenceTransformer):
 
         self.to(device)
 
-        all_embeddings = []
+        all_embeddings: dict[str, list] = {"token_embeddings": [], "input_ids": [], "attention_mask": [], "masks": []}
         length_sorted_idx = np.argsort([-self._text_length(sen) for sen in sentences])
         sentences_sorted = [sentences[int(idx)] for idx in length_sorted_idx]
 
@@ -756,50 +756,40 @@ class ColBERT(SentenceTransformer):
                         # We only keep the original tokens and prune padding tokens
                         masks = out_features["attention_mask"].bool()
 
-                embeddings = []
-                if output_value is None:
-                    for i, mask in enumerate(masks):
-                        token_emb = out_features["token_embeddings"][i]
-                        if normalize_embeddings:
-                            token_emb = torch.nn.functional.normalize(
-                                token_emb, p=2, dim=1
-                            )
-                        embeddings.append({
-                            "token_embeddings": token_emb.cpu(),
-                            "input_ids": features["input_ids"][i].cpu(),
-                            "attention_mask": out_features["attention_mask"][i].cpu(),
-                            "masks": mask.cpu(),
-                        })
-                else:
-                    for (
-                        token_embedding,
-                        mask,
-                    ) in zip(out_features["token_embeddings"], masks):
-                        token_embedding = (
-                            torch.nn.functional.normalize(
-                                input=token_embedding[mask], p=2, dim=1
-                            )
-                            if normalize_embeddings
-                            else token_embedding[mask]
+                batch: dict[str, list] = {"token_embeddings": [], "input_ids": [], "attention_mask": [], "masks": []}
+                for i, mask in enumerate(masks):
+                    token_emb = out_features["token_embeddings"][i]
+                    if normalize_embeddings:
+                        token_emb = torch.nn.functional.normalize(
+                            token_emb, p=2, dim=1
                         )
-                        embeddings.append(token_embedding)
+                    batch["token_embeddings"].append(token_emb)
+                    batch["input_ids"].append(features["input_ids"][i])
+                    batch["attention_mask"].append(out_features["attention_mask"][i])
+                    batch["masks"].append(mask)
+                # fixes for #522 and #487 to avoid oom problems on gpu with large datasets
+                if convert_to_numpy:
+                    batch = {k: [v.cpu() for v in vs] for k, vs in batch.items()}
 
-                    # Pool factor must be greater than 1: keeping 1 over pool_factor tokens embeddings.
-                    if pool_factor > 1 and not is_query:
-                        embeddings = self.pool_embeddings_hierarchical(
-                            documents_embeddings=embeddings,
-                            pool_factor=pool_factor,
-                            protected_tokens=protected_tokens,
-                        )
+                for k in all_embeddings:
+                    all_embeddings[k].extend(batch[k])
 
-                    # fixes for #522 and #487 to avoid oom problems on gpu with large datasets
-                    if convert_to_numpy:
-                        embeddings = [embedding.cpu() for embedding in embeddings]
-
-                all_embeddings.extend(embeddings)
+        idx = np.argsort(length_sorted_idx)
+        if output_value == "token_embeddings":
+            # Apply the mask (skiplist + attention) to filter out padding and punctuation tokens.
+            all_embeddings = [all_embeddings["token_embeddings"][i][all_embeddings["masks"][i]] for i in idx]
+            # Pool factor must be greater than 1: keeping 1 over pool_factor tokens embeddings.
+            if pool_factor > 1 and not is_query:
+                all_embeddings = self.pool_embeddings_hierarchical(
+                    documents_embeddings=all_embeddings,
+                    pool_factor=pool_factor,
+                    protected_tokens=protected_tokens,
+                )
+        else:
+            all_embeddings = {k: [vs[i] for i in idx] for k, vs in all_embeddings.items()}
 
         # Pad the embeddings to the same length. Documents can have different lengths while queries are already padded (when using query expansion, else requires padding as well).
-        if padding:
+        if padding and output_value == "token_embeddings":
             all_embeddings = torch.nn.utils.rnn.pad_sequence(
                 sequences=all_embeddings, batch_first=True, padding_value=0
             )
@@ -809,33 +799,37 @@ class ColBERT(SentenceTransformer):
                 tensor=all_embeddings, split_size_or_sections=1, dim=0
             )
 
-        all_embeddings = [all_embeddings[idx] for idx in np.argsort(length_sorted_idx)]
-        if output_value is None:
-            return all_embeddings[0] if input_was_string else all_embeddings
-
-        if precision and precision != "float32":
+        if precision and precision != "float32" and output_value == "token_embeddings":
             all_embeddings = quantize_embeddings(
                 embeddings=all_embeddings, precision=precision
             )
 
         # Return a list of arrays instead of single contiguous array since documents can have different lengths.
         if convert_to_tensor:
-            if not len(all_embeddings):
+            if output_value == "token_embeddings" and not len(all_embeddings):
                 return torch.tensor()
 
-            if isinstance(all_embeddings, np.ndarray):
+            if output_value == "token_embeddings" and isinstance(all_embeddings, np.ndarray):
                 all_embeddings = [
                     torch.from_numpy(ndarray=embedding) for embedding in all_embeddings
                 ]
 
         elif convert_to_numpy:
-            bloat = all_embeddings[0].dtype == torch.bfloat16
-            all_embeddings = [
-                embedding.float().numpy() if bloat else embedding.numpy()
-                for embedding in all_embeddings
-            ]
+            if output_value == "token_embeddings":
+                bloat = all_embeddings[0].dtype == torch.bfloat16
+                all_embeddings = [
+                    embedding.float().numpy() if bloat else embedding.numpy()
+                    for embedding in all_embeddings
+                ]
+            else:
+                all_embeddings = {
+                    k: [(v.float().numpy() if v.dtype == torch.bfloat16 else v.numpy()) for v in vs]
+                    for k, vs in all_embeddings.items()
+                }
 
-        return all_embeddings[0] if input_was_string else all_embeddings
+        if input_was_string:
+            return all_embeddings[0] if output_value == "token_embeddings" else {k: vs[0] for k, vs in all_embeddings.items()}
+        return all_embeddings
 
     def pool_embeddings_hierarchical(
         self,

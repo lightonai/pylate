@@ -25,8 +25,9 @@ class TachiomIndex(Base):
     k-means, which improves clustering speed and retrieval quality over standard k-means.
 
     Encode documents with ``output_value=None`` to enable Token-Aware Clustering.
-    The returned dicts carry vocabulary token IDs that ``add_documents`` extracts
-    automatically:
+    The returned dict (keys: ``"token_embeddings"``, ``"input_ids"``, ``"masks"``,
+    ``"attention_mask"``) carries vocabulary token IDs that ``add_documents``
+    extracts automatically:
 
         embeddings = model.encode(docs, is_query=False, output_value=None)
         index.add_documents(doc_ids, embeddings)
@@ -249,16 +250,19 @@ class TachiomIndex(Base):
             Per-document token embeddings. Either:
 
             * A list of arrays/tensors, each shape ``(n_tokens, dim)`` float32/float16.
-            * A list of dicts from ``model.encode(..., output_value=None)``, each
-              containing ``"token_embeddings"``, ``"input_ids"``, and ``"masks"``;
-              the mask is applied automatically and ``documents_token_ids`` is ignored.
+            * A dict from ``model.encode(..., output_value=None)`` with keys
+              ``"token_embeddings"``, ``"input_ids"``, and ``"masks"``; the mask
+              is applied automatically and ``documents_token_ids`` is ignored.
         documents_token_ids
             Vocabulary token IDs aligned with ``documents_embeddings``, each
             of shape ``(n_tokens,)`` in uint32. Obtain from
             ``model.encode(..., output_value=None)`` (preferred) or
-            ``model.encode(...)``. Ignored when ``documents_embeddings`` contains
-            dicts. If ``None`` and dicts are not used, all tokens are assigned ID 0
+            ``model.encode(...)``. Ignored when ``documents_embeddings`` is a dict.
+            If ``None`` and a dict is not used, all tokens are assigned ID 0
             (TAC degrades to global k-means) and a ``UserWarning`` is issued.
+        kwargs
+            Accepted for interface compatibility with other ``Base`` indexes
+            (e.g. WARP) and ignored.
         """
         if self.is_indexed:
             warnings.warn(
@@ -269,20 +273,23 @@ class TachiomIndex(Base):
             )
             return self
 
-        if documents_embeddings and isinstance(documents_embeddings[0], dict):
+        if isinstance(documents_embeddings, dict):
             if documents_token_ids is not None:
                 warnings.warn(
-                    "documents_token_ids is ignored when documents_embeddings contains dicts "
-                    "(from output_value=None); token IDs are read from the dicts.",
+                    "documents_token_ids is ignored when documents_embeddings is a dict "
+                    "(from output_value=None); token IDs are read from the dict.",
                     UserWarning,
                     stacklevel=2,
                 )
             embeddings_f32 = []
             documents_token_ids = []
-            for d in documents_embeddings:
-                mask = d["masks"]
-                embeddings_f32.append(self._to_f32(d["token_embeddings"][mask]))
-                ids = d["input_ids"][mask]
+            for emb, mask, ids in zip(
+                documents_embeddings["token_embeddings"],
+                documents_embeddings["masks"],
+                documents_embeddings["input_ids"],
+            ):
+                embeddings_f32.append(self._to_f32(emb[mask]))
+                ids = ids[mask]
                 if isinstance(ids, torch.Tensor):
                     documents_token_ids.append(ids.cpu().numpy().astype(np.uint32))
                 else:
@@ -292,9 +299,17 @@ class TachiomIndex(Base):
 
         new_doclens = np.array([e.shape[0] for e in embeddings_f32], dtype=np.int32)
 
-        new_vectors_u16 = (
-            np.vstack(embeddings_f32).astype(np.float16).view(np.uint16)
+        # Write directly into a pre-allocated float16 buffer instead of
+        # np.vstack(...).astype(float16), which would allocate a second
+        # full-corpus float32 array before the float16 conversion.
+        new_vectors_f16 = np.empty(
+            (int(new_doclens.sum()), embeddings_f32[0].shape[1]), dtype=np.float16
         )
+        offset = 0
+        for e in embeddings_f32:
+            new_vectors_f16[offset : offset + e.shape[0]] = e
+            offset += e.shape[0]
+        new_vectors_u16 = new_vectors_f16.view(np.uint16)
 
         if documents_token_ids is not None:
             new_token_ids = np.concatenate(
