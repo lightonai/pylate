@@ -358,10 +358,17 @@ class ColBERT(SentenceTransformer):
                 )
             )
 
-        # Ensure all tensors in the model are of the same dtype as the first tensor
+        # Ensure non-transformer modules (e.g. the Dense projection) match
+        # the backbone dtype. We skip the Transformer module itself — it was
+        # already loaded in the correct dtype by ``from_pretrained``, and a
+        # blanket ``self.to(dtype)`` would downcast internal buffers like
+        # rotary embedding ``inv_freq`` from fp32 to bf16, causing position
+        # encoding drift.
         try:
             dtype = next(self.parameters()).dtype
-            self.to(dtype)
+            for module in self:
+                if not isinstance(module, Transformer):
+                    module.to(dtype)
         except StopIteration:
             pass
 
