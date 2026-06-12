@@ -469,19 +469,21 @@ class ColBERT(SentenceTransformer):
         self.to(device)
         self.is_hpu_graph_enabled = False
         # Override the configuration values with the provided arguments, if any. If not set and values have not been read from configs, set to default values.
+        _default_prefix = "" if self._is_colpali_model else "[Q] "
         self.query_prefix = (
             query_prefix
             if query_prefix is not None
             else self.query_prefix
             if self.query_prefix is not None
-            else "[Q] "
+            else _default_prefix
         )
+        _default_prefix = "" if self._is_colpali_model else "[D] "
         self.document_prefix = (
             document_prefix
             if document_prefix is not None
             else self.document_prefix
             if self.document_prefix is not None
-            else "[D] "
+            else _default_prefix
         )
 
         # Try adding the prefixes to the tokenizer. We call resize_token_embeddings twice to ensure the tokens are added only if resize_token_embeddings works. There should be a better way to do this.
@@ -515,9 +517,19 @@ class ColBERT(SentenceTransformer):
             else None
         )
 
-        # Set the padding token ID
+        # Set the padding token ID used for query expansion.
+        # ColPali processors already carry the correct pad_token (e.g.
+        # <|endoftext|> for Qwen-VL, <eos> for PaliGemma) — the model was
+        # trained with that token as the expansion token, so we must not
+        # overwrite it. For classic ColBERT (MLM backbone), we use the MASK
+        # token; for other LLMs we fall back to the EOS token.
+        if self._is_colpali_model and self.tokenizer.pad_token_id is not None:
+            # ColPali query expansion appends expansion tokens as a suffix
+            # (text first, expansion after). PyLate uses tokenizer padding for
+            # this, so we need right-padding to match the trained layout.
+            self.tokenizer.padding_side = "right"
         # If it is a MLM model, use the MASK token
-        if self.tokenizer.mask_token_id is not None:
+        elif self.tokenizer.mask_token_id is not None:
             self.tokenizer.pad_token_id = self.tokenizer.mask_token_id
         # If it's a LLM, use the EOS token
         elif self.tokenizer.eos_token_id is not None:
@@ -552,7 +564,7 @@ class ColBERT(SentenceTransformer):
             if skiplist_words is not None
             else self.skiplist_words
             if self.skiplist_words is not None
-            else list(string.punctuation)
+            else ([] if self._is_colpali_model else list(string.punctuation))
         )
 
         # Convert skiplist words to their corresponding token IDs.
@@ -573,7 +585,7 @@ class ColBERT(SentenceTransformer):
             if attend_to_expansion_tokens is not None
             else self.attend_to_expansion_tokens
             if self.attend_to_expansion_tokens is not None
-            else False
+            else (True if self._is_colpali_model else False)
         )
         # If we do not do query expansion, we do not attend to the expansion tokens
         if not self.do_query_expansion:
