@@ -1292,11 +1292,22 @@ class ColBERT(SentenceTransformer):
         max_length = self.query_length if is_query else self.document_length
         prefix_id = self.query_prefix_id if is_query else self.document_prefix_id
         use_prefix = prefix_id is not None
-        target_length = max_length - 1 if use_prefix else max_length
 
-        text_kwargs: dict[str, Any] = {"max_length": target_length}
-        if pad or (is_query and self.do_query_expansion):
-            text_kwargs["padding"] = "max_length"
+        # ColPali models use suffix-based query expansion: append N expansion
+        # tokens after the full query text (matching colpali_engine's
+        # ``process_queries`` which appends ``query_augmentation_token * N``).
+        # Classic ColBERT uses pad-to-fixed-length expansion instead.
+        use_suffix_expansion = (
+            is_query and self.do_query_expansion and self._is_colpali_model
+        )
+
+        if use_suffix_expansion:
+            text_kwargs: dict[str, Any] = {}
+        else:
+            target_length = max_length - 1 if use_prefix else max_length
+            text_kwargs = {"max_length": target_length}
+            if pad or (is_query and self.do_query_expansion):
+                text_kwargs["padding"] = "max_length"
 
         # For multimodal inputs (images, etc.), skip text processing_kwargs:
         # VLM processors expand visual placeholders (e.g. <|image_pad|>) in the
@@ -1306,8 +1317,15 @@ class ColBERT(SentenceTransformer):
         # tokenizer max_length.
         tokenized_outputs = self._first_module().preprocess(
             inputs,
-            processing_kwargs={"text": text_kwargs} if self._is_text_input(inputs) else None,
+            processing_kwargs={"text": text_kwargs}
+            if self._is_text_input(inputs)
+            else None,
         )
+
+        if use_suffix_expansion:
+            tokenized_outputs = self._append_expansion_tokens(
+                tokenized_outputs, n_tokens=10,
+            )
 
         if use_prefix:
             tokenized_outputs["input_ids"] = self.insert_prefix_token(
@@ -1321,10 +1339,54 @@ class ColBERT(SentenceTransformer):
                     tokenized_outputs["token_type_ids"], 0
                 )
 
-        if is_query and self.attend_to_expansion_tokens:
+        if is_query and self.attend_to_expansion_tokens and "attention_mask" in tokenized_outputs:
             tokenized_outputs["attention_mask"].fill_(1)
 
         return tokenized_outputs
+
+    def _append_expansion_tokens(
+        self,
+        features: dict[str, torch.Tensor],
+        n_tokens: int,
+    ) -> dict[str, torch.Tensor]:
+        """Append *n_tokens* expansion tokens (pad_token_id) to each sequence.
+
+        Unlike pad-to-fixed-length expansion, this preserves the full query
+        text and always appends exactly *n_tokens* regardless of input length,
+        matching ``colpali_engine``'s ``process_queries`` behavior.
+        """
+        batch_size = features["input_ids"].shape[0]
+        device = features["input_ids"].device
+
+        pad_ids = torch.full(
+            (batch_size, n_tokens),
+            self.tokenizer.pad_token_id,
+            dtype=features["input_ids"].dtype,
+            device=device,
+        )
+        features["input_ids"] = torch.cat([features["input_ids"], pad_ids], dim=1)
+
+        if "attention_mask" in features:
+            ones = torch.ones(
+                batch_size, n_tokens,
+                dtype=features["attention_mask"].dtype,
+                device=device,
+            )
+            features["attention_mask"] = torch.cat(
+                [features["attention_mask"], ones], dim=1,
+            )
+
+        if "token_type_ids" in features:
+            zeros = torch.zeros(
+                batch_size, n_tokens,
+                dtype=features["token_type_ids"].dtype,
+                device=device,
+            )
+            features["token_type_ids"] = torch.cat(
+                [features["token_type_ids"], zeros], dim=1,
+            )
+
+        return features
 
     def tokenize(
         self,
