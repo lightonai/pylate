@@ -31,6 +31,90 @@ from .Dense import Dense
 
 logger = logging.getLogger(__name__)
 
+# ColPali architecture → base VLM architecture that AutoModel can load
+# without colpali_engine installed. Keys are the class names that appear
+# in config.architectures; values are the base-model class names.
+_COLPALI_TO_BASE_ARCHITECTURE: dict[str, str] = {
+    "ColPali": "PaliGemmaForConditionalGeneration",
+    "ColQwen2": "Qwen2VLModel",
+    "ColQwen2_5": "Qwen2_5_VLModel",
+    "ColQwen3": "Qwen3VLModel",
+    "ColQwen3_5": "Qwen3_5VLModel",
+    "ColGemma3": "Gemma3Model",
+    "ColIdefics3": "Idefics3Model",
+    "ColModernVBert": "ModernVBertModel",
+    "ColQwen2_5Omni": "Qwen2_5OmniThinkerForConditionalGeneration",
+}
+
+# Weight key prefix for the projection layer in each ColPali architecture.
+# Most use "custom_text_proj"; ColIdefics3 uses "linear".
+_COLPALI_PROJ_KEY: dict[str, str] = {
+    "ColIdefics3": "linear",
+}
+_DEFAULT_PROJ_KEY = "custom_text_proj"
+
+
+def _load_colpali_proj_tensors(
+    model_name_or_path: str,
+    weight_key: str,
+    bias_key: str,
+    **hub_kwargs,
+) -> dict[str, torch.Tensor]:
+    """Read projection layer tensors from a safetensors checkpoint.
+
+    Matches keys by suffix (e.g. any key ending in ``custom_text_proj.weight``)
+    so it handles plain, ``model.``-prefixed, and ``base_model.model.``-prefixed
+    checkpoints without maintaining an explicit prefix list.
+    """
+    from safetensors import safe_open
+
+    def _find_in_file(sf_path: str) -> dict[str, torch.Tensor]:
+        result = {}
+        with safe_open(sf_path, framework="pt", device="cpu") as f:
+            for key in f.keys():
+                if key == weight_key or key.endswith("." + weight_key):
+                    result[weight_key] = f.get_tensor(key)
+                elif key == bias_key or key.endswith("." + bias_key):
+                    result[bias_key] = f.get_tensor(key)
+        return result
+
+    # Try single safetensors file.
+    try:
+        sf_path = cached_file(model_name_or_path, "model.safetensors", **hub_kwargs)
+        result = _find_in_file(sf_path)
+        if weight_key in result:
+            return result
+    except EnvironmentError:
+        pass
+
+    # Try sharded safetensors — scan each shard via the index.
+    try:
+        index_path = cached_file(
+            model_name_or_path, "model.safetensors.index.json", **hub_kwargs
+        )
+        with open(index_path) as f:
+            weight_map = json.load(f)["weight_map"]
+
+        shard_files = {
+            v
+            for k, v in weight_map.items()
+            if k.endswith(weight_key) or k.endswith(bias_key)
+        }
+        result: dict[str, torch.Tensor] = {}
+        for shard_file in shard_files:
+            shard_path = cached_file(model_name_or_path, shard_file, **hub_kwargs)
+            result.update(_find_in_file(shard_path))
+        if weight_key in result:
+            return result
+    except EnvironmentError:
+        pass
+
+    raise ValueError(
+        f"Could not find projection weights ending in '{weight_key}' "
+        f"in {model_name_or_path}. "
+        "Looked for model.safetensors and model.safetensors.index.json."
+    )
+
 
 __version__ = "3.0.0"
 __MODEL_HUB_ORGANIZATION__ = "sentence-transformers"
@@ -213,6 +297,7 @@ class ColBERT(SentenceTransformer):
         self.do_query_expansion = do_query_expansion
         self.attend_to_expansion_tokens = attend_to_expansion_tokens
         self.skiplist_words = skiplist_words
+        self._is_colpali_model = False
         model_card_data = model_card_data or PylateModelCardData()
         if similarity_fn_name is None:
             similarity_fn_name = "MaxSim"
@@ -249,6 +334,15 @@ class ColBERT(SentenceTransformer):
             model_card_data=model_card_data,
             backend=backend,
         )
+
+        # Detect multimodal models from the loaded modality config. This
+        # covers both pre-trained ColPali checkpoints (detected via
+        # _COLPALI_TO_BASE_ARCHITECTURE in _load_default_modules) and
+        # custom-trained multimodal ColBERT models on VL backbones.
+        if not self._is_colpali_model:
+            modality_config = getattr(self._first_module(), "modality_config", {})
+            if "image" in modality_config:
+                self._is_colpali_model = True
 
         # Wire a ColPali-faithful chat template into the multimodal preprocessor.
         # Priority: explicit user override in processor_kwargs > template saved
@@ -1400,6 +1494,12 @@ class ColBERT(SentenceTransformer):
 
         This module is distinct from SentenceTransformer as it does not set the pooling layer.
         Called when no modules.json is found (creating a new ColBERT from a base model).
+
+        For ColPali-family models (ColQwen2, ColQwen2_5, …) the checkpoint is
+        loaded as the underlying base VLM and the ``custom_text_proj`` weights
+        are extracted into a separate :class:`Dense` module, yielding the
+        standard ``[Transformer, Dense]`` pipeline without requiring
+        ``colpali_engine``.
         """
         logger.warning(
             f"No sentence-transformers model found with name {model_name_or_path}."
@@ -1428,6 +1528,22 @@ class ColBERT(SentenceTransformer):
             else {**shared_kwargs, **config_kwargs}
         )
 
+        # Detect ColPali-family models and override the architecture so
+        # AutoModel loads the base VLM (no colpali_engine dependency).
+        colpali_arch = self._detect_colpali_architecture(
+            model_name_or_path, config_kwargs_merged
+        )
+        if colpali_arch is not None:
+            base_arch = _COLPALI_TO_BASE_ARCHITECTURE[colpali_arch]
+            config_kwargs_merged = {
+                **config_kwargs_merged,
+                "architectures": [base_arch],
+            }
+            logger.info(
+                f"Detected ColPali architecture '{colpali_arch}', "
+                f"loading as base VLM '{base_arch}'."
+            )
+
         transformer_model = Transformer(
             model_name_or_path=model_name_or_path,
             cache_dir=cache_folder,
@@ -1440,7 +1556,196 @@ class ColBERT(SentenceTransformer):
             model_id=model_name_or_path, revision=revision
         )
 
-        return [transformer_model], None
+        modules: list[nn.Module] = [transformer_model]
+
+        if colpali_arch is not None:
+            self._fix_colpali_processor(
+                transformer_model,
+                model_name_or_path,
+                processor_kwargs_merged,
+            )
+
+            proj_key = _COLPALI_PROJ_KEY.get(colpali_arch, _DEFAULT_PROJ_KEY)
+            dense = self._extract_colpali_projection(
+                model_name_or_path,
+                transformer_model,
+                proj_key=proj_key,
+                cache_folder=cache_folder,
+                token=token,
+                revision=revision,
+                local_files_only=local_files_only,
+            )
+            modules.append(dense)
+            self._is_colpali_model = True
+            logger.info(
+                f"Extracted '{proj_key}' → Dense({dense.in_features}, {dense.out_features})"
+            )
+
+        return modules, None
+
+    # ------------------------------------------------------------------
+    # ColPali helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _fix_colpali_processor(
+        transformer_model: Transformer,
+        model_name_or_path: str,
+        processor_kwargs: dict[str, Any],
+    ) -> None:
+        """Replace the ColPali processor with the base VLM processor.
+
+        Why we patch instead of loading the right processor upfront:
+        ``Transformer.__init__`` always loads the processor via
+        ``AutoProcessor.from_pretrained(model_name_or_path)``, which reads
+        ``preprocessor_config.json`` from the repo. ColPali repos declare a
+        ColPali-specific ``processor_class`` there (e.g. ``ColQwen2Processor``,
+        ``ColQwen2_5_Processor``). Those custom processors either reject mixed
+        text+image inputs or don't even exist in transformers — causing
+        ``AutoProcessor`` to fall back to a plain tokenizer with no image
+        processing. ``Transformer`` exposes no way to override the processor
+        class, so we have to swap it after construction.
+
+        Why we also re-infer modality config and force structured messages:
+        ``Transformer.__init__`` runs ``infer_modalities(model, processor)``
+        at construction time — *before* we can swap the processor. When the
+        original processor was a plain tokenizer (no image support) or a
+        ColPali processor that ST doesn't fully recognize, the inferred
+        config is wrong (missing ``image`` modality, ``flat`` message format
+        instead of ``structured``). After swapping we re-infer, and force
+        ``structured`` because ColPali models always use typed content items
+        (``[{type: 'image'}, {type: 'text', text: ...}]``) — even when
+        ``infer_modalities`` guesses ``flat`` for newer VL processors that
+        ST doesn't fully support yet (e.g. ``Qwen2_5_VLProcessor``).
+        """
+        import importlib
+
+        from transformers import AutoConfig
+        from transformers.models.auto.processing_auto import (
+            PROCESSOR_MAPPING_NAMES,
+        )
+
+        config = AutoConfig.from_pretrained(
+            model_name_or_path,
+            **{
+                k: v
+                for k, v in processor_kwargs.items()
+                if k in ("token", "trust_remote_code", "revision", "local_files_only")
+            },
+        )
+        base_proc_name = PROCESSOR_MAPPING_NAMES.get(config.model_type)
+        if base_proc_name is None:
+            return
+
+        base_proc_cls = getattr(importlib.import_module("transformers"), base_proc_name)
+        old_proc = getattr(transformer_model, "processor", None)
+        old_template = getattr(old_proc, "chat_template", None)
+
+        base_processor = base_proc_cls.from_pretrained(
+            model_name_or_path,
+            **processor_kwargs,
+        )
+        if old_template:
+            base_processor.chat_template = old_template
+
+        transformer_model.processor = base_processor
+
+        transformer_model.modality_config, transformer_model.module_output_name = (
+            transformer_model.infer_modalities(
+                transformer_model.model,
+                base_processor,
+            )
+        )
+        if "message" in transformer_model.modality_config:
+            transformer_model.modality_config["message"]["format"] = "structured"
+        transformer_model.input_formatter.supported_modalities = list(
+            transformer_model.modality_config.keys()
+        )
+        transformer_model.input_formatter.message_format = "structured"
+
+        old_name = type(old_proc).__name__ if old_proc else "None"
+        logger.info(
+            f"Replaced ColPali processor {old_name} "
+            f"with {type(base_processor).__name__}"
+        )
+
+    @staticmethod
+    def _detect_colpali_architecture(
+        model_name_or_path: str,
+        config_kwargs: dict[str, Any],
+    ) -> str | None:
+        """Return the ColPali architecture name if this is a ColPali model, else None."""
+        from transformers import AutoConfig
+
+        try:
+            config = AutoConfig.from_pretrained(model_name_or_path, **config_kwargs)
+        except Exception:
+            return None
+        architectures = getattr(config, "architectures", None) or []
+        for arch in architectures:
+            if arch in _COLPALI_TO_BASE_ARCHITECTURE:
+                return arch
+        return None
+
+    @staticmethod
+    def _extract_colpali_projection(
+        model_name_or_path: str,
+        transformer_model: Transformer,
+        proj_key: str,
+        cache_folder: str | None,
+        token: bool | str | None,
+        revision: str | None,
+        local_files_only: bool,
+    ) -> Dense:
+        """Extract the projection layer weights from a ColPali checkpoint.
+
+        Checks whether the loaded ``auto_model`` already carries the projection
+        (happens when ``colpali_engine`` is installed and ``trust_remote_code``
+        was used). Otherwise falls back to reading the safetensors files
+        directly.
+        """
+        weight_key = f"{proj_key}.weight"
+        bias_key = f"{proj_key}.bias"
+
+        auto_model = transformer_model.auto_model
+
+        # Path 1: model was loaded with colpali_engine — projection is an attribute
+        if hasattr(auto_model, proj_key):
+            proj_module = getattr(auto_model, proj_key)
+            proj_weight = proj_module.weight.data.clone()
+            proj_bias = (
+                proj_module.bias.data.clone() if proj_module.bias is not None else None
+            )
+            delattr(auto_model, proj_key)
+            return Dense(
+                in_features=proj_weight.shape[1],
+                out_features=proj_weight.shape[0],
+                bias=proj_bias is not None,
+                init_weight=proj_weight,
+                init_bias=proj_bias,
+            )
+
+        # Path 2: base VLM loaded — projection keys were ignored, read from files
+        hub_kwargs = {
+            "cache_dir": cache_folder,
+            "token": token,
+            "revision": revision,
+            "local_files_only": local_files_only,
+        }
+
+        proj_tensors = _load_colpali_proj_tensors(
+            model_name_or_path, weight_key, bias_key, **hub_kwargs
+        )
+
+        proj_weight = proj_tensors[weight_key]
+        proj_bias = proj_tensors.get(bias_key)
+        return Dense(
+            in_features=proj_weight.shape[1],
+            out_features=proj_weight.shape[0],
+            bias=proj_bias is not None,
+            init_weight=proj_weight,
+            init_bias=proj_bias,
+        )
 
     @staticmethod
     def _filter_non_colbert_modules(
