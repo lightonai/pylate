@@ -591,6 +591,47 @@ class ColBERT(SentenceTransformer):
         if not self.do_query_expansion:
             self.attend_to_expansion_tokens = False
 
+        # Flash Attention's unpadding optimization physically removes padding
+        # tokens from the sequence. Query expansion relies on padding queries
+        # to ``query_length`` with expansion tokens — if those get stripped,
+        # expansion silently doesn't happen. Disable unpadding so the
+        # expansion tokens survive through the forward pass.
+        if self.do_query_expansion:
+            first = self._first_module()
+            if getattr(first, "unpad_inputs", None) is not False:
+                first.unpad_inputs = False
+
+            # attend_to_expansion_tokens=False is incompatible with Flash
+            # Attention: FA does not support arbitrary per-token attention
+            # masks, so masking out expansion tokens silently degrades scores.
+            if not self.attend_to_expansion_tokens:
+                self._check_expansion_fa_compat()
+
+    def _check_expansion_fa_compat(self) -> None:
+        """Raise if expansion tokens would be unattended under Flash Attention.
+
+        FA does not properly mask padding tokens — the resulting embeddings
+        are dull/garbage even when ``attention_mask`` marks them as padding.
+        With ``attend_to_expansion_tokens=False`` those broken embeddings
+        leak into MaxSim scoring and silently degrade retrieval quality.
+        """
+        try:
+            from transformers.utils.generic import is_flash_attention_requested
+        except ImportError:
+            return
+        config = getattr(self._first_module(), "config", None)
+        attn_impl = getattr(config, "_attn_implementation", None)
+        if attn_impl and is_flash_attention_requested(
+            requested_attention_implementation=attn_impl
+        ):
+            raise ValueError(
+                "do_query_expansion=True with attend_to_expansion_tokens=False "
+                "is incompatible with Flash Attention. FA does not properly "
+                "mask padding tokens — expansion token embeddings are dull and "
+                "silently degrade retrieval scores. "
+                "Set attend_to_expansion_tokens=True or use "
+                "attn_implementation='sdpa'."
+            )
 
     @staticmethod
     def load(input_path) -> "ColBERT":
