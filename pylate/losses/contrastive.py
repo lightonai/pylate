@@ -189,8 +189,6 @@ class Contrastive(nn.Module):
             # all_gather requires identical shapes across ranks. Multimodal
             # inputs produce variable-length token sequences per rank, so
             # pad to the global max seq_len before gathering.
-            import torch.distributed
-
             local_max = max(e.size(1) for e in embeddings[1:])
             global_max = torch.tensor(local_max, device=embeddings[0].device)
             torch.distributed.all_reduce(global_max, op=torch.distributed.ReduceOp.MAX)
