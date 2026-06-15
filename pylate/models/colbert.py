@@ -1417,15 +1417,14 @@ class ColBERT(SentenceTransformer):
                 [features["attention_mask"], ones], dim=1,
             )
 
-        if "token_type_ids" in features:
-            zeros = torch.zeros(
-                batch_size, n_tokens,
-                dtype=features["token_type_ids"].dtype,
-                device=device,
-            )
-            features["token_type_ids"] = torch.cat(
-                [features["token_type_ids"], zeros], dim=1,
-            )
+        for key in ("token_type_ids", "mm_token_type_ids"):
+            if key in features:
+                zeros = torch.zeros(
+                    batch_size, n_tokens,
+                    dtype=features[key].dtype,
+                    device=device,
+                )
+                features[key] = torch.cat([features[key], zeros], dim=1)
 
         return features
 
