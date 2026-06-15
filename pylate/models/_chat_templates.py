@@ -28,7 +28,6 @@ no entry, the caller is expected to fall back to the processor's existing
 
 from __future__ import annotations
 
-
 # Shared template for the Qwen2-VL / Qwen2.5-VL / Qwen3-VL / Qwen3.5 family.
 # Matches ColQwen2/2.5/3/3.5 ``visual_prompt_prefix``:
 #     "<|im_start|>user\n<|vision_start|><|image_pad|><|vision_end|>"

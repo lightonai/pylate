@@ -1365,7 +1365,8 @@ class ColBERT(SentenceTransformer):
 
         if use_suffix_expansion:
             tokenized_outputs = self._append_expansion_tokens(
-                tokenized_outputs, n_tokens=10,
+                tokenized_outputs,
+                n_tokens=10,
             )
 
         if use_prefix:
@@ -1380,7 +1381,11 @@ class ColBERT(SentenceTransformer):
                     tokenized_outputs["token_type_ids"], 0
                 )
 
-        if is_query and self.attend_to_expansion_tokens and "attention_mask" in tokenized_outputs:
+        if (
+            is_query
+            and self.attend_to_expansion_tokens
+            and "attention_mask" in tokenized_outputs
+        ):
             tokenized_outputs["attention_mask"].fill_(1)
 
         return tokenized_outputs
@@ -1409,18 +1414,21 @@ class ColBERT(SentenceTransformer):
 
         if "attention_mask" in features:
             ones = torch.ones(
-                batch_size, n_tokens,
+                batch_size,
+                n_tokens,
                 dtype=features["attention_mask"].dtype,
                 device=device,
             )
             features["attention_mask"] = torch.cat(
-                [features["attention_mask"], ones], dim=1,
+                [features["attention_mask"], ones],
+                dim=1,
             )
 
         for key in ("token_type_ids", "mm_token_type_ids"):
             if key in features:
                 zeros = torch.zeros(
-                    batch_size, n_tokens,
+                    batch_size,
+                    n_tokens,
                     dtype=features[key].dtype,
                     device=device,
                 )

@@ -39,11 +39,15 @@ def _configure(module, user_processor_kwargs=None):
     """
     colbert = ColBERT.__new__(ColBERT)
     colbert._first_module = lambda: module  # type: ignore[method-assign]
-    ColBERT._configure_chat_template(colbert, user_processor_kwargs=user_processor_kwargs)
+    ColBERT._configure_chat_template(
+        colbert, user_processor_kwargs=user_processor_kwargs
+    )
 
 
 def test_registry_default_installed_for_qwen2_5_vl():
-    module = _make_module(model_type="qwen2_5_vl", existing_chat_template="old qwen tmpl")
+    module = _make_module(
+        model_type="qwen2_5_vl", existing_chat_template="old qwen tmpl"
+    )
     _configure(module)
 
     assert isinstance(module.processor.chat_template, dict)
@@ -139,10 +143,10 @@ def test_persisted_colpali_pin_is_respected():
     # When sentence_bert_config.json round-trips our named pin, the loaded
     # module comes back with processing_kwargs["chat_template"]["chat_template"]
     # == "sentence_transformers". That's our checkpoint signature; leave it.
-    module = _make_module(model_type="qwen2_5_vl", existing_chat_template="orig-not-a-dict")
-    module.processing_kwargs["chat_template"] = {
-        "chat_template": COLPALI_TEMPLATE_NAME
-    }
+    module = _make_module(
+        model_type="qwen2_5_vl", existing_chat_template="orig-not-a-dict"
+    )
+    module.processing_kwargs["chat_template"] = {"chat_template": COLPALI_TEMPLATE_NAME}
 
     _configure(module, user_processor_kwargs=None)
 
@@ -271,7 +275,9 @@ def test_save_load_round_trip_writes_named_jinja_file(tmp_path):
     tokenizer.save_pretrained(tmp_path)
 
     addl = tmp_path / "additional_chat_templates" / f"{COLPALI_TEMPLATE_NAME}.jinja"
-    assert addl.is_file(), "named template was not written to additional_chat_templates/"
+    assert addl.is_file(), (
+        "named template was not written to additional_chat_templates/"
+    )
     assert addl.read_text() == template
     assert (tmp_path / "chat_template.jinja").is_file()  # default template
 

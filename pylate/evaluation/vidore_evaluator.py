@@ -125,7 +125,14 @@ DATASET_NAME_TO_HUMAN_READABLE = {
 }
 
 VIDORE_V2_LANGUAGES = ["english", "french", "spanish", "german"]
-VIDORE_V3_LANGUAGES = ["english", "french", "spanish", "german", "italian", "portuguese"]
+VIDORE_V3_LANGUAGES = [
+    "english",
+    "french",
+    "spanish",
+    "german",
+    "italian",
+    "portuguese",
+]
 
 LANGUAGE_SHORT = {
     "english": "En",
@@ -266,9 +273,7 @@ class ViDoREvaluator(NanoBEIREvaluatorST):
                 expanded_names.append(dn_lower)
         dataset_names = expanded_names
 
-        has_v3 = any(
-            dn.split(":")[0] in VIDORE_V3_DATASETS for dn in dataset_names
-        )
+        has_v3 = any(dn.split(":")[0] in VIDORE_V3_DATASETS for dn in dataset_names)
         if ndcg_at_k is None:
             ndcg_at_k = [5, 10] if has_v3 else [5]
         elif has_v3 and 10 not in ndcg_at_k:
@@ -323,8 +328,7 @@ class ViDoREvaluator(NanoBEIREvaluatorST):
     ) -> PyLateInformationRetrievalEvaluator:
         if not is_datasets_available():
             raise ValueError(
-                "datasets is not available. "
-                "Install it with: pip install datasets"
+                "datasets is not available. Install it with: pip install datasets"
             )
         from datasets import load_dataset
 
@@ -346,9 +350,7 @@ class ViDoREvaluator(NanoBEIREvaluatorST):
         qrel_cid = "corpus-id" if "corpus-id" in qrels_ds.column_names else "corpus_id"
 
         if lang and "language" in queries_ds.column_names:
-            queries_ds = queries_ds.filter(
-                lambda r: r["language"] == lang
-            )
+            queries_ds = queries_ds.filter(lambda r: r["language"] == lang)
 
         queries = {str(r[qid_col]): r["query"] for r in queries_ds}
 

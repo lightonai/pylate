@@ -18,9 +18,7 @@ def pad_embeddings_and_masks(
     if target_len is None:
         target_len = max(e.size(1) for e in embeddings)
     embeddings = [
-        F.pad(e, (0, 0, 0, target_len - e.size(1)))
-        if e.size(1) < target_len
-        else e
+        F.pad(e, (0, 0, 0, target_len - e.size(1))) if e.size(1) < target_len else e
         for e in embeddings
     ]
     masks = [
