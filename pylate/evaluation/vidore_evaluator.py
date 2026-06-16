@@ -214,15 +214,6 @@ class ViDoREvaluator(NanoBEIREvaluatorST):
     **kwargs
         Forwarded to the parent (``mrr_at_k``, ``accuracy_at_k``, ``map_at_k``,
         ``show_progress_bar``, ``write_csv``, ``aggregate_fn``, etc.).
-
-    Examples
-    --------
-    >>> evaluator = ViDoREvaluator()                               # all v1
-    >>> evaluator = ViDoREvaluator(versions=["v2", "v3"])          # v2+v3, all langs
-    >>> evaluator = ViDoREvaluator(versions=["v3"], language="french")  # v3 French only
-    >>> evaluator = ViDoREvaluator(dataset_names=["arxivqa"])      # single v1 dataset
-    >>> results = evaluator(model)
-    >>> print(results[evaluator.primary_metric])
     """
 
     information_retrieval_class = PyLateInformationRetrievalEvaluator
