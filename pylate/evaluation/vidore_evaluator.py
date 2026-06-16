@@ -188,6 +188,33 @@ class ViDoREvaluator(NanoBEIREvaluatorST):
     **kwargs
         Forwarded to the parent (``mrr_at_k``, ``accuracy_at_k``, ``map_at_k``,
         ``show_progress_bar``, ``write_csv``, ``aggregate_fn``, etc.).
+
+    Examples
+    --------
+    from pylate import models, evaluation
+
+    model = models.ColBERT(model_name_or_path="my-vidore-model", device="cuda")
+
+    All v1 datasets (default):
+
+    evaluator = evaluation.ViDoREvaluator()
+
+    Specific versions:
+
+    evaluator = evaluation.ViDoREvaluator(versions=["v1", "v2"])
+
+    Cherry-pick datasets across versions:
+
+    evaluator = evaluation.ViDoREvaluator(dataset_names=["arxivqa", "infovqa", "finance"])
+
+    Only French queries on v3:
+
+    evaluator = evaluation.ViDoREvaluator(versions=["v3"], language="french")
+
+    Use in a training loop:
+
+    from sentence_transformers import SentenceTransformerTrainer
+    trainer = SentenceTransformerTrainer(..., evaluator=evaluator)
     """
 
     information_retrieval_class = PyLateInformationRetrievalEvaluator
