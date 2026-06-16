@@ -1814,6 +1814,11 @@ class ColBERT(SentenceTransformer):
         )
         base_proc_name = PROCESSOR_MAPPING_NAMES.get(config.model_type)
         if base_proc_name is None:
+            logger.warning(
+                f"Could not find a base processor for model_type={config.model_type!r} "
+                f"in PROCESSOR_MAPPING_NAMES — the colpali-engine processor will not be "
+                f"replaced. Consider upgrading transformers."
+            )
             return
 
         base_proc_cls = getattr(importlib.import_module("transformers"), base_proc_name)
