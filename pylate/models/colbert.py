@@ -1714,7 +1714,7 @@ class ColBERT(SentenceTransformer):
 
         # Detect ColPali-family models and override the architecture so
         # AutoModel loads the base VLM (no colpali_engine dependency).
-        colpali_arch = self._detect_colpali_architecture(
+        colpali_arch, detected_config = self._detect_colpali_architecture(
             model_name_or_path, config_kwargs_merged
         )
         if colpali_arch is not None:
@@ -1747,6 +1747,7 @@ class ColBERT(SentenceTransformer):
                 transformer_model,
                 model_name_or_path,
                 processor_kwargs_merged,
+                model_type=detected_config.model_type,
             )
 
             proj_key = _COLPALI_PROJ_KEY.get(colpali_arch, _DEFAULT_PROJ_KEY)
@@ -1776,6 +1777,7 @@ class ColBERT(SentenceTransformer):
         transformer_model: Transformer,
         model_name_or_path: str,
         processor_kwargs: dict[str, Any],
+        model_type: str,
     ) -> None:
         """Replace the ColPali processor with the base VLM processor.
 
@@ -1804,23 +1806,14 @@ class ColBERT(SentenceTransformer):
         """
         import importlib
 
-        from transformers import AutoConfig
         from transformers.models.auto.processing_auto import (
             PROCESSOR_MAPPING_NAMES,
         )
 
-        config = AutoConfig.from_pretrained(
-            model_name_or_path,
-            **{
-                k: v
-                for k, v in processor_kwargs.items()
-                if k in ("token", "trust_remote_code", "revision", "local_files_only")
-            },
-        )
-        base_proc_name = PROCESSOR_MAPPING_NAMES.get(config.model_type)
+        base_proc_name = PROCESSOR_MAPPING_NAMES.get(model_type)
         if base_proc_name is None:
             logger.warning(
-                f"Could not find a base processor for model_type={config.model_type!r} "
+                f"Could not find a base processor for model_type={model_type!r} "
                 f"in PROCESSOR_MAPPING_NAMES — the colpali-engine processor will not be "
                 f"replaced. Consider upgrading transformers."
             )
@@ -1862,18 +1855,19 @@ class ColBERT(SentenceTransformer):
     def _detect_colpali_architecture(
         model_name_or_path: str,
         config_kwargs: dict[str, Any],
-    ) -> str | None:
-        """Return the ColPali architecture name if this is a ColPali model, else None."""
+    ) -> tuple[str | None, Any]:
+        """Return (colpali_arch, config) if this is a ColPali model, else (None, config)."""
         from transformers import AutoConfig
 
         try:
             config = AutoConfig.from_pretrained(model_name_or_path, **config_kwargs)
         except Exception:
-            return None
+            return None, None
         architectures = getattr(config, "architectures", None) or []
         for arch in architectures:
             if arch in _COLPALI_TO_BASE_ARCHITECTURE:
-                return arch
+                return arch, config
+        return None, config
         return None
 
     @staticmethod
