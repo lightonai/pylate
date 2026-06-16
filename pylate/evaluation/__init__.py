@@ -6,7 +6,11 @@ from .colbert_triplet import ColBERTTripletEvaluator
 from .custom_dataset import load_custom_dataset
 from .nano_beir_evaluator import NanoBEIREvaluator
 from .pylate_information_retrieval_evaluator import PyLateInformationRetrievalEvaluator
-from .vidore_evaluator import ViDoREvaluator
+
+try:
+    from .vidore_evaluator import ViDoREvaluator
+except ImportError:
+    pass
 
 __all__ = [
     "ColBERTTripletEvaluator",
