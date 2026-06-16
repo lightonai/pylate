@@ -8,7 +8,13 @@ from torch import Tensor, nn
 
 from ..models import ColBERT
 from ..scores import ColBERTScores
-from ..utils import all_gather, all_gather_with_gradients, get_rank, get_world_size
+from ..utils import (
+    all_gather,
+    all_gather_with_gradients,
+    all_reduce_max,
+    get_rank,
+    get_world_size,
+)
 from .padding import pad_embeddings_and_masks
 
 
@@ -191,7 +197,7 @@ class Contrastive(nn.Module):
             # pad to the global max seq_len before gathering.
             local_max = max(e.size(1) for e in embeddings[1:])
             global_max = torch.tensor(local_max, device=embeddings[0].device)
-            torch.distributed.all_reduce(global_max, op=torch.distributed.ReduceOp.MAX)
+            all_reduce_max(global_max)
             doc_embeds, doc_masks = pad_embeddings_and_masks(
                 embeddings[1:], masks[1:], target_len=global_max.item()
             )

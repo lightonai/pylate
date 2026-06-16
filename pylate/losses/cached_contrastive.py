@@ -17,7 +17,13 @@ from torch.utils.checkpoint import get_device_states, set_device_states
 
 from ..models import ColBERT
 from ..scores import ColBERTScores
-from ..utils import all_gather, all_gather_with_gradients, get_rank, get_world_size
+from ..utils import (
+    all_gather,
+    all_gather_with_gradients,
+    all_reduce_max,
+    get_rank,
+    get_world_size,
+)
 from .contrastive import extract_skiplist_mask
 from .padding import pad_embeddings_and_masks
 
@@ -290,7 +296,7 @@ class CachedContrastive(nn.Module):
             # pad to the global max seq_len before gathering.
             local_max = max(e.size(1) for e in embeddings_other)
             global_max = torch.tensor(local_max, device=embeddings_other[0].device)
-            torch.distributed.all_reduce(global_max, op=torch.distributed.ReduceOp.MAX)
+            all_reduce_max(global_max)
             embeddings_other, doc_masks = pad_embeddings_and_masks(
                 embeddings_other, masks[1:], target_len=global_max.item()
             )
