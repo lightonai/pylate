@@ -1449,6 +1449,11 @@ class ColBERT(SentenceTransformer):
         .. deprecated::
             Use :meth:`preprocess` instead.
         """
+        warnings.warn(
+            "tokenize() is deprecated, use preprocess() instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
         return self.preprocess(inputs=texts, is_query=is_query, pad=pad, task=task)
 
     def _configure_chat_template(
