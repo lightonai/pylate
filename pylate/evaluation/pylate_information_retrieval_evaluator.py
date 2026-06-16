@@ -25,6 +25,14 @@ class PyLateInformationRetrievalEvaluator(InformationRetrievalEvaluator):
     This class evaluates an Information Retrieval (IR) setting. This is a direct extension of the InformationRetrievalEvaluator from the sentence-transformers library, only override the compute_all_metrics method to be compilatible with PyLate models (define asymmetric encoding using is_query params and add padding).
     """
 
+    def _get_corpus_chunk(self, start: int, end: int) -> list:
+        """Return corpus entries for the given slice.
+
+        Subclasses can override this to decode or transform entries lazily
+        (e.g. decode images from bytes only when the chunk is about to be encoded).
+        """
+        return self.corpus[start:end]
+
     def compute_all_metrics(
         self,
         model: ColBERT,
@@ -85,9 +93,12 @@ class PyLateInformationRetrievalEvaluator(InformationRetrievalEvaluator):
                     if self.truncate_dim is None
                     else corpus_model.truncate_embeddings(self.truncate_dim)
                 ):
+                    corpus_chunk = self._get_corpus_chunk(
+                        corpus_start_idx, corpus_end_idx
+                    )
                     sub_corpus_embeddings = torch.nn.utils.rnn.pad_sequence(
                         corpus_model.encode(
-                            self.corpus[corpus_start_idx:corpus_end_idx],
+                            corpus_chunk,
                             prompt_name=self.corpus_prompt_name,
                             prompt=self.corpus_prompt,
                             is_query=False,

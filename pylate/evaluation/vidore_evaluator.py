@@ -7,14 +7,18 @@ and aggregates NDCG/MRR/Recall across datasets.
 Supports three benchmark versions (v1, v2, v3) with per-dataset and per-version
 selection.  V2/V3 datasets contain multilingual queries — each language is
 evaluated as a separate sub-evaluator (matching MTEB's per-language scoring).
-
 """
 
 from __future__ import annotations
 
+import gc
 import logging
+from io import BytesIO
 from typing import TYPE_CHECKING, Literal
 
+import torch
+from datasets import Image as DatasetImage
+from PIL import Image
 from sentence_transformers.sentence_transformer.evaluation.nano_beir import (
     NanoBEIREvaluator as NanoBEIREvaluatorST,
 )
@@ -26,6 +30,16 @@ if TYPE_CHECKING:
     from ..models import ColBERT
 
 logger = logging.getLogger(__name__)
+
+
+def _decode_lazy_image(value):
+    """Decode a datasets lazy-encoded image dict to a PIL Image."""
+    if isinstance(value, dict) and "bytes" in value and value["bytes"] is not None:
+        return Image.open(BytesIO(value["bytes"]))
+    if isinstance(value, dict) and "path" in value and value["path"] is not None:
+        return Image.open(value["path"])
+    return value
+
 
 # ── Dataset registry ────────────────────────────────────────────────────────
 
@@ -144,6 +158,31 @@ DatasetNameType = Literal[
 VersionType = Literal["v1", "v2", "v3"]
 
 
+# ── Multimodal IR evaluator ────────────────────────────────────────────────
+
+
+class ViDoREInformationRetrievalEvaluator(PyLateInformationRetrievalEvaluator):
+    """IR evaluator that decodes lazy-encoded corpus images before encoding.
+
+    ViDoRe corpora store images with ``datasets.Image(decode=False)`` to avoid
+    materializing every PIL image at init time.  This subclass decodes the
+    ``{"bytes": ..., "path": ...}`` dicts to PIL Images per-chunk right before
+    the model encodes them.
+    """
+
+    @staticmethod
+    def _decode_corpus_chunk(entries: list) -> list:
+        return [
+            {**entry, "image": _decode_lazy_image(entry["image"])}
+            if isinstance(entry, dict) and "image" in entry
+            else entry
+            for entry in entries
+        ]
+
+    def _get_corpus_chunk(self, start: int, end: int) -> list:
+        return self._decode_corpus_chunk(self.corpus[start:end])
+
+
 # ── Evaluator ───────────────────────────────────────────────────────────────
 
 
@@ -217,7 +256,7 @@ class ViDoREvaluator(NanoBEIREvaluatorST):
     trainer = SentenceTransformerTrainer(..., evaluator=evaluator)
     """
 
-    information_retrieval_class = PyLateInformationRetrievalEvaluator
+    information_retrieval_class = ViDoREInformationRetrievalEvaluator
 
     def __init__(
         self,
@@ -344,6 +383,16 @@ class ViDoREvaluator(NanoBEIREvaluatorST):
         if lang and "language" in queries_ds.column_names:
             queries_ds = queries_ds.filter(lambda r: r["language"] == lang)
 
+        # Keep corpus images as encoded bytes (decode=False) to avoid
+        # materializing every PIL image at init time.  Images are decoded
+        # lazily in PyLateInformationRetrievalEvaluator.compute_all_metrics
+        # right before each chunk is encoded.
+        image_col = "image"
+        if image_col in corpus_ds.column_names:
+            feat = corpus_ds.features.get(image_col)
+            if isinstance(feat, DatasetImage) and feat.decode:
+                corpus_ds = corpus_ds.cast_column(image_col, DatasetImage(decode=False))
+
         queries = {str(r[qid_col]): r["query"] for r in queries_ds}
 
         if self.document_prompt:
@@ -384,6 +433,48 @@ class ViDoREvaluator(NanoBEIREvaluatorST):
     ) -> dict[str, float]:
         results = super().__call__(model, output_path, epoch, steps, *args, **kwargs)
 
+        # Free GPU memory accumulated during evaluation (many sub-evaluators
+        # each encode corpus images, fragmenting the CUDA allocator).  Without
+        # this, training can hang on the first all_gather after eval in DDP.
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
+        num_underscores = self.name.count("_")
+
+        # Compute per-dataset macro averages over languages (v2/v3 only)
+        dataset_lang_groups: dict[str, list[str]] = {}
+        for dataset_name in self.dataset_names:
+            if ":" in dataset_name:
+                base = dataset_name.rsplit(":", 1)[0].lower()
+                dataset_lang_groups.setdefault(base, []).append(
+                    self._get_human_readable_name(dataset_name)
+                )
+
+        for base, hr_names in dataset_lang_groups.items():
+            base_hr = DATASET_NAME_TO_HUMAN_READABLE[base]
+            if self.truncate_dim is not None:
+                base_hr += f"_{self.truncate_dim}"
+
+            per_metric: dict[str, list[float]] = {}
+            for hr_name in hr_names:
+                prefix = hr_name + "_"
+                for key, value in results.items():
+                    if key.startswith(prefix):
+                        metric = key.split("_", maxsplit=num_underscores)[-1]
+                        per_metric.setdefault(metric, []).append(value)
+
+            for metric, values in per_metric.items():
+                results[f"{base_hr}_{metric}"] = sum(values) / len(values)
+
+            ndcg_k = 10 if base in VIDORE_V3_DATASETS else 5
+            for score_name in self.score_function_names:
+                avg_key = f"{base_hr}_{score_name}_ndcg@{ndcg_k}"
+                if avg_key in results:
+                    logger.warning(
+                        f"{base_hr} macro NDCG@{ndcg_k}: {results[avg_key]:.4f}"
+                    )
+
         # Group evaluated datasets by version
         version_groups: dict[str, list[str]] = {}
         for dataset_name in self.dataset_names:
@@ -400,7 +491,6 @@ class ViDoREvaluator(NanoBEIREvaluatorST):
             return results
 
         # Compute per-version macro averages
-        num_underscores = self.name.count("_")
         for version, hr_names in version_groups.items():
             per_metric: dict[str, list[float]] = {}
             for hr_name in hr_names:
