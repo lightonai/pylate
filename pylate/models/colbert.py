@@ -1862,13 +1862,44 @@ class ColBERT(SentenceTransformer):
         try:
             config = AutoConfig.from_pretrained(model_name_or_path, **config_kwargs)
         except Exception:
-            return None, None
+            # LoRA adapter repos have no config.json — resolve via adapter_config.json.
+            config = ColBERT._resolve_adapter_config(
+                model_name_or_path, config_kwargs
+            )
+            if config is None:
+                return None, None
         architectures = getattr(config, "architectures", None) or []
         for arch in architectures:
             if arch in _COLPALI_TO_BASE_ARCHITECTURE:
                 return arch, config
         return None, config
-        return None
+
+    @staticmethod
+    def _resolve_adapter_config(
+        model_name_or_path: str,
+        config_kwargs: dict[str, Any],
+    ) -> Any | None:
+        """Try to load the base model config from a LoRA adapter repo."""
+        import json
+
+        from transformers import AutoConfig
+
+        try:
+            from huggingface_hub import hf_hub_download
+
+            hub_kwargs = {
+                k: v
+                for k, v in config_kwargs.items()
+                if k in ("token", "revision", "local_files_only")
+            }
+            adapter_path = hf_hub_download(
+                model_name_or_path, "adapter_config.json", **hub_kwargs
+            )
+            with open(adapter_path) as f:
+                base_model = json.loads(f.read())["base_model_name_or_path"]
+            return AutoConfig.from_pretrained(base_model, **config_kwargs)
+        except Exception:
+            return None
 
     @staticmethod
     def _extract_colpali_projection(
