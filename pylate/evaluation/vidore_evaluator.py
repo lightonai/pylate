@@ -486,10 +486,6 @@ class ViDoREvaluator(NanoBEIREvaluatorST):
                     )
                     break
 
-        active_versions = [v for v, names in version_groups.items() if names]
-        if len(active_versions) <= 1:
-            return results
-
         # Compute per-version macro averages
         for version, hr_names in version_groups.items():
             per_metric: dict[str, list[float]] = {}
