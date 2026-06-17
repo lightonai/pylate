@@ -24,9 +24,7 @@ class TestPadEmbeddingsAndMasks:
         e_long = torch.ones(1, 7, 4)
         m_short = torch.ones(1, 3, dtype=torch.bool)
         m_long = torch.ones(1, 7, dtype=torch.bool)
-        out_e, out_m = pad_embeddings_and_masks(
-            [e_short, e_long], [m_short, m_long]
-        )
+        out_e, out_m = pad_embeddings_and_masks([e_short, e_long], [m_short, m_long])
         assert out_e[0].shape == (1, 7, 4)
         assert out_e[1].shape == (1, 7, 4)
         # Padded region of embedding should be zeros
@@ -34,8 +32,8 @@ class TestPadEmbeddingsAndMasks:
         # Original region should be ones
         assert (out_e[0][:, :3, :] == 1).all()
         # Padded region of mask should be False
-        assert (out_m[0][:, 3:] == False).all()
-        assert (out_m[0][:, :3] == True).all()
+        assert (~out_m[0][:, 3:]).all()
+        assert out_m[0][:, :3].all()
 
     def test_explicit_target_len(self):
         """Pad to an explicit target_len larger than any input."""
@@ -45,7 +43,7 @@ class TestPadEmbeddingsAndMasks:
         assert out_e[0].shape == (2, 10, 6)
         assert out_m[0].shape == (2, 10)
         assert (out_e[0][:, 4:, :] == 0).all()
-        assert (out_m[0][:, 4:] == False).all()
+        assert (~out_m[0][:, 4:]).all()
 
     def test_target_len_equal_to_input(self):
         """target_len == input length — no padding."""
@@ -63,9 +61,7 @@ class TestPadEmbeddingsAndMasks:
         m1 = torch.ones(1, 2, dtype=torch.bool)
         m2 = torch.ones(1, 5, dtype=torch.bool)
         m3 = torch.ones(1, 3, dtype=torch.bool)
-        out_e, out_m = pad_embeddings_and_masks(
-            [e1, e2, e3], [m1, m2, m3]
-        )
+        out_e, out_m = pad_embeddings_and_masks([e1, e2, e3], [m1, m2, m3])
         for e in out_e:
             assert e.shape == (1, 5, 4)
         for m in out_m:

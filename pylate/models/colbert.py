@@ -1863,9 +1863,7 @@ class ColBERT(SentenceTransformer):
             config = AutoConfig.from_pretrained(model_name_or_path, **config_kwargs)
         except Exception:
             # LoRA adapter repos have no config.json — resolve via adapter_config.json.
-            config = ColBERT._resolve_adapter_config(
-                model_name_or_path, config_kwargs
-            )
+            config = ColBERT._resolve_adapter_config(model_name_or_path, config_kwargs)
             if config is None:
                 return None, None
         architectures = getattr(config, "architectures", None) or []

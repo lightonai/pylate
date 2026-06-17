@@ -14,9 +14,7 @@ COLPALI_ADAPTER = "vidore/colqwen2.5-v0.2"
 class TestDetectColpaliArchitecture:
     def test_detects_colpali_base_model(self):
         """Base ColPali repo has config.json with ColQwen2_5 architecture."""
-        arch, config = models.ColBERT._detect_colpali_architecture(
-            COLPALI_BASE, {}
-        )
+        arch, config = models.ColBERT._detect_colpali_architecture(COLPALI_BASE, {})
         assert arch is not None
         assert arch in _COLPALI_TO_BASE_ARCHITECTURE
         assert config is not None
@@ -24,9 +22,7 @@ class TestDetectColpaliArchitecture:
 
     def test_adapter_repo_detected(self):
         """LoRA adapter repos resolve via adapter_config.json -> base model config."""
-        arch, config = models.ColBERT._detect_colpali_architecture(
-            COLPALI_ADAPTER, {}
-        )
+        arch, config = models.ColBERT._detect_colpali_architecture(COLPALI_ADAPTER, {})
         assert arch is not None
         assert arch in _COLPALI_TO_BASE_ARCHITECTURE
         assert config is not None
@@ -70,9 +66,7 @@ class TestColpaliBaseModelLoading:
         assert dense.out_features == 128
 
     def test_encode_text_query(self, colpali_model):
-        embeddings = colpali_model.encode(
-            ["what is machine learning?"], is_query=True
-        )
+        embeddings = colpali_model.encode(["what is machine learning?"], is_query=True)
         assert len(embeddings) == 1
         assert embeddings[0].ndim == 2
         assert embeddings[0].shape[-1] == 128
