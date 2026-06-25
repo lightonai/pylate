@@ -13,9 +13,12 @@ from __future__ import annotations
 
 import gc
 import logging
+import os
+from contextlib import nullcontext
 from io import BytesIO
 from typing import TYPE_CHECKING, Literal
 
+import numpy as np
 import torch
 from datasets import Image as DatasetImage
 from PIL import Image
@@ -23,6 +26,7 @@ from sentence_transformers.sentence_transformer.evaluation.nano_beir import (
     NanoBEIREvaluator as NanoBEIREvaluatorST,
 )
 from sentence_transformers.util import is_datasets_available
+from tqdm import tqdm, trange
 
 from .pylate_information_retrieval_evaluator import PyLateInformationRetrievalEvaluator
 
@@ -414,13 +418,72 @@ class ViDoREvaluator(NanoBEIREvaluatorST):
 
         ir_evaluator_kwargs["corpus_chunk_size"] = self._corpus_chunk_size
 
-        return self.information_retrieval_class(
+        evaluator = self.information_retrieval_class(
             queries=queries,
             corpus=corpus,
             relevant_docs=relevant_docs,
             name=human_readable_name,
             **ir_evaluator_kwargs,
         )
+        evaluator._corpus_dataset_path = dataset_path
+        return evaluator
+
+    # ── Corpus encoding ──────────────────────────────────────────────────
+
+    @staticmethod
+    def _encode_corpus(
+        model: ColBERT,
+        evaluator: ViDoREInformationRetrievalEvaluator,
+    ) -> torch.Tensor:
+        """Encode an evaluator's full corpus into a padded 3D tensor."""
+        chunks: list[torch.Tensor] = []
+        with (
+            nullcontext()
+            if evaluator.truncate_dim is None
+            else model.truncate_embeddings(evaluator.truncate_dim)
+        ):
+            for start in trange(
+                0,
+                len(evaluator.corpus),
+                evaluator.corpus_chunk_size,
+                desc="Encoding shared corpus",
+            ):
+                end = min(
+                    start + evaluator.corpus_chunk_size, len(evaluator.corpus)
+                )
+                corpus_chunk = evaluator._get_corpus_chunk(start, end)
+                chunk_embs = torch.nn.utils.rnn.pad_sequence(
+                    model.encode(
+                        corpus_chunk,
+                        prompt_name=evaluator.corpus_prompt_name,
+                        prompt=evaluator.corpus_prompt,
+                        is_query=False,
+                        batch_size=evaluator.batch_size,
+                        show_progress_bar=False,
+                        convert_to_numpy=False,
+                    ),
+                    batch_first=True,
+                    padding_value=0,
+                )
+                chunks.append(chunk_embs)
+
+        max_tokens = max(c.shape[1] for c in chunks)
+        padded = []
+        for c in chunks:
+            if c.shape[1] < max_tokens:
+                p = torch.zeros(
+                    c.shape[0],
+                    max_tokens - c.shape[1],
+                    c.shape[2],
+                    dtype=c.dtype,
+                    device=c.device,
+                )
+                c = torch.cat([c, p], dim=1)
+            padded.append(c)
+
+        return torch.cat(padded, dim=0)
+
+    # ── Main entry point ───────────────────────────────────────────────
 
     def __call__(
         self,
@@ -431,18 +494,189 @@ class ViDoREvaluator(NanoBEIREvaluatorST):
         *args,
         **kwargs,
     ) -> dict[str, float]:
-        results = super().__call__(model, output_path, epoch, steps, *args, **kwargs)
+        per_metric_results: dict[str, list[float]] = {}
+        per_dataset_results: dict[str, float] = {}
 
-        # Free GPU memory accumulated during evaluation (many sub-evaluators
-        # each encode corpus images, fragmenting the CUDA allocator).  Without
-        # this, training can hang on the first all_gather after eval in DDP.
+        if epoch != -1:
+            out_txt = (
+                f" in epoch {epoch} after {steps} steps"
+                if steps != -1
+                else f" after epoch {epoch}"
+            )
+        else:
+            out_txt = ""
+        if self.truncate_dim is not None:
+            out_txt += f" (truncated to {self.truncate_dim})"
+        logger.info(
+            "ViDoRe Evaluation of the model on %s dataset%s:",
+            self.dataset_names,
+            out_txt,
+        )
+
+        if self.score_functions is None:
+            self.score_functions = {model.similarity_fn_name: model.similarity}
+            self.score_function_names = [model.similarity_fn_name]
+            self._append_csv_headers(self.score_function_names)
+
+        # Identify which corpus paths are shared across language variants
+        corpus_counts: dict[str, int] = {}
+        for evaluator in self.evaluators:
+            path = getattr(evaluator, "_corpus_dataset_path", None)
+            if path:
+                corpus_counts[path] = corpus_counts.get(path, 0) + 1
+        shared_paths = {p for p, c in corpus_counts.items() if c > 1}
+
+        # Iterate evaluators, encoding each shared corpus once and passing
+        # the embeddings to every language variant before freeing it.
+        num_underscores_in_name = self.name.count("_")
+        current_corpus_path: str | None = None
+        corpus_embeddings: torch.Tensor | None = None
+
+        for evaluator in tqdm(
+            self.evaluators,
+            desc="Evaluating datasets",
+            disable=not self.show_progress_bar,
+        ):
+            logger.info("Evaluating %s", evaluator.name)
+            path = getattr(evaluator, "_corpus_dataset_path", None)
+
+            extra_kwargs: dict = {}
+            if path in shared_paths:
+                if path != current_corpus_path:
+                    # New corpus group — free previous, encode this one once
+                    del corpus_embeddings
+                    logger.info(
+                        "Encoding corpus for %s "
+                        "(%d language variants will reuse it)",
+                        path,
+                        corpus_counts[path],
+                    )
+                    corpus_embeddings = self._encode_corpus(model, evaluator)
+                    current_corpus_path = path
+                extra_kwargs["corpus_embeddings"] = corpus_embeddings
+
+            evaluation = evaluator(
+                model, output_path, epoch, steps, **extra_kwargs
+            )
+
+            for full_key, metric_value in evaluation.items():
+                metric = full_key.split(
+                    "_", maxsplit=num_underscores_in_name
+                )[-1]
+                per_metric_results.setdefault(metric, []).append(metric_value)
+                per_dataset_results[full_key] = metric_value
+
+        del corpus_embeddings
+
+        # ── Aggregation (mirrors NanoBEIREvaluatorST) ──────────────────
+
+        agg_results = {
+            metric: self.aggregate_fn(values)
+            for metric, values in per_metric_results.items()
+        }
+
+        if output_path is not None and self.write_csv:
+            os.makedirs(output_path, exist_ok=True)
+            csv_path = os.path.join(output_path, self.csv_file)
+            if not os.path.isfile(csv_path):
+                fOut = open(csv_path, mode="w", encoding="utf-8")
+                fOut.write(",".join(self.csv_headers))
+                fOut.write("\n")
+            else:
+                fOut = open(csv_path, mode="a", encoding="utf-8")
+
+            output_data = [epoch, steps]
+            for name in self.score_function_names:
+                for k in self.accuracy_at_k:
+                    output_data.append(agg_results[f"{name}_accuracy@{k}"])
+                for k in self.precision_recall_at_k:
+                    output_data.append(agg_results[f"{name}_precision@{k}"])
+                    output_data.append(agg_results[f"{name}_recall@{k}"])
+                for k in self.mrr_at_k:
+                    output_data.append(agg_results[f"{name}_mrr@{k}"])
+                for k in self.ndcg_at_k:
+                    output_data.append(agg_results[f"{name}_ndcg@{k}"])
+                for k in self.map_at_k:
+                    output_data.append(agg_results[f"{name}_map@{k}"])
+
+            fOut.write(",".join(map(str, output_data)))
+            fOut.write("\n")
+            fOut.close()
+
+        if not self.primary_metric:
+            if self.main_score_function is None:
+                score_function = max(
+                    [
+                        (
+                            name,
+                            agg_results[f"{name}_ndcg@{max(self.ndcg_at_k)}"],
+                        )
+                        for name in self.score_function_names
+                    ],
+                    key=lambda x: x[1],
+                )[0]
+                self.primary_metric = (
+                    f"{score_function}_ndcg@{max(self.ndcg_at_k)}"
+                )
+            else:
+                self.primary_metric = f"{self.main_score_function.value}_ndcg@{max(self.ndcg_at_k)}"
+
+        avg_queries = np.mean(
+            [len(e.queries) for e in self.evaluators]
+        )
+        avg_corpus = np.mean(
+            [len(e.corpus) for e in self.evaluators]
+        )
+        logger.info("Average Queries: %s", avg_queries)
+        logger.info("Average Corpus: %s\n", avg_corpus)
+
+        for name in self.score_function_names:
+            logger.info("Aggregated for Score Function: %s", name)
+            for k in self.accuracy_at_k:
+                logger.info(
+                    "Accuracy@%d: %.2f%%",
+                    k,
+                    agg_results[f"{name}_accuracy@{k}"] * 100,
+                )
+            for k in self.precision_recall_at_k:
+                logger.info(
+                    "Precision@%d: %.2f%%",
+                    k,
+                    agg_results[f"{name}_precision@{k}"] * 100,
+                )
+                logger.info(
+                    "Recall@%d: %.2f%%",
+                    k,
+                    agg_results[f"{name}_recall@{k}"] * 100,
+                )
+            for k in self.mrr_at_k:
+                logger.info(
+                    "MRR@%d: %.4f", k, agg_results[f"{name}_mrr@{k}"]
+                )
+            for k in self.ndcg_at_k:
+                logger.info(
+                    "NDCG@%d: %.4f", k, agg_results[f"{name}_ndcg@{k}"]
+                )
+            for k in self.map_at_k:
+                logger.info(
+                    "MAP@%d: %.4f", k, agg_results[f"{name}_map@{k}"]
+                )
+
+        agg_results = self.prefix_name_to_metrics(agg_results, self.name)
+        self.store_metrics_in_model_card_data(model, agg_results, epoch, steps)
+
+        results: dict[str, float] = per_dataset_results
+        results.update(agg_results)
+
+        # ── ViDoRe-specific aggregation ────────────────────────────────
+
         gc.collect()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
         num_underscores = self.name.count("_")
 
-        # Compute per-dataset macro averages over languages (v2/v3 only)
+        # Per-dataset macro averages over languages (v2/v3 only)
         dataset_lang_groups: dict[str, list[str]] = {}
         for dataset_name in self.dataset_names:
             if ":" in dataset_name:
@@ -475,7 +709,7 @@ class ViDoREvaluator(NanoBEIREvaluatorST):
                         f"{base_hr} macro NDCG@{ndcg_k}: {results[avg_key]:.4f}"
                     )
 
-        # Group evaluated datasets by version
+        # Per-version macro averages
         version_groups: dict[str, list[str]] = {}
         for dataset_name in self.dataset_names:
             base = dataset_name.split(":")[0].lower()
@@ -486,7 +720,6 @@ class ViDoREvaluator(NanoBEIREvaluatorST):
                     )
                     break
 
-        # Compute per-version macro averages
         for version, hr_names in version_groups.items():
             per_metric: dict[str, list[float]] = {}
             for hr_name in hr_names:
