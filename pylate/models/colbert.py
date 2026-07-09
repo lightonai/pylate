@@ -7,6 +7,7 @@ import math
 import string
 import warnings
 from collections import OrderedDict
+from contextlib import nullcontext
 from typing import Any, Iterable, Literal, Optional
 
 import numpy as np
@@ -776,6 +777,22 @@ class ColBERT(SentenceTransformer):
                 )
         return False
 
+    def _autocast_context(self):
+        """Return an autocast context matching the model's dtype.
+
+        During training the HF Trainer wraps the forward pass in autocast,
+        which keeps operations like LayerNorm in fp32 even when the model
+        weights are bf16/fp16. Standalone ``encode()`` runs outside the
+        Trainer, so we replicate that behaviour here. For fp32 models or
+        CPU-only runs this returns a no-op context.
+        """
+        if self.device.type not in ("cuda", "xpu"):
+            return nullcontext()
+        param = next(self.parameters(), None)
+        if param is None or param.dtype == torch.float32:
+            return nullcontext()
+        return torch.autocast(device_type=self.device.type, dtype=param.dtype)
+
     @deprecated_kwargs(sentences="inputs")
     def encode(
         self,
@@ -972,7 +989,7 @@ class ColBERT(SentenceTransformer):
             features = batch_to_device(batch=features, target_device=device)
             features.update(extra_features)
 
-            with torch.no_grad():
+            with torch.no_grad(), self._autocast_context():
                 out_features = self.forward(input=features)
                 if self.device.type == "hpu":
                     out_features = copy.deepcopy(out_features)
