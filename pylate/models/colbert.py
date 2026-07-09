@@ -656,21 +656,19 @@ class ColBERT(SentenceTransformer):
         if not self.do_query_expansion:
             self.attend_to_expansion_tokens = False
 
-        # Flash Attention's unpadding optimization physically removes padding
-        # tokens from the sequence. Query expansion relies on padding queries
-        # to ``query_length`` with expansion tokens — if those get stripped,
-        # expansion silently doesn't happen. Disable unpadding so the
-        # expansion tokens survive through the forward pass.
-        if self.do_query_expansion:
-            first = self._first_module()
-            if getattr(first, "unpad_inputs", None) is not False:
-                first.unpad_inputs = False
-
+        # When expansion tokens are not attended (attention_mask=0), unpadding
+        # physically removes them from the sequence; expansion silently
+        # doesn't happen. Disable unpadding so they survive the forward pass.
+        # When expansion tokens ARE attended, unpadding keeps them, so it's safe.
+        if self.do_query_expansion and not self.attend_to_expansion_tokens:
             # attend_to_expansion_tokens=False is incompatible with Flash
             # Attention: FA does not support arbitrary per-token attention
             # masks, so masking out expansion tokens silently degrades scores.
-            if not self.attend_to_expansion_tokens:
-                self._check_expansion_fa_compat()
+            self._check_expansion_fa_compat()
+
+            first = self._first_module()
+            if getattr(first, "unpad_inputs", None) is not False:
+                first.unpad_inputs = False
 
     def _check_expansion_fa_compat(self) -> None:
         """Raise if expansion tokens would be unattended under Flash Attention.
@@ -704,6 +702,51 @@ class ColBERT(SentenceTransformer):
 
     def __len__(self) -> int:
         return len(self._modules)
+
+    def forward(self, features: dict[str, Any], **kwargs: Any) -> dict[str, Any]:
+        features = super().forward(features, **kwargs)
+        # When sentence-transformers' unpadding optimization is active (FA2
+        # with variable-length support), the Transformer forward pass
+        # concatenates all sequences into a single flat tensor:
+        #   token_embeddings: (1, sum_of_lengths, D)
+        #   input_ids:        (1, sum_of_lengths)
+        #   no attention_mask — replaced by cu_seq_lens_q, seq_idx, etc.
+        #
+        # PyLate's encode() and loss functions expect the standard padded
+        # batch layout (B, T, D) with an attention_mask. Re-pad here so
+        # all downstream code sees the usual shapes.
+        if "cu_seq_lens_q" in features:
+            cu = features["cu_seq_lens_q"].tolist()
+            flat_emb = features["token_embeddings"][0]
+            flat_ids = features["input_ids"][0]
+            emb_chunks = [flat_emb[s:e] for s, e in zip(cu[:-1], cu[1:])]
+            id_chunks = [flat_ids[s:e] for s, e in zip(cu[:-1], cu[1:])]
+            features["token_embeddings"] = torch.nn.utils.rnn.pad_sequence(
+                emb_chunks, batch_first=True, padding_value=0.0
+            )
+            features["input_ids"] = torch.nn.utils.rnn.pad_sequence(
+                id_chunks, batch_first=True, padding_value=0
+            )
+            # Reconstruct the attention_mask from the per-sequence lengths
+            lengths = torch.tensor(
+                [e - s for s, e in zip(cu[:-1], cu[1:])], device=flat_emb.device
+            )
+            T_max = features["input_ids"].shape[1]
+            features["attention_mask"] = (
+                torch.arange(T_max, device=flat_emb.device).unsqueeze(0)
+                < lengths.unsqueeze(1)
+            )
+            # Clean up unpadding-specific keys that downstream code doesn't expect
+            for key in (
+                "cu_seq_lens_q",
+                "cu_seq_lens_k",
+                "max_length_q",
+                "max_length_k",
+                "seq_idx",
+                "position_ids",
+            ):
+                features.pop(key, None)
+        return features
 
     @staticmethod
     def insert_prefix_token(input_ids: torch.Tensor, prefix_id: int) -> torch.Tensor:
