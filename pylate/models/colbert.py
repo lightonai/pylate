@@ -149,9 +149,7 @@ def _load_colpali_proj_tensors(
             lora_r = adapter_cfg.get("r", 1)
             scaling = lora_alpha / lora_r
 
-            base_hub_kwargs = {
-                k: v for k, v in hub_kwargs.items() if k != "revision"
-            }
+            base_hub_kwargs = {k: v for k, v in hub_kwargs.items() if k != "revision"}
             base_tensors = _load_colpali_proj_tensors(
                 base_model_name, weight_key, bias_key, **base_hub_kwargs
             )
@@ -171,7 +169,6 @@ def _load_colpali_proj_tensors(
             model_name_or_path,
             e,
         )
-
 
     raise ValueError(
         f"Could not find projection weights ending in '{weight_key}' "
@@ -732,10 +729,9 @@ class ColBERT(SentenceTransformer):
                 [e - s for s, e in zip(cu[:-1], cu[1:])], device=flat_emb.device
             )
             T_max = features["input_ids"].shape[1]
-            features["attention_mask"] = (
-                torch.arange(T_max, device=flat_emb.device).unsqueeze(0)
-                < lengths.unsqueeze(1)
-            )
+            features["attention_mask"] = torch.arange(
+                T_max, device=flat_emb.device
+            ).unsqueeze(0) < lengths.unsqueeze(1)
             # Clean up unpadding-specific keys that downstream code doesn't expect
             for key in (
                 "cu_seq_lens_q",

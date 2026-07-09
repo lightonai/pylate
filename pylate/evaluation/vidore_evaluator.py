@@ -448,9 +448,7 @@ class ViDoREvaluator(NanoBEIREvaluatorST):
                 evaluator.corpus_chunk_size,
                 desc="Encoding shared corpus",
             ):
-                end = min(
-                    start + evaluator.corpus_chunk_size, len(evaluator.corpus)
-                )
+                end = min(start + evaluator.corpus_chunk_size, len(evaluator.corpus))
                 corpus_chunk = evaluator._get_corpus_chunk(start, end)
                 chunk_embs = torch.nn.utils.rnn.pad_sequence(
                     model.encode(
@@ -546,8 +544,7 @@ class ViDoREvaluator(NanoBEIREvaluatorST):
                     # New corpus group — free previous, encode this one once
                     del corpus_embeddings
                     logger.info(
-                        "Encoding corpus for %s "
-                        "(%d language variants will reuse it)",
+                        "Encoding corpus for %s (%d language variants will reuse it)",
                         path,
                         corpus_counts[path],
                     )
@@ -555,14 +552,10 @@ class ViDoREvaluator(NanoBEIREvaluatorST):
                     current_corpus_path = path
                 extra_kwargs["corpus_embeddings"] = corpus_embeddings
 
-            evaluation = evaluator(
-                model, output_path, epoch, steps, **extra_kwargs
-            )
+            evaluation = evaluator(model, output_path, epoch, steps, **extra_kwargs)
 
             for full_key, metric_value in evaluation.items():
-                metric = full_key.split(
-                    "_", maxsplit=num_underscores_in_name
-                )[-1]
+                metric = full_key.split("_", maxsplit=num_underscores_in_name)[-1]
                 per_metric_results.setdefault(metric, []).append(metric_value)
                 per_dataset_results[full_key] = metric_value
 
@@ -615,18 +608,14 @@ class ViDoREvaluator(NanoBEIREvaluatorST):
                     ],
                     key=lambda x: x[1],
                 )[0]
-                self.primary_metric = (
-                    f"{score_function}_ndcg@{max(self.ndcg_at_k)}"
-                )
+                self.primary_metric = f"{score_function}_ndcg@{max(self.ndcg_at_k)}"
             else:
-                self.primary_metric = f"{self.main_score_function.value}_ndcg@{max(self.ndcg_at_k)}"
+                self.primary_metric = (
+                    f"{self.main_score_function.value}_ndcg@{max(self.ndcg_at_k)}"
+                )
 
-        avg_queries = np.mean(
-            [len(e.queries) for e in self.evaluators]
-        )
-        avg_corpus = np.mean(
-            [len(e.corpus) for e in self.evaluators]
-        )
+        avg_queries = np.mean([len(e.queries) for e in self.evaluators])
+        avg_corpus = np.mean([len(e.corpus) for e in self.evaluators])
         logger.info("Average Queries: %s", avg_queries)
         logger.info("Average Corpus: %s\n", avg_corpus)
 
@@ -650,17 +639,11 @@ class ViDoREvaluator(NanoBEIREvaluatorST):
                     agg_results[f"{name}_recall@{k}"] * 100,
                 )
             for k in self.mrr_at_k:
-                logger.info(
-                    "MRR@%d: %.4f", k, agg_results[f"{name}_mrr@{k}"]
-                )
+                logger.info("MRR@%d: %.4f", k, agg_results[f"{name}_mrr@{k}"])
             for k in self.ndcg_at_k:
-                logger.info(
-                    "NDCG@%d: %.4f", k, agg_results[f"{name}_ndcg@{k}"]
-                )
+                logger.info("NDCG@%d: %.4f", k, agg_results[f"{name}_ndcg@{k}"])
             for k in self.map_at_k:
-                logger.info(
-                    "MAP@%d: %.4f", k, agg_results[f"{name}_map@{k}"]
-                )
+                logger.info("MAP@%d: %.4f", k, agg_results[f"{name}_map@{k}"])
 
         agg_results = self.prefix_name_to_metrics(agg_results, self.name)
         self.store_metrics_in_model_card_data(model, agg_results, epoch, steps)
