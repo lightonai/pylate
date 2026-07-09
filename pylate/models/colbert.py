@@ -65,6 +65,10 @@ def _load_colpali_proj_tensors(
     Matches keys by suffix (e.g. any key ending in ``custom_text_proj.weight``)
     so it handles plain, ``model.``-prefixed, and ``base_model.model.``-prefixed
     checkpoints without maintaining an explicit prefix list.
+
+    For LoRA adapter repos (containing ``adapter_model.safetensors`` instead of
+    ``model.safetensors``), the merged projection is reconstructed from the base
+    model weights and the LoRA delta: ``W_merged = W_base + (alpha/r) * B @ A``.
     """
     from safetensors import safe_open
 
@@ -109,10 +113,71 @@ def _load_colpali_proj_tensors(
     except EnvironmentError:
         pass
 
+    # Try LoRA adapter — reconstruct merged projection from base + delta. (ColNomic is a fine tuning of ColQwen)
+    try:
+        adapter_cfg_path = cached_file(
+            model_name_or_path, "adapter_config.json", **hub_kwargs
+        )
+        with open(adapter_cfg_path) as f:
+            adapter_cfg = json.load(f)
+
+        adapter_sf_path = cached_file(
+            model_name_or_path, "adapter_model.safetensors", **hub_kwargs
+        )
+
+        # The adapter may store the full projection (modules_to_save) or LoRA
+        # decompositions.  Check for full weights first.
+        result = _find_in_file(adapter_sf_path)
+        if weight_key in result:
+            return result
+
+        # Look for LoRA A/B matrices for the projection layer.
+        proj_stem = weight_key.removesuffix(".weight")
+        lora_a_suffix = f"{proj_stem}.lora_A.weight"
+        lora_b_suffix = f"{proj_stem}.lora_B.weight"
+        lora_a = lora_b = None
+        with safe_open(adapter_sf_path, framework="pt", device="cpu") as f:
+            for key in f.keys():
+                if key == lora_a_suffix or key.endswith("." + lora_a_suffix):
+                    lora_a = f.get_tensor(key)
+                elif key == lora_b_suffix or key.endswith("." + lora_b_suffix):
+                    lora_b = f.get_tensor(key)
+
+        if lora_a is not None and lora_b is not None:
+            base_model_name = adapter_cfg["base_model_name_or_path"]
+            lora_alpha = adapter_cfg.get("lora_alpha", 1)
+            lora_r = adapter_cfg.get("r", 1)
+            scaling = lora_alpha / lora_r
+
+            base_hub_kwargs = {
+                k: v for k, v in hub_kwargs.items() if k != "revision"
+            }
+            base_tensors = _load_colpali_proj_tensors(
+                base_model_name, weight_key, bias_key, **base_hub_kwargs
+            )
+
+            base_weight = base_tensors[weight_key]
+            merged = base_weight.to(lora_b.dtype) + scaling * (lora_b @ lora_a)
+            merged_result: dict[str, torch.Tensor] = {weight_key: merged}
+            if bias_key in base_tensors:
+                merged_result[bias_key] = base_tensors[bias_key]
+            return merged_result
+    except EnvironmentError:
+        pass
+    except KeyError as e:
+        logger.warning(
+            "Found LoRA adapter in %s but failed to reconstruct projection "
+            "weights: missing key %s",
+            model_name_or_path,
+            e,
+        )
+
+
     raise ValueError(
         f"Could not find projection weights ending in '{weight_key}' "
         f"in {model_name_or_path}. "
-        "Looked for model.safetensors and model.safetensors.index.json."
+        "Looked for model.safetensors, model.safetensors.index.json, "
+        "and adapter_model.safetensors."
     )
 
 
