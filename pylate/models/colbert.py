@@ -1492,6 +1492,7 @@ class ColBERT(SentenceTransformer):
         if (
             is_query
             and self.attend_to_expansion_tokens
+            and not use_suffix_expansion
             and "attention_mask" in tokenized_outputs
         ):
             tokenized_outputs["attention_mask"].fill_(1)
@@ -1508,8 +1509,16 @@ class ColBERT(SentenceTransformer):
         Unlike pad-to-fixed-length expansion, this preserves the full query
         text and always appends exactly *n_tokens* regardless of input length,
         matching ``colpali_engine``'s ``process_queries`` behavior.
+
+        Because expansion tokens and batch-alignment padding share the same
+        token ID (pad_token_id), the input_ids are correct after a simple
+        concat.  The attention mask is recomputed so that exactly the first
+        ``real_length + n_tokens`` positions are attended, which naturally
+        promotes any batch-alignment padding between real tokens and the
+        appended tokens into expansion — giving the right count and positions.
         """
         batch_size = features["input_ids"].shape[0]
+        seq_len = features["input_ids"].shape[1]
         device = features["input_ids"].device
 
         pad_ids = torch.full(
@@ -1521,15 +1530,10 @@ class ColBERT(SentenceTransformer):
         features["input_ids"] = torch.cat([features["input_ids"], pad_ids], dim=1)
 
         if "attention_mask" in features:
-            ones = torch.ones(
-                batch_size,
-                n_tokens,
-                dtype=features["attention_mask"].dtype,
-                device=device,
-            )
-            features["attention_mask"] = torch.cat(
-                [features["attention_mask"], ones],
-                dim=1,
+            real_lengths = features["attention_mask"].sum(dim=1, keepdim=True)
+            positions = torch.arange(seq_len + n_tokens, device=device).unsqueeze(0)
+            features["attention_mask"] = (positions < real_lengths + n_tokens).to(
+                features["attention_mask"].dtype
             )
 
         for key in ("token_type_ids", "mm_token_type_ids"):
