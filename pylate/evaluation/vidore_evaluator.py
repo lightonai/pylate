@@ -571,30 +571,28 @@ class ViDoREvaluator(NanoBEIREvaluatorST):
         if output_path is not None and self.write_csv:
             os.makedirs(output_path, exist_ok=True)
             csv_path = os.path.join(output_path, self.csv_file)
-            if not os.path.isfile(csv_path):
-                fOut = open(csv_path, mode="w", encoding="utf-8")
-                fOut.write(",".join(self.csv_headers))
+            mode = "w" if not os.path.isfile(csv_path) else "a"
+            with open(csv_path, mode=mode, encoding="utf-8") as fOut:
+                if mode == "w":
+                    fOut.write(",".join(self.csv_headers))
+                    fOut.write("\n")
+
+                output_data = [epoch, steps]
+                for name in self.score_function_names:
+                    for k in self.accuracy_at_k:
+                        output_data.append(agg_results[f"{name}_accuracy@{k}"])
+                    for k in self.precision_recall_at_k:
+                        output_data.append(agg_results[f"{name}_precision@{k}"])
+                        output_data.append(agg_results[f"{name}_recall@{k}"])
+                    for k in self.mrr_at_k:
+                        output_data.append(agg_results[f"{name}_mrr@{k}"])
+                    for k in self.ndcg_at_k:
+                        output_data.append(agg_results[f"{name}_ndcg@{k}"])
+                    for k in self.map_at_k:
+                        output_data.append(agg_results[f"{name}_map@{k}"])
+
+                fOut.write(",".join(map(str, output_data)))
                 fOut.write("\n")
-            else:
-                fOut = open(csv_path, mode="a", encoding="utf-8")
-
-            output_data = [epoch, steps]
-            for name in self.score_function_names:
-                for k in self.accuracy_at_k:
-                    output_data.append(agg_results[f"{name}_accuracy@{k}"])
-                for k in self.precision_recall_at_k:
-                    output_data.append(agg_results[f"{name}_precision@{k}"])
-                    output_data.append(agg_results[f"{name}_recall@{k}"])
-                for k in self.mrr_at_k:
-                    output_data.append(agg_results[f"{name}_mrr@{k}"])
-                for k in self.ndcg_at_k:
-                    output_data.append(agg_results[f"{name}_ndcg@{k}"])
-                for k in self.map_at_k:
-                    output_data.append(agg_results[f"{name}_map@{k}"])
-
-            fOut.write(",".join(map(str, output_data)))
-            fOut.write("\n")
-            fOut.close()
 
         if not self.primary_metric:
             if self.main_score_function is None:
@@ -688,8 +686,8 @@ class ViDoREvaluator(NanoBEIREvaluatorST):
             for score_name in self.score_function_names:
                 avg_key = f"{base_hr}_{score_name}_ndcg@{ndcg_k}"
                 if avg_key in results:
-                    logger.warning(
-                        f"{base_hr} macro NDCG@{ndcg_k}: {results[avg_key]:.4f}"
+                    logger.info(
+                        "%s macro NDCG@%d: %.4f", base_hr, ndcg_k, results[avg_key]
                     )
 
         # Per-version macro averages
@@ -719,8 +717,11 @@ class ViDoREvaluator(NanoBEIREvaluatorST):
             for score_name in self.score_function_names:
                 ver_key = f"ViDoRE_{version}_{score_name}_ndcg@{ndcg_k}"
                 if ver_key in results:
-                    logger.warning(
-                        f"ViDoRE {version} macro NDCG@{ndcg_k}: {results[ver_key]:.4f}"
+                    logger.info(
+                        "ViDoRE %s macro NDCG@%d: %.4f",
+                        version,
+                        ndcg_k,
+                        results[ver_key],
                     )
 
         return results

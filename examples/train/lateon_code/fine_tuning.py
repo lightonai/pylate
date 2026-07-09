@@ -383,7 +383,7 @@ def main():
     )
 
     data_collator = ColBERTCollatorSampleNeg(
-        tokenize_fn=model.preprocess, num_negatives=15
+        preprocess_fn=model.preprocess, num_negatives=15
     )
     trainer = SentenceTransformerTrainer(
         model=model,
