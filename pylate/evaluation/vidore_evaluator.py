@@ -298,22 +298,44 @@ class ViDoREvaluator(NanoBEIREvaluatorST):
                 dataset_names.extend(VIDORE_VERSION_DATASETS[v].keys())
 
         resolved_lang = language.lower() if language else None
+        if resolved_lang is not None and resolved_lang not in LANGUAGE_SHORT:
+            raise ValueError(
+                f"Unknown language {language!r}. "
+                f"Supported languages: {list(LANGUAGE_SHORT)}"
+            )
 
         # Expand multilingual datasets (v2/v3) into per-language entries.
         # Format: "datasetname:language" for multilingual, plain name for v1.
+        # When a language is requested, datasets that do not cover it are
+        # skipped with a warning (e.g. italian only exists in v3), so that
+        # mixed-version selections still evaluate the language where available.
         expanded_names: list[str] = []
         for dn in dataset_names:
             dn_lower = dn.lower()
             if dn_lower in VIDORE_V2_DATASETS:
-                langs = [resolved_lang] if resolved_lang else VIDORE_V2_LANGUAGES
-                for lang in langs:
-                    expanded_names.append(f"{dn_lower}:{lang}")
+                available_langs = VIDORE_V2_LANGUAGES
             elif dn_lower in VIDORE_V3_DATASETS:
-                langs = [resolved_lang] if resolved_lang else VIDORE_V3_LANGUAGES
-                for lang in langs:
-                    expanded_names.append(f"{dn_lower}:{lang}")
+                available_langs = VIDORE_V3_LANGUAGES
             else:
                 expanded_names.append(dn_lower)
+                continue
+            if resolved_lang is not None:
+                if resolved_lang not in available_langs:
+                    logger.warning(
+                        f"Skipping {dn_lower}: language {resolved_lang!r} is not "
+                        f"available for this dataset (available: {available_langs})."
+                    )
+                    continue
+                langs = [resolved_lang]
+            else:
+                langs = available_langs
+            for lang in langs:
+                expanded_names.append(f"{dn_lower}:{lang}")
+        if not expanded_names:
+            raise ValueError(
+                f"No datasets left to evaluate for language {language!r}. "
+                f"Requested datasets: {dataset_names}."
+            )
         dataset_names = expanded_names
 
         has_v3 = any(dn.split(":")[0] in VIDORE_V3_DATASETS for dn in dataset_names)
@@ -392,8 +414,24 @@ class ViDoREvaluator(NanoBEIREvaluatorST):
         qrel_qid = "query-id" if "query-id" in qrels_ds.column_names else "query_id"
         qrel_cid = "corpus-id" if "corpus-id" in qrels_ds.column_names else "corpus_id"
 
-        if lang and "language" in queries_ds.column_names:
+        if lang:
+            # Raising here happens at evaluator construction time, before any
+            # (expensive) corpus encoding in __call__.
+            if "language" not in queries_ds.column_names:
+                raise ValueError(
+                    f"A per-language evaluation ({lang!r}) was requested for "
+                    f"{dataset_path}, but its queries split has no 'language' "
+                    "column. Evaluating without filtering would silently score "
+                    "all languages under a per-language name and corrupt the "
+                    "macro averages."
+                )
             queries_ds = queries_ds.filter(lambda r: r["language"] == lang)
+            if len(queries_ds) == 0:
+                raise ValueError(
+                    f"No queries with language == {lang!r} in {dataset_path}. "
+                    "Check the language spelling (full lowercase name, e.g. "
+                    "'french')."
+                )
 
         # Keep corpus images as encoded bytes (decode=False) to avoid
         # materializing every PIL image at init time.  Images are decoded
