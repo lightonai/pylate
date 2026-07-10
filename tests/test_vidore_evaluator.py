@@ -52,3 +52,52 @@ def test_language_expansion_without_language(no_dataset_loading):
 def test_language_case_insensitive(no_dataset_loading):
     evaluator = ViDoREvaluator(dataset_names=["esgreports"], language="French")
     assert evaluator.dataset_names == ["esgreports:french"]
+
+
+@pytest.fixture
+def fake_hub_datasets(monkeypatch):
+    """Replace hub loading with a tiny in-memory v1-style dataset."""
+    import datasets
+
+    def fake_load_dataset(path, name, split):
+        if name == "queries":
+            return datasets.Dataset.from_dict(
+                {"query-id": [1, 2], "query": ["q one", "q two"]}
+            )
+        if name == "corpus":
+            return datasets.Dataset.from_dict(
+                {"corpus-id": [10, 11], "image": ["img-a", "img-b"]}
+            )
+        if name == "qrels":
+            return datasets.Dataset.from_dict(
+                {"query-id": [1, 2], "corpus-id": [10, 11], "score": [1, 1]}
+            )
+        raise AssertionError(name)
+
+    monkeypatch.setattr(datasets, "load_dataset", fake_load_dataset)
+
+
+def test_query_prompts_forwarded_to_sub_evaluators(fake_hub_datasets):
+    evaluator = ViDoREvaluator(
+        dataset_names=["arxivqa"], query_prompts="Find a relevant screenshot: "
+    )
+    assert evaluator.evaluators[0].query_prompt == "Find a relevant screenshot: "
+
+
+def test_corpus_prompts_injected_as_image_text(fake_hub_datasets):
+    evaluator = ViDoREvaluator(
+        dataset_names=["arxivqa"], corpus_prompts="Describe the image."
+    )
+    corpus = evaluator.evaluators[0].corpus
+    assert all(entry["text"] == "Describe the image." for entry in corpus)
+    # Not forwarded as an encode-time string prefix (meaningless for images)
+    assert not getattr(evaluator.evaluators[0], "corpus_prompt", None)
+
+
+def test_document_prompt_and_corpus_prompts_are_exclusive(no_dataset_loading):
+    with pytest.raises(ValueError, match="not both"):
+        ViDoREvaluator(
+            dataset_names=["arxivqa"],
+            document_prompt="Describe the image.",
+            corpus_prompts="Describe the image.",
+        )
