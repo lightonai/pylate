@@ -113,6 +113,18 @@ class Dense(DenseSentenceTransformer):
             act_fn = config["activation_function"]
             if isinstance(act_fn, str):
                 config["activation_function"] = import_from_string(act_fn)()
+        # In the ColBERT pipeline the projection always runs on token
+        # embeddings. ST checkpoints whose Dense sits after Pooling (e.g.
+        # sentence-t5, LaBSE) declare "sentence_embedding" as input, which no
+        # longer exists once Pooling is filtered out — reuse the weights
+        # per-token instead.
+        if config.get("module_input_name", "token_embeddings") != "token_embeddings":
+            logger.info(
+                "Converting a sentence-level Dense layer (input "
+                f"'{config['module_input_name']}') to a token-level projection."
+            )
+        config["module_input_name"] = "token_embeddings"
+        config["module_output_name"] = "token_embeddings"
         model = Dense(**config)
         model.load_state_dict(dense.state_dict())
         return model
