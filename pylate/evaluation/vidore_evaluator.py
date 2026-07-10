@@ -201,6 +201,14 @@ class ViDoREvaluator(NanoBEIREvaluatorST):
     only that language is evaluated; when ``None`` (default), every available
     language for each dataset gets its own sub-evaluator.
 
+    .. note::
+        Relevance judgments are binarized (score > 0), as the underlying
+        sentence-transformers evaluator only supports binary relevance.
+        V1/v2 qrels carry a single grade so this is lossless, but v3 qrels
+        are graded (1 and 2): v3 NDCG values are therefore not directly
+        comparable to the MTEB leaderboard, which computes graded-gain NDCG
+        via pytrec_eval. Rankings between models remain meaningful.
+
     Parameters
     ----------
     dataset_names : list[str] | None
@@ -407,6 +415,10 @@ class ViDoREvaluator(NanoBEIREvaluatorST):
         else:
             corpus = {str(r[cid_col]): {"image": r["image"]} for r in corpus_ds}
 
+        # Binarize qrels (score > 0): ST's InformationRetrievalEvaluator only
+        # supports binary relevance. Lossless for v1/v2 (uniform grades), but
+        # v3 qrels are graded (1/2), so v3 NDCG differs from MTEB's
+        # pytrec_eval graded-gain NDCG. See the class docstring.
         relevant_docs: dict[str, set[str]] = {}
         for r in qrels_ds:
             if int(r["score"]) > 0:
