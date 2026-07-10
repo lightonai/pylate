@@ -1008,8 +1008,15 @@ class ColBERT(SentenceTransformer):
                         masks = out_features["attention_mask"].bool()
                 else:
                     if self.do_query_expansion:
-                        # We keep all tokens in the query (no skiplist) and we do not want to prune expansion tokens in queries even if we do not attend to them in attention layers
-                        if "input_ids" in out_features:
+                        if self._is_colpali_model:
+                            # Suffix expansion: the attention mask already spans
+                            # text + expansion tokens; anything beyond it is
+                            # batch-alignment padding whose embeddings must not
+                            # leak into MaxSim (they make scores depend on the
+                            # batch composition).
+                            masks = out_features["attention_mask"].bool()
+                        elif "input_ids" in out_features:
+                            # We keep all tokens in the query (no skiplist) and we do not want to prune expansion tokens in queries even if we do not attend to them in attention layers
                             masks = torch.ones_like(
                                 input=out_features["input_ids"], dtype=torch.bool
                             )

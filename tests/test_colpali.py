@@ -75,3 +75,26 @@ class TestColpaliBaseModelLoading:
         """The processor should be the base VLM processor, not a ColPali one."""
         proc_name = type(colpali_model._first_module().processor).__name__
         assert "Col" not in proc_name
+
+    def test_batched_queries_exclude_padding_tokens(self, colpali_model):
+        """Batch-alignment padding must not leak into query embeddings.
+
+        With suffix expansion, only text + expansion tokens are attended; the
+        trailing batch padding produces garbage embeddings that would inflate
+        MaxSim scores depending on the batch composition.
+        """
+        queries = [
+            "what is machine learning and how is it used in modern applications?",
+            "chemistry",
+        ]
+        features = colpali_model.preprocess(queries, is_query=True)
+        attended_lengths = features["attention_mask"].sum(dim=1).tolist()
+
+        embeddings = colpali_model.encode(queries, is_query=True)
+        for embedding, attended in zip(embeddings, attended_lengths):
+            assert embedding.shape[0] == attended
+
+        # Same queries encoded alone (no batch padding) yield the same counts
+        for query, attended in zip(queries, attended_lengths):
+            single = colpali_model.encode([query], is_query=True)[0]
+            assert single.shape[0] == attended
