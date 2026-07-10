@@ -224,13 +224,13 @@ class ViDoREvaluator(NanoBEIREvaluatorST):
         ``None`` (default) evaluates every language separately (one
         sub-evaluator per dataset-language pair, matching MTEB).
         V1 datasets are monolingual and always included as-is.
-    document_prompt : str | None
-        Text appended alongside each corpus image
-        (e.g. ``"Describe the image."``).  Defaults to ``None`` (raw images,
-        matching MTEB's processing).  For per-dataset texts, use
-        ``corpus_prompts`` instead (mutually exclusive): it fills the same
-        image-side ``"text"`` slot, keyed by the expanded
-        ``"dataset:language"`` names.
+    corpus_prompts : str | dict[str, str], optional
+        Text rendered alongside each corpus image
+        (e.g. ``"Describe the image."``) — injected as the image-side
+        ``"text"``, not a string prefix.  Defaults to ``None`` (raw images,
+        matching MTEB's processing).  A string applies to all datasets; a
+        dict must be keyed by the expanded ``"dataset:language"`` names.
+        Make sure this matches how the model was trained.
     query_prompts : str | dict[str, str], optional
         Prompt(s) prepended to queries at encode time (e.g. MTEB v3 uses
         ``"Find a screenshot that is relevant to the user's question."``).
@@ -284,23 +284,12 @@ class ViDoREvaluator(NanoBEIREvaluatorST):
         dataset_names: list[DatasetNameType | str] | None = None,
         versions: list[VersionType] | None = None,
         language: str | None = None,
-        document_prompt: str | None = None,
         corpus_chunk_size: int = 32,
         ndcg_at_k: list[int] | None = None,
         batch_size: int = 16,
         **kwargs,
     ) -> None:
-        # corpus_prompts and document_prompt fill the same slot: the text
-        # rendered alongside each corpus image. corpus_prompts (ST-inherited)
-        # additionally supports per-dataset values.
-        if document_prompt is not None and kwargs.get("corpus_prompts") is not None:
-            raise ValueError(
-                "Specify either `document_prompt` (one text for every corpus "
-                "image) or `corpus_prompts` (per-dataset texts), not both."
-            )
-
         # Must be set before super().__init__ calls _load_dataset
-        self.document_prompt = document_prompt
         self._corpus_chunk_size = corpus_chunk_size
 
         if dataset_names is None:
@@ -463,12 +452,11 @@ class ViDoREvaluator(NanoBEIREvaluatorST):
 
         queries = {str(r[qid_col]): r["query"] for r in queries_ds}
 
-        # document_prompt and corpus_prompts fill the same slot: the text
-        # rendered alongside each corpus image (VLM processors render
-        # "<vision tokens> + text", matching colpali_engine's
-        # visual_prompt_prefix). corpus_prompts supports per-dataset values,
-        # keyed by the expanded "dataset:language" names.
-        document_text = self.document_prompt
+        # The corpus prompt is the text rendered alongside each corpus image
+        # (VLM processors render "<vision tokens> + text", matching
+        # colpali_engine's visual_prompt_prefix). Keyed by the expanded
+        # "dataset:language" names.
+        document_text = None
         if self.corpus_prompts is not None:
             document_text = self.corpus_prompts.get(dataset_name)
 

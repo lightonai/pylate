@@ -94,10 +94,7 @@ def test_corpus_prompts_injected_as_image_text(fake_hub_datasets):
     assert not getattr(evaluator.evaluators[0], "corpus_prompt", None)
 
 
-def test_document_prompt_and_corpus_prompts_are_exclusive(no_dataset_loading):
-    with pytest.raises(ValueError, match="not both"):
-        ViDoREvaluator(
-            dataset_names=["arxivqa"],
-            document_prompt="Describe the image.",
-            corpus_prompts="Describe the image.",
-        )
+def test_no_corpus_prompts_keeps_raw_images(fake_hub_datasets):
+    evaluator = ViDoREvaluator(dataset_names=["arxivqa"])
+    corpus = evaluator.evaluators[0].corpus
+    assert all("text" not in entry for entry in corpus)
