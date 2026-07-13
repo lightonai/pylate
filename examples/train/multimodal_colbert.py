@@ -28,16 +28,17 @@ import os
 import random
 
 from accelerate import PartialState
-from PIL import Image as PIL_Image
 from datasets import (
     Dataset,
     DatasetDict,
-    Image as DatasetImage,
     load_dataset,
     load_from_disk,
 )
+from datasets import (
+    Image as DatasetImage,
+)
 from peft import LoraConfig, TaskType
-from pylate import evaluation, losses, models, utils
+from PIL import Image as PIL_Image
 from sentence_transformers import (
     SentenceTransformerTrainer,
     SentenceTransformerTrainingArguments,
@@ -45,7 +46,11 @@ from sentence_transformers import (
 from sentence_transformers.sampler import NoDuplicatesBatchSampler
 from transformers import AutoModelForImageTextToText
 
-logging.basicConfig(level=logging.WARNING, format="%(asctime)s %(levelname)s %(message)s")
+from pylate import evaluation, losses, models, utils
+
+logging.basicConfig(
+    level=logging.WARNING, format="%(asctime)s %(levelname)s %(message)s"
+)
 log = logging.getLogger(__name__)
 
 # ── Run config ───────────────────────────────────────────────────────────────
@@ -53,7 +58,9 @@ log = logging.getLogger(__name__)
 # "colpali": use the minimal ColPali-style template defined below.
 CHAT_TEMPLATE_VARIANT = "native"
 
-RUN_NAME = f"qwen3_5_4b_colpali_contrastive_vidore_v1v2_vdr_v2_{CHAT_TEMPLATE_VARIANT}_3e-5"
+RUN_NAME = (
+    f"qwen3_5_4b_colpali_contrastive_vidore_v1v2_vdr_v2_{CHAT_TEMPLATE_VARIANT}_3e-5"
+)
 OUTPUT_DIR = f"models/{RUN_NAME}"
 WANDB_PROJECT = "multimodal_pylate"
 
@@ -61,11 +68,11 @@ WANDB_PROJECT = "multimodal_pylate"
 MODEL_NAME = "Qwen/Qwen3.5-4B"
 TORCH_DTYPE = "bfloat16"
 ATTN_IMPLEMENTATION = "flash_attention_3"
-EMBEDDING_SIZE = 128       # ColBERT projection dim
+EMBEDDING_SIZE = 128  # ColBERT projection dim
 QUERY_LENGTH = 48
 DOCUMENT_LENGTH = 1024
-MIN_PIXELS = 3136          # 4 x 28x28 patches minimum
-MAX_PIXELS = 1_003_520     # match ColNomic
+MIN_PIXELS = 3136  # 4 x 28x28 patches minimum
+MAX_PIXELS = 1_003_520  # match ColNomic
 MAX_SEQ_LENGTH = 4096
 
 # ── Chat template ────────────────────────────────────────────────────────────
@@ -105,7 +112,9 @@ QWEN_VL_COLPALI_CHAT_TEMPLATE = (
     "{%- endif -%}"
 )
 
-CHAT_TEMPLATE = QWEN_VL_COLPALI_CHAT_TEMPLATE if CHAT_TEMPLATE_VARIANT == "colpali" else None
+CHAT_TEMPLATE = (
+    QWEN_VL_COLPALI_CHAT_TEMPLATE if CHAT_TEMPLATE_VARIANT == "colpali" else None
+)
 
 # ── LoRA config ──────────────────────────────────────────────────────────────
 # Qwen3.5 mixes full self-attention layers (q/k/v/o_proj) with linear-attention
@@ -138,13 +147,13 @@ LORA_EXCLUDE_MODULES = "visual.blocks.*"  # freeze vision encoder; merger stays 
 # ── Trainer / loss config ────────────────────────────────────────────────────
 TEMPERATURE = 0.02
 BATCH_SIZE = 32
-MINI_BATCH_SIZE = 4        # CachedContrastive gradient-cache chunk size
+MINI_BATCH_SIZE = 4  # CachedContrastive gradient-cache chunk size
 LEARNING_RATE = 3e-5
 WARMUP_RATIO = 0.005
 MAX_STEPS = 3125
 SEED = 42
 EVAL_STEPS = 250
-DDP_TIMEOUT = 14400        # 4h — rank-0 ViDoRe eval on the 4B backbone blocks other ranks
+DDP_TIMEOUT = 14400  # 4h — rank-0 ViDoRe eval on the 4B backbone blocks other ranks
 
 # ── Data: ColPali (ViDoRe) ───────────────────────────────────────────────────
 KD_HUB_DATASET = "lightonai/colpali-train-fine-tuning"
@@ -157,10 +166,10 @@ VDR_IMAGE_HUB_DATASET = "lightonai/llamaindex-vdr-images"
 VDR_LANGUAGES = ["de", "en", "es", "fr", "it"]
 
 # ── Negative filtering / sampling ────────────────────────────────────────────
-NV_THRESHOLD = 0.95    # keep negatives with score < threshold * positive_score
-MAX_NEGATIVES = 20     # max negatives stored per query
-MIN_NEGATIVES = 1      # queries with fewer valid negatives are dropped
-SAMPLE_NEGATIVES = 3   # negatives sampled per query at transform time
+NV_THRESHOLD = 0.95  # keep negatives with score < threshold * positive_score
+MAX_NEGATIVES = 20  # max negatives stored per query
+MIN_NEGATIVES = 1  # queries with fewer valid negatives are dropped
+SAMPLE_NEGATIVES = 3  # negatives sampled per query at transform time
 
 # ── Eval config ──────────────────────────────────────────────────────────────
 EVAL_BATCH_SIZE = 16
@@ -179,7 +188,9 @@ def fix_qwen35_backbone_weights(model: models.ColBERT) -> None:
     transformer = model[0]
     probe = transformer.model.language_model.layers[0].input_layernorm.weight
     if float(probe.abs().sum().item()) != 0.0:
-        log.warning("Qwen3.5 LM tower loaded correctly (layernorm sum != 0) — no fix needed.")
+        log.warning(
+            "Qwen3.5 LM tower loaded correctly (layernorm sum != 0) — no fix needed."
+        )
         return
 
     log.warning(
@@ -226,7 +237,9 @@ def verify_chat_template(model: models.ColBERT) -> None:
     ]
 
     doc_render = processor.apply_chat_template(doc_messages, tokenize=False, **kwargs)
-    query_render = processor.apply_chat_template(query_messages, tokenize=False, **kwargs)
+    query_render = processor.apply_chat_template(
+        query_messages, tokenize=False, **kwargs
+    )
     log.info(
         "Chat-template render check (variant=%r):\n  DOCUMENT:\n%s\n  QUERY:\n%s",
         CHAT_TEMPLATE_VARIANT,
@@ -234,7 +247,9 @@ def verify_chat_template(model: models.ColBERT) -> None:
         query_render,
     )
 
+
 # ── Data loading ─────────────────────────────────────────────────────────────
+
 
 def build_image_index(images_ds: Dataset) -> dict[str, int]:
     """Map image_filename -> row index for fast lookup."""
@@ -317,7 +332,11 @@ def load_kd_split(hub_dataset: str, split: str, image_index: dict[str, int]) -> 
             continue
 
         valid_negs = _filter_negatives(
-            doc_ids, score_values, doc_index, all_doc_filenames, image_index,
+            doc_ids,
+            score_values,
+            doc_index,
+            all_doc_filenames,
+            image_index,
         )
         if len(valid_negs) < MIN_NEGATIVES:
             skipped += 1
@@ -329,7 +348,10 @@ def load_kd_split(hub_dataset: str, split: str, image_index: dict[str, int]) -> 
 
     log.info(
         "Split %s: %d rows kept, %d skipped (nv_threshold=%.2f).",
-        split, len(rows["query"]), skipped, NV_THRESHOLD,
+        split,
+        len(rows["query"]),
+        skipped,
+        NV_THRESHOLD,
     )
     return Dataset.from_dict(rows)
 
@@ -425,7 +447,9 @@ def main() -> None:
     if CHAT_TEMPLATE is not None:
         processor_kwargs["chat_template"] = {"chat_template": CHAT_TEMPLATE}
 
-    log.info("Loading model %s (chat template: %s)...", MODEL_NAME, CHAT_TEMPLATE_VARIANT)
+    log.info(
+        "Loading model %s (chat template: %s)...", MODEL_NAME, CHAT_TEMPLATE_VARIANT
+    )
     model = models.ColBERT(
         model_name_or_path=MODEL_NAME,
         model_kwargs={
@@ -460,7 +484,6 @@ def main() -> None:
         exclude_modules=LORA_EXCLUDE_MODULES,
     )
     model.add_adapter(lora_config)
-    log_lora_stats(model)
 
     # ── 3. Data ──────────────────────────────────────────────────────────────
     state = PartialState()
