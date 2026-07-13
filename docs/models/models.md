@@ -50,7 +50,7 @@ If you do not want to use the dense layers of the ST model (but still want to us
 ```python
 
 import torch
-from sentence_transformers.models import Transformer
+from sentence_transformers.base.modules import Transformer
 from pylate import models
 
 base_model = Transformer("answerdotai/ModernBERT-base")
@@ -122,7 +122,7 @@ ColBERT(
     [MixedBread study](https://arxiv.org/abs/2510.12327) showed that it is beneficial to use MLPs to do the projection rather than a simple dense layer. The study explores different depths, activation functions and the use of residual layers. Please check the paper for a more thorough analysis.
     ```python
     import torch
-    from sentence_transformers.models import Transformer
+    from sentence_transformers.base.modules import Transformer
     from pylate import models
 
     base_model = Transformer("jhu-clsp/ettin-encoder-32m")

@@ -6,8 +6,8 @@ import os
 from contextlib import nullcontext
 
 import torch
-from sentence_transformers.evaluation.SentenceEvaluator import SentenceEvaluator
-from sentence_transformers.SentenceTransformer import SentenceTransformer
+from sentence_transformers.base.evaluation import SentenceEvaluator
+from sentence_transformers.sentence_transformer.model import SentenceTransformer
 
 from ..scores import colbert_kd_scores
 from .colbert_triplet import csv_writer, evaluation_message
@@ -139,7 +139,7 @@ class ColBERTDistillationEvaluator(SentenceEvaluator):
         with (
             nullcontext()
             if self.truncate_dim is None
-            else model.truncate_sentence_embeddings(self.truncate_dim)
+            else model.truncate_embeddings(self.truncate_dim)
         ):
             queries_embeddings = torch.nn.utils.rnn.pad_sequence(
                 model.encode(

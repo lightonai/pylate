@@ -8,13 +8,24 @@ from typing import Callable, Iterable, Optional
 import torch
 import torch.nn.functional as F
 import tqdm
+from sentence_transformers.sentence_transformer.losses.cached_multiple_negatives_ranking import (
+    _create_minibatch,
+    _get_batch_size,
+)
 from torch import Tensor, nn
 from torch.utils.checkpoint import get_device_states, set_device_states
 
 from ..models import ColBERT
 from ..scores import ColBERTScores
-from ..utils import all_gather, all_gather_with_gradients, get_rank, get_world_size
+from ..utils import (
+    all_gather,
+    all_gather_with_gradients,
+    all_reduce_max,
+    get_rank,
+    get_world_size,
+)
 from .contrastive import extract_skiplist_mask
+from .padding import pad_embeddings_and_masks
 
 
 class RandContext:
@@ -116,15 +127,15 @@ class CachedContrastive(nn.Module):
 
     >>> loss = losses.CachedContrastive(model=model, mini_batch_size=1)
 
-    >>> anchors = model.tokenize([
+    >>> anchors = model.preprocess([
     ...     "fruits are healthy.", "chips are not healthy."
     ... ], is_query=True)
 
-    >>> positives = model.tokenize([
+    >>> positives = model.preprocess([
     ...     "fruits are good for health.", "chips are not good for health."
     ... ], is_query=False, pad=True)
 
-    >>> negatives = model.tokenize([
+    >>> negatives = model.preprocess([
     ...     "fruits are bad for health.", "chips are good for health."
     ... ], is_query=False, pad=True)
 
@@ -133,6 +144,19 @@ class CachedContrastive(nn.Module):
     >>> loss = loss(sentence_features=sentence_features)
     >>> assert isinstance(loss.item(), float)
     """
+
+    # Enables per-sample media counting in Transformer.preprocess for VLM minibatching.
+    # VLM processors (e.g. Qwen2/2.5/3-VL) return `pixel_values` flat across the batch —
+    # shape `(total_visual_tokens, hidden)` — rather than `(batch, max_patches, hidden)`,
+    # so a plain `[begin:end]` slice cannot recover per-sample tensors when this loss
+    # chunks the batch into minibatches for gradcache. Setting this flag makes the
+    # ST trainer flip `track_media_counts = True` on the multimodal Transformer, which
+    # then attaches `num_images_per_sample` / `num_videos_per_sample` alongside
+    # `pixel_values` / `image_grid_thw`. `_create_minibatch` uses those counts to slice
+    # by visual-token offsets instead of by a leading batch dim. This is PyLate/ST's
+    # equivalent of colpali_engine's `torch.split` + `pad_sequence` workaround
+    # (see `ColQwen2_5_Processor.process_images`), without the padding overhead.
+    requires_media_counts = True
 
     def __init__(
         self,
@@ -181,14 +205,18 @@ class CachedContrastive(nn.Module):
         """
         grad_context = nullcontext if with_grad else torch.no_grad
         random_state_context = nullcontext() if random_state is None else random_state
-        sentence_feature_minibatch = {
-            k: v[begin:end] for k, v in sentence_feature.items()
-        }
+        sentence_feature_minibatch = _create_minibatch(sentence_feature, begin, end)
         with random_state_context:
             with grad_context():
                 # If we need a new random-state copy, create it
                 random_state = (
-                    RandContext(*sentence_feature_minibatch.values())
+                    RandContext(
+                        *(
+                            v
+                            for v in sentence_feature_minibatch.values()
+                            if isinstance(v, torch.Tensor)
+                        )
+                    )
                     if copy_random_state
                     else None
                 )
@@ -208,8 +236,7 @@ class CachedContrastive(nn.Module):
         """Yields chunks of embeddings (and corresponding RandContext) for the given
         sentence_feature, respecting the mini_batch_size limit.
         """
-        input_ids = sentence_feature["input_ids"]
-        bsz = input_ids.size(0)
+        bsz = _get_batch_size(sentence_feature)
         for i, b in enumerate(
             tqdm.trange(
                 0,
@@ -264,6 +291,16 @@ class CachedContrastive(nn.Module):
         # Possibly gather the embeddings across devices to have more in-batch negatives. For GradCache, we only need to gather them to compute the scores matrix and nowhere else.
         # Note that we only gather the documents embeddings and not the queries embeddings, but are keeping gradients. This is to lower the memory usage, see https://github.com/mlfoundations/open_clip/issues/616
         if self.gather_across_devices:
+            # all_gather requires identical shapes across ranks. Multimodal
+            # inputs produce variable-length token sequences per rank, so
+            # pad to the global max seq_len before gathering.
+            local_max = max(e.size(1) for e in embeddings_other)
+            global_max = torch.tensor(local_max, device=embeddings_other[0].device)
+            all_reduce_max(global_max)
+            embeddings_other, doc_masks = pad_embeddings_and_masks(
+                embeddings_other, masks[1:], target_len=global_max.item()
+            )
+            masks = [masks[0], *doc_masks]
             embeddings_other = [
                 torch.cat(all_gather_with_gradients(embeddings))
                 for embeddings in embeddings_other
@@ -281,6 +318,14 @@ class CachedContrastive(nn.Module):
         )
 
         N = len(embeddings_other)
+        # Pad document groups to the same seq length so they can be stacked.
+        # Different columns (positive, negative_0, ...) may have different
+        # token counts when images produce variable-length visual tokens.
+        if N > 1:
+            embeddings_other, doc_masks = pad_embeddings_and_masks(
+                embeddings_other, masks[1:]
+            )
+            masks = [masks[0], *doc_masks]
         docs_stacked = torch.stack(embeddings_other, dim=1)
         docs_mask_stacked = torch.stack(masks[1:], dim=1)
         q_mask = masks[0] if not do_query_expansion else None

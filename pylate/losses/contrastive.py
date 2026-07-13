@@ -8,7 +8,14 @@ from torch import Tensor, nn
 
 from ..models import ColBERT
 from ..scores import ColBERTScores
-from ..utils import all_gather, all_gather_with_gradients, get_rank, get_world_size
+from ..utils import (
+    all_gather,
+    all_gather_with_gradients,
+    all_reduce_max,
+    get_rank,
+    get_world_size,
+)
+from .padding import pad_embeddings_and_masks
 
 
 def extract_skiplist_mask(
@@ -48,9 +55,14 @@ def extract_skiplist_mask(
         sentence_feature["attention_mask"] for sentence_feature in sentence_features
     ]
 
-    skiplist_masks = [
-        torch.ones_like(sentence_features[0]["input_ids"], dtype=torch.bool)
-    ]
+    # For the query (first feature): if input_ids available use ones_like, else use attention_mask shape
+    first_feature = sentence_features[0]
+    if "input_ids" in first_feature:
+        query_mask = torch.ones_like(first_feature["input_ids"], dtype=torch.bool)
+    else:
+        query_mask = torch.ones_like(first_feature["attention_mask"], dtype=torch.bool)
+
+    skiplist_masks = [query_mask]
 
     # We skip the first sentence feature because it is the query.
     skiplist_masks.extend(
@@ -58,6 +70,8 @@ def extract_skiplist_mask(
             ColBERT.skiplist_mask(
                 input_ids=sentence_feature["input_ids"], skiplist=skiplist
             )
+            if "input_ids" in sentence_feature
+            else sentence_feature["attention_mask"].bool()
             for sentence_feature in sentence_features[1:]
         ]
     )
@@ -102,15 +116,15 @@ class Contrastive(nn.Module):
 
     >>> loss = losses.Contrastive(model=model)
 
-    >>> anchor = model.tokenize([
+    >>> anchor = model.preprocess([
     ...     "fruits are healthy.",
     ... ], is_query=True)
 
-    >>> positive = model.tokenize([
+    >>> positive = model.preprocess([
     ...     "fruits are good for health.",
     ... ], is_query=False)
 
-    >>> negative = model.tokenize([
+    >>> negative = model.preprocess([
     ...     "fruits are bad for health.",
     ... ], is_query=False)
 
@@ -178,6 +192,17 @@ class Contrastive(nn.Module):
         batch_size = embeddings[0].size(0)
         # Possibly gather the embeddings across devices to have more in-batch negatives.
         if self.gather_across_devices:
+            # all_gather requires identical shapes across ranks. Multimodal
+            # inputs produce variable-length token sequences per rank, so
+            # pad to the global max seq_len before gathering.
+            local_max = max(e.size(1) for e in embeddings[1:])
+            global_max = torch.tensor(local_max, device=embeddings[0].device)
+            all_reduce_max(global_max)
+            doc_embeds, doc_masks = pad_embeddings_and_masks(
+                embeddings[1:], masks[1:], target_len=global_max.item()
+            )
+            embeddings = [embeddings[0], *doc_embeds]
+            masks = [masks[0], *doc_masks]
             # Note that we only gather the documents embeddings and not the queries embeddings (embeddings[0]), but are keeping gradients. This is to lower the memory usage, see https://github.com/mlfoundations/open_clip/issues/616
             embeddings = [
                 embeddings[0],
@@ -195,6 +220,11 @@ class Contrastive(nn.Module):
         # Note: the queries mask is not used by default; if it's fed through, take care that
         # expansion tokens are not masked from scoring (they may be masked during encoding).
         N = len(embeddings) - 1
+        # Pad document groups to the same seq length so they can be stacked.
+        if N > 1:
+            doc_embeds, doc_masks = pad_embeddings_and_masks(embeddings[1:], masks[1:])
+            embeddings = [embeddings[0], *doc_embeds]
+            masks = [masks[0], *doc_masks]
         docs_stacked = torch.stack(embeddings[1:], dim=1)
         docs_mask_stacked = torch.stack(masks[1:], dim=1)
         q_mask = masks[0] if not do_query_expansion else None

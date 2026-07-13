@@ -4,19 +4,22 @@ import copy
 import json
 import logging
 import math
-import os
 import string
-from typing import Iterable, Literal, Optional
+import warnings
+from collections import OrderedDict
+from contextlib import nullcontext
+from typing import Any, Iterable, Literal, Optional
 
 import numpy as np
 import torch
 from numpy import ndarray
 from scipy.cluster import hierarchy
 from sentence_transformers import SentenceTransformer
-from sentence_transformers.models import Dense as DenseSentenceTransformer
-from sentence_transformers.models import Transformer
-from sentence_transformers.quantization import quantize_embeddings
+from sentence_transformers.base.modules import Dense as DenseSentenceTransformer
+from sentence_transformers.base.modules import Transformer
 from sentence_transformers.util import batch_to_device, load_file_path
+from sentence_transformers.util.decorators import deprecated_kwargs
+from sentence_transformers.util.quantization import quantize_embeddings
 from torch import nn
 from tqdm.autonotebook import trange
 from transformers.utils import cached_file
@@ -24,9 +27,156 @@ from transformers.utils import cached_file
 from ..hf_hub.model_card import PylateModelCardData
 from ..scores import SimilarityFunction
 from ..utils import _start_multi_process_pool
+from ._chat_templates import COLPALI_CHAT_TEMPLATES, COLPALI_TEMPLATE_NAME
 from .Dense import Dense
 
 logger = logging.getLogger(__name__)
+
+# ColPali architecture → base VLM architecture that AutoModel can load
+# without colpali_engine installed. Keys are the class names that appear
+# in config.architectures; values are the base-model class names.
+_COLPALI_TO_BASE_ARCHITECTURE: dict[str, str] = {
+    "ColPali": "PaliGemmaForConditionalGeneration",
+    "ColQwen2": "Qwen2VLModel",
+    "ColQwen2_5": "Qwen2_5_VLModel",
+    "ColQwen3": "Qwen3VLModel",
+    "ColQwen3_5": "Qwen3_5VLModel",
+    "ColGemma3": "Gemma3Model",
+    "ColIdefics3": "Idefics3Model",
+    "ColModernVBert": "ModernVBertModel",
+    "ColQwen2_5Omni": "Qwen2_5OmniThinkerForConditionalGeneration",
+}
+
+# Weight key prefix for the projection layer in each ColPali architecture.
+# Most use "custom_text_proj"; ColIdefics3 uses "linear".
+_COLPALI_PROJ_KEY: dict[str, str] = {
+    "ColIdefics3": "linear",
+}
+_DEFAULT_PROJ_KEY = "custom_text_proj"
+
+
+def _load_colpali_proj_tensors(
+    model_name_or_path: str,
+    weight_key: str,
+    bias_key: str,
+    **hub_kwargs,
+) -> dict[str, torch.Tensor]:
+    """Read projection layer tensors from a safetensors checkpoint.
+
+    Matches keys by suffix (e.g. any key ending in ``custom_text_proj.weight``)
+    so it handles plain, ``model.``-prefixed, and ``base_model.model.``-prefixed
+    checkpoints without maintaining an explicit prefix list.
+
+    For LoRA adapter repos (containing ``adapter_model.safetensors`` instead of
+    ``model.safetensors``), the merged projection is reconstructed from the base
+    model weights and the LoRA delta: ``W_merged = W_base + (alpha/r) * B @ A``.
+    """
+    from safetensors import safe_open
+
+    def _find_in_file(sf_path: str) -> dict[str, torch.Tensor]:
+        result = {}
+        with safe_open(sf_path, framework="pt", device="cpu") as f:
+            for key in f.keys():
+                if key == weight_key or key.endswith("." + weight_key):
+                    result[weight_key] = f.get_tensor(key)
+                elif key == bias_key or key.endswith("." + bias_key):
+                    result[bias_key] = f.get_tensor(key)
+        return result
+
+    # Try single safetensors file.
+    try:
+        sf_path = cached_file(model_name_or_path, "model.safetensors", **hub_kwargs)
+        result = _find_in_file(sf_path)
+        if weight_key in result:
+            return result
+    except EnvironmentError:
+        pass
+
+    # Try sharded safetensors — scan each shard via the index.
+    try:
+        index_path = cached_file(
+            model_name_or_path, "model.safetensors.index.json", **hub_kwargs
+        )
+        with open(index_path) as f:
+            weight_map = json.load(f)["weight_map"]
+
+        shard_files = {
+            v
+            for k, v in weight_map.items()
+            if k.endswith(weight_key) or k.endswith(bias_key)
+        }
+        result: dict[str, torch.Tensor] = {}
+        for shard_file in shard_files:
+            shard_path = cached_file(model_name_or_path, shard_file, **hub_kwargs)
+            result.update(_find_in_file(shard_path))
+        if weight_key in result:
+            return result
+    except EnvironmentError:
+        pass
+
+    # Try LoRA adapter — reconstruct merged projection from base + delta. (ColNomic is a fine tuning of ColQwen)
+    try:
+        adapter_cfg_path = cached_file(
+            model_name_or_path, "adapter_config.json", **hub_kwargs
+        )
+        with open(adapter_cfg_path) as f:
+            adapter_cfg = json.load(f)
+
+        adapter_sf_path = cached_file(
+            model_name_or_path, "adapter_model.safetensors", **hub_kwargs
+        )
+
+        # The adapter may store the full projection (modules_to_save) or LoRA
+        # decompositions.  Check for full weights first.
+        result = _find_in_file(adapter_sf_path)
+        if weight_key in result:
+            return result
+
+        # Look for LoRA A/B matrices for the projection layer.
+        proj_stem = weight_key.removesuffix(".weight")
+        lora_a_suffix = f"{proj_stem}.lora_A.weight"
+        lora_b_suffix = f"{proj_stem}.lora_B.weight"
+        lora_a = lora_b = None
+        with safe_open(adapter_sf_path, framework="pt", device="cpu") as f:
+            for key in f.keys():
+                if key == lora_a_suffix or key.endswith("." + lora_a_suffix):
+                    lora_a = f.get_tensor(key)
+                elif key == lora_b_suffix or key.endswith("." + lora_b_suffix):
+                    lora_b = f.get_tensor(key)
+
+        if lora_a is not None and lora_b is not None:
+            base_model_name = adapter_cfg["base_model_name_or_path"]
+            lora_alpha = adapter_cfg.get("lora_alpha", 1)
+            lora_r = adapter_cfg.get("r", 1)
+            scaling = lora_alpha / lora_r
+
+            base_hub_kwargs = {k: v for k, v in hub_kwargs.items() if k != "revision"}
+            base_tensors = _load_colpali_proj_tensors(
+                base_model_name, weight_key, bias_key, **base_hub_kwargs
+            )
+
+            base_weight = base_tensors[weight_key]
+            merged = base_weight.to(lora_b.dtype) + scaling * (lora_b @ lora_a)
+            merged_result: dict[str, torch.Tensor] = {weight_key: merged}
+            if bias_key in base_tensors:
+                merged_result[bias_key] = base_tensors[bias_key]
+            return merged_result
+    except EnvironmentError:
+        pass
+    except KeyError as e:
+        logger.warning(
+            "Found LoRA adapter in %s but failed to reconstruct projection "
+            "weights: missing key %s",
+            model_name_or_path,
+            e,
+        )
+
+    raise ValueError(
+        f"Could not find projection weights ending in '{weight_key}' "
+        f"in {model_name_or_path}. "
+        "Looked for model.safetensors, model.safetensors.index.json, "
+        "and adapter_model.safetensors."
+    )
 
 
 __version__ = "3.0.0"
@@ -73,8 +223,6 @@ class ColBERT(SentenceTransformer):
         Whether or not to only look at local files (i.e., do not try to download the model).
     token
         Hugging Face authentication token to download private models.
-    use_auth_token
-        Deprecated argument. Please use `token` instead.
     truncate_dim
         The dimension to truncate sentence embeddings to. `None` does no truncation. Truncation is only applicable
         during inference when :meth:`SentenceTransformer.encode` is called.
@@ -99,41 +247,12 @@ class ColBERT(SentenceTransformer):
     skiplist_words
         A list of words to skip from the documents scoring (note that these tokens are used for encoding and are only skipped during the scoring). Default is the list of string.punctuation.
     model_kwargs : dict, optional
-        Additional model configuration parameters to be passed to the Huggingface Transformers model. Particularly
-        useful options are:
-
-        - ``torch_dtype``: Override the default `torch.dtype` and load the model under a specific `dtype`. The
-            different options are:
-
-                1. ``torch.float16``, ``torch.bfloat16`` or ``torch.float``: load in a specified ``dtype``,
-                ignoring the model's ``config.torch_dtype`` if one exists. If not specified - the model will get
-                loaded in ``torch.float`` (fp32).
-
-                2. ``"auto"`` - A ``torch_dtype`` entry in the ``config.json`` file of the model will be attempted
-                to be used. If this entry isn't found then next check the ``dtype`` of the first weight in the
-                checkpoint that's of a floating point type and use that as ``dtype``. This will load the model using
-                the ``dtype`` it was saved in at the end of the training. It can't be used as an indicator of how the
-                model was trained. Since it could be trained in one of half precision dtypes, but saved in fp32.
-        - ``attn_implementation``: The attention implementation to use in the model (if relevant). Can be any of
-            `"eager"` (manual implementation of the attention), `"sdpa"` (using `F.scaled_dot_product_attention
-            <https://pytorch.org/docs/master/generated/torch.nn.functional.scaled_dot_product_attention.html>`_),
-            or `"flash_attention_2"` (using `Dao-AILab/flash-attention
-            <https://github.com/Dao-AILab/flash-attention>`_). By default, if available, SDPA will be used for
-            torch>=2.1.1. The default is otherwise the manual `"eager"` implementation.
-
-        See the `PreTrainedModel.from_pretrained
-        <https://huggingface.co/docs/transformers/en/main_classes/model#transformers.PreTrainedModel.from_pretrained>`_
-        documentation for more details.
-    tokenizer_kwargs
-        Additional tokenizer configuration parameters to be passed to the Huggingface Transformers tokenizer. See the
-        `AutoTokenizer.from_pretrained
-        <https://huggingface.co/docs/transformers/en/model_doc/auto#transformers.AutoTokenizer.from_pretrained>`_
-        documentation for more details.
+        Additional model configuration parameters to be passed to the Huggingface Transformers model.
+    processor_kwargs
+        Additional processor/tokenizer configuration parameters to be passed to the Huggingface Transformers
+        processor/tokenizer.
     config_kwargs
-        Additional model configuration parameters to be passed to the Huggingface Transformers config. See the
-        `AutoConfig.from_pretrained
-        <https://huggingface.co/docs/transformers/en/model_doc/auto#transformers.AutoConfig.from_pretrained>`_
-        documentation for more details.
+        Additional model configuration parameters to be passed to the Huggingface Transformers config.
     model_card_data
         A model card data object that contains information about the model. This is used to generate a model card when
         saving the model. If not set, a default model card data object is created.
@@ -190,6 +309,7 @@ class ColBERT(SentenceTransformer):
     def __init__(
         self,
         model_name_or_path: str | None = None,
+        *,
         modules: Optional[Iterable[nn.Module]] = None,
         device: str | None = None,
         prompts: dict[str, str] | None = None,
@@ -213,10 +333,26 @@ class ColBERT(SentenceTransformer):
         attend_to_expansion_tokens: bool | None = None,
         skiplist_words: list[str] | None = None,
         model_kwargs: dict | None = None,
+        processor_kwargs: dict | None = None,
         tokenizer_kwargs: dict | None = None,
         config_kwargs: dict | None = None,
         model_card_data: PylateModelCardData | None = None,
+        backend: Literal["torch", "onnx", "openvino"] = "torch",
     ) -> None:
+        # Handle deprecated tokenizer_kwargs
+        if tokenizer_kwargs is not None:
+            warnings.warn(
+                "The `tokenizer_kwargs` argument is deprecated. Use `processor_kwargs` instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            if processor_kwargs is not None:
+                raise ValueError(
+                    "Both `processor_kwargs` and `tokenizer_kwargs` are specified. "
+                    "Please only specify `processor_kwargs`."
+                )
+            processor_kwargs = tokenizer_kwargs
+
         self.query_prefix = query_prefix
         self.document_prefix = document_prefix
         self.query_length = query_length
@@ -224,9 +360,23 @@ class ColBERT(SentenceTransformer):
         self.do_query_expansion = do_query_expansion
         self.attend_to_expansion_tokens = attend_to_expansion_tokens
         self.skiplist_words = skiplist_words
+        self._is_colpali_model = False
         model_card_data = model_card_data or PylateModelCardData()
         if similarity_fn_name is None:
             similarity_fn_name = "MaxSim"
+
+        # Handle deprecated use_auth_token
+        if use_auth_token is not None:
+            warnings.warn(
+                "The `use_auth_token` argument is deprecated. Use `token` instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            if token is not None:
+                raise ValueError(
+                    "Both `token` and `use_auth_token` are specified. Please only specify `token`."
+                )
+            token = use_auth_token
 
         super(ColBERT, self).__init__(
             model_name_or_path=model_name_or_path,
@@ -240,14 +390,31 @@ class ColBERT(SentenceTransformer):
             revision=revision,
             local_files_only=local_files_only,
             token=token,
-            use_auth_token=use_auth_token,
             truncate_dim=truncate_dim,
             model_kwargs=model_kwargs,
-            tokenizer_kwargs=tokenizer_kwargs,
+            processor_kwargs=processor_kwargs,
             config_kwargs=config_kwargs,
             model_card_data=model_card_data,
+            backend=backend,
         )
-        hidden_size = self[0].get_word_embedding_dimension()
+
+        # Detect multimodal models from the loaded modality config. This
+        # covers both pre-trained ColPali checkpoints (detected via
+        # _COLPALI_TO_BASE_ARCHITECTURE in _load_default_modules) and
+        # custom-trained multimodal ColBERT models on VL backbones.
+        if not self._is_colpali_model:
+            modality_config = getattr(self._first_module(), "modality_config", {})
+            if "image" in modality_config:
+                self._is_colpali_model = True
+
+        # Wire a ColPali-faithful chat template into the multimodal preprocessor.
+        # Priority: explicit user override in processor_kwargs > template saved
+        # in `additional_chat_templates/sentence_transformers.jinja` on the
+        # checkpoint > built-in registry default for this `config.model_type` >
+        # leave the processor's existing chat_template untouched.
+        self._configure_chat_template(user_processor_kwargs=processor_kwargs)
+
+        hidden_size = self[0].get_embedding_dimension()
 
         # Add a linear projection layer to the model in order to project the embeddings to the desired size.
         if len(self) < 2:
@@ -263,7 +430,6 @@ class ColBERT(SentenceTransformer):
                         revision,
                         local_files_only,
                         token,
-                        use_auth_token,
                     )
                 )
                 logger.info("Loaded the weights from Stanford NLP model.")
@@ -275,7 +441,6 @@ class ColBERT(SentenceTransformer):
                         revision=revision,
                         local_files_only=local_files_only,
                         token=token,
-                        use_auth_token=use_auth_token,
                     )
                     with open(metadata, "r") as f:
                         metadata = json.load(f)
@@ -350,29 +515,38 @@ class ColBERT(SentenceTransformer):
                 )
             )
 
-        # Ensure all tensors in the model are of the same dtype as the first tensor
+        # Ensure non-transformer modules (e.g. the Dense projection) match
+        # the backbone dtype. We skip the Transformer module itself — it was
+        # already loaded in the correct dtype by ``from_pretrained``, and a
+        # blanket ``self.to(dtype)`` would downcast internal buffers like
+        # rotary embedding ``inv_freq`` from fp32 to bf16, causing position
+        # encoding drift.
         try:
             dtype = next(self.parameters()).dtype
-            self.to(dtype)
+            for module in self:
+                if not isinstance(module, Transformer):
+                    module.to(dtype)
         except StopIteration:
             pass
 
         self.to(device)
         self.is_hpu_graph_enabled = False
         # Override the configuration values with the provided arguments, if any. If not set and values have not been read from configs, set to default values.
+        _default_prefix = "" if self._is_colpali_model else "[Q] "
         self.query_prefix = (
             query_prefix
             if query_prefix is not None
             else self.query_prefix
             if self.query_prefix is not None
-            else "[Q] "
+            else _default_prefix
         )
+        _default_prefix = "" if self._is_colpali_model else "[D] "
         self.document_prefix = (
             document_prefix
             if document_prefix is not None
             else self.document_prefix
             if self.document_prefix is not None
-            else "[D] "
+            else _default_prefix
         )
 
         # Try adding the prefixes to the tokenizer. We call resize_token_embeddings twice to ensure the tokens are added only if resize_token_embeddings works. There should be a better way to do this.
@@ -406,9 +580,19 @@ class ColBERT(SentenceTransformer):
             else None
         )
 
-        # Set the padding token ID
+        # Set the padding token ID used for query expansion.
+        # ColPali processors already carry the correct pad_token (e.g.
+        # <|endoftext|> for Qwen-VL, <eos> for PaliGemma) — the model was
+        # trained with that token as the expansion token, so we must not
+        # overwrite it. For classic ColBERT (MLM backbone), we use the MASK
+        # token; for other LLMs we fall back to the EOS token.
+        if self._is_colpali_model and self.tokenizer.pad_token_id is not None:
+            # ColPali query expansion appends expansion tokens as a suffix
+            # (text first, expansion after). PyLate uses tokenizer padding for
+            # this, so we need right-padding to match the trained layout.
+            self.tokenizer.padding_side = "right"
         # If it is a MLM model, use the MASK token
-        if self.tokenizer.mask_token_id is not None:
+        elif self.tokenizer.mask_token_id is not None:
             self.tokenizer.pad_token_id = self.tokenizer.mask_token_id
         # If it's a LLM, use the EOS token
         elif self.tokenizer.eos_token_id is not None:
@@ -443,7 +627,7 @@ class ColBERT(SentenceTransformer):
             if skiplist_words is not None
             else self.skiplist_words
             if self.skiplist_words is not None
-            else list(string.punctuation)
+            else ([] if self._is_colpali_model else list(string.punctuation))
         )
 
         # Convert skiplist words to their corresponding token IDs.
@@ -464,11 +648,51 @@ class ColBERT(SentenceTransformer):
             if attend_to_expansion_tokens is not None
             else self.attend_to_expansion_tokens
             if self.attend_to_expansion_tokens is not None
-            else False
+            else (True if self._is_colpali_model else False)
         )
         # If we do not do query expansion, we do not attend to the expansion tokens
         if not self.do_query_expansion:
             self.attend_to_expansion_tokens = False
+
+        # When expansion tokens are not attended (attention_mask=0), unpadding
+        # physically removes them from the sequence; expansion silently
+        # doesn't happen. Disable unpadding so they survive the forward pass.
+        # When expansion tokens ARE attended, unpadding keeps them, so it's safe.
+        if self.do_query_expansion and not self.attend_to_expansion_tokens:
+            # attend_to_expansion_tokens=False is incompatible with Flash
+            # Attention: FA does not support arbitrary per-token attention
+            # masks, so masking out expansion tokens silently degrades scores.
+            self._check_expansion_fa_compat()
+
+            first = self._first_module()
+            if getattr(first, "unpad_inputs", None) is not False:
+                first.unpad_inputs = False
+
+    def _check_expansion_fa_compat(self) -> None:
+        """Raise if expansion tokens would be unattended under Flash Attention.
+
+        FA does not properly mask padding tokens — the resulting embeddings
+        are dull/garbage even when ``attention_mask`` marks them as padding.
+        With ``attend_to_expansion_tokens=False`` those broken embeddings
+        leak into MaxSim scoring and silently degrade retrieval quality.
+        """
+        try:
+            from transformers.utils.generic import is_flash_attention_requested
+        except ImportError:
+            return
+        config = getattr(self._first_module(), "config", None)
+        attn_impl = getattr(config, "_attn_implementation", None)
+        if attn_impl and is_flash_attention_requested(
+            requested_attention_implementation=attn_impl
+        ):
+            raise ValueError(
+                "do_query_expansion=True with attend_to_expansion_tokens=False "
+                "is incompatible with Flash Attention. FA does not properly "
+                "mask padding tokens — expansion token embeddings are dull and "
+                "silently degrade retrieval scores. "
+                "Set attend_to_expansion_tokens=True or use "
+                "attn_implementation='sdpa'."
+            )
 
     @staticmethod
     def load(input_path) -> "ColBERT":
@@ -476,6 +700,49 @@ class ColBERT(SentenceTransformer):
 
     def __len__(self) -> int:
         return len(self._modules)
+
+    def forward(self, input: dict[str, Any], **kwargs: Any) -> dict[str, Any]:
+        return self._repad_unpadded_features(super().forward(input, **kwargs))
+
+    @staticmethod
+    def _repad_unpadded_features(features: dict[str, Any]) -> dict[str, Any]:
+        """Restore padded batch layout from sentence-transformers' unpadding optimization.
+
+        When FA2 with variable-length support is active, the Transformer forward
+        pass concatenates all sequences into a single flat tensor. PyLate's
+        encode() and loss functions expect the standard padded batch layout
+        (B, T, D) with an attention_mask, so we re-pad here.
+        """
+        if "cu_seq_lens_q" not in features:
+            return features
+        cu = features["cu_seq_lens_q"].tolist()
+        flat_emb = features["token_embeddings"][0]
+        flat_ids = features["input_ids"][0]
+        emb_chunks = [flat_emb[s:e] for s, e in zip(cu[:-1], cu[1:])]
+        id_chunks = [flat_ids[s:e] for s, e in zip(cu[:-1], cu[1:])]
+        features["token_embeddings"] = torch.nn.utils.rnn.pad_sequence(
+            emb_chunks, batch_first=True, padding_value=0.0
+        )
+        features["input_ids"] = torch.nn.utils.rnn.pad_sequence(
+            id_chunks, batch_first=True, padding_value=0
+        )
+        lengths = torch.tensor(
+            [e - s for s, e in zip(cu[:-1], cu[1:])], device=flat_emb.device
+        )
+        T_max = features["input_ids"].shape[1]
+        features["attention_mask"] = torch.arange(
+            T_max, device=flat_emb.device
+        ).unsqueeze(0) < lengths.unsqueeze(1)
+        for key in (
+            "cu_seq_lens_q",
+            "cu_seq_lens_k",
+            "max_length_q",
+            "max_length_k",
+            "seq_idx",
+            "position_ids",
+        ):
+            features.pop(key, None)
+        return features
 
     @staticmethod
     def insert_prefix_token(input_ids: torch.Tensor, prefix_id: int) -> torch.Tensor:
@@ -491,9 +758,45 @@ class ColBERT(SentenceTransformer):
             tensors=[input_ids[:, :1], prefix_tensor, input_ids[:, 1:]], dim=1
         )
 
+    _MULTIMODAL_KEYS = frozenset({"image", "images", "pixel_values", "audio", "video"})
+
+    @staticmethod
+    def _is_text_input(inputs) -> bool:
+        """Check whether inputs are text (strings) vs multimodal (images, etc)."""
+        if isinstance(inputs, str):
+            return True
+        if isinstance(inputs, (list, tuple)) and len(inputs) > 0:
+            first = inputs[0]
+            if isinstance(first, str):
+                return True
+            if isinstance(first, tuple):
+                return all(isinstance(s, str) for s in first)
+            if isinstance(first, dict):
+                return not any(k in ColBERT._MULTIMODAL_KEYS for k in first) and all(
+                    isinstance(v, str) for v in first.values()
+                )
+        return False
+
+    def _autocast_context(self):
+        """Return an autocast context matching the model's dtype.
+
+        During training the HF Trainer wraps the forward pass in autocast,
+        which keeps operations like LayerNorm in fp32 even when the model
+        weights are bf16/fp16. Standalone ``encode()`` runs outside the
+        Trainer, so we replicate that behaviour here. For fp32 models or
+        CPU-only runs this returns a no-op context.
+        """
+        if self.device.type not in ("cuda", "xpu"):
+            return nullcontext()
+        param = next(self.parameters(), None)
+        if param is None or param.dtype == torch.float32:
+            return nullcontext()
+        return torch.autocast(device_type=self.device.type, dtype=param.dtype)
+
+    @deprecated_kwargs(sentences="inputs")
     def encode(
         self,
-        sentences: str | list[str],
+        inputs: str | list[str] = None,
         prompt_name: str | None = None,
         prompt: str | None = None,
         batch_size: int = 32,
@@ -514,8 +817,8 @@ class ColBERT(SentenceTransformer):
 
         Parameters
         ----------
-        sentences
-            The sentences to embed.
+        inputs
+            The inputs to embed.
         prompt_name
             The name of the prompt to use for encoding. Must be a key in the `prompts` dictionary, which is either set in
             the constructor or loaded from the model configuration. For example, if `prompt_name` is "query" and the
@@ -577,14 +880,14 @@ class ColBERT(SentenceTransformer):
                 "output_value=None is not compatible with pool_factor > 1."
             )
 
-        if isinstance(sentences, list):
-            # If we have a list of list of sentences, we encode each list separately.
-            if isinstance(sentences[0], list):
+        if isinstance(inputs, list):
+            # If we have a list of list of inputs, we encode each list separately.
+            if isinstance(inputs[0], list):
                 embeddings = []
 
-                for batch in sentences:
+                for batch in inputs:
                     batch_embeddings = self.encode(
-                        sentences=batch,
+                        inputs=batch,
                         prompt_name=prompt_name,
                         prompt=prompt,
                         batch_size=batch_size,
@@ -629,40 +932,20 @@ class ColBERT(SentenceTransformer):
             convert_to_tensor = True
         convert_to_numpy = not convert_to_tensor
 
-        # TODO: We cannot convert to tensor/numpy for token embeddings as they are not the same size
-        # if output_value != "sentence_embedding":
-        # convert_to_tensor = False
-        # convert_to_numpy = False
-
         input_was_string = False
-        if isinstance(sentences, str) or not hasattr(sentences, "__len__"):
-            sentences = [sentences]
+        if isinstance(inputs, str) or not hasattr(inputs, "__len__"):
+            inputs = [inputs]
             input_was_string = True
 
-        if prompt is not None and prompt_name is not None:
-            logger.warning(
-                "Provide either a `prompt` or a `prompt_name`, not both. "
-                "Ignoring the `prompt_name` in favor of the provided `prompt`."
-            )
-
-        elif prompt is None:
-            if prompt_name is not None:
-                prompt = self.prompts.get(prompt_name)
-                if prompt is None:
-                    raise ValueError(
-                        f"Prompt name '{prompt_name}' not found in the configured prompts dictionary. "
-                        f"Available keys are: {list(self.prompts.keys())!r}."
-                    )
-            else:
-                prompt = self.prompts.get(self.default_prompt_name)
+        prompt = self._resolve_prompt(prompt, prompt_name)
 
         extra_features = {}
         if prompt is not None:
-            sentences = [prompt + sentence for sentence in sentences]
+            inputs = [prompt + inp for inp in inputs]
 
             # Some models require removing the prompt before pooling (e.g. Instructor, Grit).
             # Tracking the prompt length allow us to remove the prompt during pooling.
-            tokenized_prompt = self.tokenize([prompt])
+            tokenized_prompt = self.preprocess([prompt])
             if "input_ids" in tokenized_prompt:
                 extra_features["prompt_length"] = (
                     tokenized_prompt["input_ids"].shape[-1] - 1
@@ -680,87 +963,65 @@ class ColBERT(SentenceTransformer):
                 "attention_mask": [],
                 "masks": [],
             }
-        length_sorted_idx = np.argsort([-self._text_length(sen) for sen in sentences])
-        sentences_sorted = [sentences[int(idx)] for idx in length_sorted_idx]
+        is_text = self._is_text_input(inputs)
+        if is_text:
+            length_sorted_idx = np.argsort([-self._input_length(inp) for inp in inputs])
+        else:
+            length_sorted_idx = np.arange(len(inputs))
+        inputs_sorted = [inputs[int(idx)] for idx in length_sorted_idx]
 
         for start_index in trange(
             0,
-            len(sentences),
+            len(inputs),
             batch_size,
             desc=f"Encoding queries (bs={batch_size})"
             if is_query
             else f"Encoding documents (bs={batch_size})",
             disable=not show_progress_bar,
         ):
-            sentences_batch = sentences_sorted[start_index : start_index + batch_size]
-            features = self.tokenize(texts=sentences_batch, is_query=is_query)
+            inputs_batch = inputs_sorted[start_index : start_index + batch_size]
+
+            features = self.preprocess(inputs=inputs_batch, is_query=is_query)
 
             if self.device.type == "hpu":
-                if "input_ids" in features:
-                    curr_tokenize_len = features["input_ids"].shape
-
-                    additional_pad_len = (
-                        2 ** math.ceil(math.log2(curr_tokenize_len[1]))
-                        - curr_tokenize_len[1]
-                    )
-
-                    features["input_ids"] = torch.cat(
-                        tensors=(
-                            features["input_ids"],
-                            torch.ones(
-                                size=(curr_tokenize_len[0], additional_pad_len),
-                                dtype=torch.int8,
-                            ),
-                        ),
-                        dim=-1,
-                    )
-
-                    features["attention_mask"] = torch.cat(
-                        tensors=(
-                            features["attention_mask"],
-                            torch.zeros(
-                                size=(curr_tokenize_len[0], additional_pad_len),
-                                dtype=torch.int8,
-                            ),
-                        ),
-                        dim=-1,
-                    )
-
-                    if "token_type_ids" in features:
-                        features["token_type_ids"] = torch.cat(
-                            tensors=(
-                                features["token_type_ids"],
-                                torch.zeros(
-                                    size=(curr_tokenize_len[0], additional_pad_len),
-                                    dtype=torch.int8,
-                                ),
-                            ),
-                            dim=-1,
-                        )
+                features = self._pad_features_for_hpu(features)
 
             features = batch_to_device(batch=features, target_device=device)
             features.update(extra_features)
 
-            with torch.no_grad():
-                # TODO: add the truncate/sliding window logic here
+            with torch.no_grad(), self._autocast_context():
                 out_features = self.forward(input=features)
                 if self.device.type == "hpu":
                     out_features = copy.deepcopy(out_features)
 
                 if not is_query:
                     # Compute the mask for the skiplist (punctuation symbols)
-                    skiplist_mask = self.skiplist_mask(
-                        input_ids=features["input_ids"], skiplist=self.skiplist
-                    )
-                    masks = torch.logical_and(
-                        input=skiplist_mask, other=out_features["attention_mask"]
-                    )
+                    if "input_ids" in features:
+                        skiplist_mask = self.skiplist_mask(
+                            input_ids=features["input_ids"], skiplist=self.skiplist
+                        )
+                        masks = torch.logical_and(
+                            input=skiplist_mask, other=out_features["attention_mask"]
+                        )
+                    else:
+                        # Multimodal: no skiplist, use attention mask directly
+                        masks = out_features["attention_mask"].bool()
                 else:
                     if self.do_query_expansion:
-                        # We keep all tokens in the query (no skiplist) and we do not want to prune expansion tokens in queries even if we do not attend to them in attention layers
-                        masks = torch.ones_like(
-                            input=out_features["input_ids"], dtype=torch.bool
-                        )
+                        if self._is_colpali_model:
+                            # Suffix expansion: the attention mask already spans
+                            # text + expansion tokens; anything beyond it is
+                            # batch-alignment padding whose embeddings must not
+                            # leak into MaxSim (they make scores depend on the
+                            # batch composition).
+                            masks = out_features["attention_mask"].bool()
+                        elif "input_ids" in out_features:
+                            # We keep all tokens in the query (no skiplist) and we do not want to prune expansion tokens in queries even if we do not attend to them in attention layers
+                            masks = torch.ones_like(
+                                input=out_features["input_ids"], dtype=torch.bool
+                            )
+                        else:
+                            masks = out_features["attention_mask"].bool()
                     else:
                         # We only keep the original tokens and prune padding tokens
                         masks = out_features["attention_mask"].bool()
@@ -859,6 +1120,22 @@ class ColBERT(SentenceTransformer):
         if input_was_string:
             return {key: values[0] for key, values in all_outputs.items()}
         return all_outputs
+
+    def encode_query(
+        self,
+        inputs: str | list[str],
+        **kwargs,
+    ) -> list[torch.Tensor] | ndarray | torch.Tensor:
+        """Convenience method to encode queries (sets is_query=True)."""
+        return self.encode(inputs, is_query=True, **kwargs)
+
+    def encode_document(
+        self,
+        inputs: str | list[str],
+        **kwargs,
+    ) -> list[torch.Tensor] | ndarray | torch.Tensor:
+        """Convenience method to encode documents (sets is_query=False)."""
+        return self.encode(inputs, is_query=False, **kwargs)
 
     def pool_embeddings_hierarchical(
         self,
@@ -1141,65 +1418,317 @@ class ColBERT(SentenceTransformer):
         )
         return [np.concatenate(result[1]) for result in results_list]
 
-    def tokenize(
+    def preprocess(
         self,
-        texts: list[str] | list[dict] | list[tuple[str, str]],
+        inputs: list[str] | list[dict] | list[tuple[str, str]] | None = None,
         is_query: bool = True,
         pad: bool = False,
-        task: str
-        | None = None,  # this is to be compatible with the new collator that supports "task". It isn't used here, only if the model is a router, but I find it cleaner than kwargs
+        task: str | None = None,
+        # Backward compat: accept 'texts' as alias for 'inputs'
+        texts: list[str] | list[dict] | list[tuple[str, str]] | None = None,
+        **kwargs,
     ) -> dict[str, torch.Tensor]:
         """
-        Tokenizes the input texts.
+        Preprocesses/tokenizes the input texts.
 
-        Args:
-            texts (Union[list[str], list[dict], list[tuple[str, str]]]): A list of texts to be tokenized.
-            is_query (bool): Flag to indicate if the texts are queries. Defaults to True.
-            pad (bool): Flag to indicate if elements should be padded to max length. Defaults to False.
+        Parameters
+        ----------
+        inputs
+            A list of texts to be tokenized.
+        is_query
+            Flag to indicate if the texts are queries. Defaults to True.
+        pad
+            Flag to indicate if elements should be padded to max length. Defaults to False.
+        task
+            Task identifier (for compatibility with Router-based models). Defaults to None.
+        texts
+            Deprecated alias for `inputs`. Use `inputs` instead.
+        **kwargs
+            Additional keyword arguments (ignored, kept for API compatibility).
 
-        Returns:
-            dict[str, torch.Tensor]: A dictionary of tensors with the tokenized texts, including "input_ids",
-                "attention_mask", and optionally "token_type_ids".
+        Returns
+        -------
+        dict[str, torch.Tensor]
+            A dictionary of tensors with the tokenized texts.
         """
-        # Set max sequence length based on whether the input is a query or document
+        # Handle backward compatibility: 'texts' -> 'inputs'
+        if texts is not None and inputs is None:
+            inputs = texts
+        if inputs is None:
+            raise ValueError("Either `inputs` or `texts` must be provided.")
+
         max_length = self.query_length if is_query else self.document_length
         prefix_id = self.query_prefix_id if is_query else self.document_prefix_id
-        # The only case where prefix_id is None is when prefix was an empty string. Else it's a the id corresponding the prefix set (eventually defaulting to [D] or [Q])
         use_prefix = prefix_id is not None
-        self._first_module().max_seq_length = (
-            max_length - 1 if use_prefix else max_length
+
+        # ColPali models use suffix-based query expansion: append N expansion
+        # tokens after the full query text (matching colpali_engine's
+        # ``process_queries`` which appends ``query_augmentation_token * N``).
+        # Classic ColBERT uses pad-to-fixed-length expansion instead.
+        use_suffix_expansion = (
+            is_query and self.do_query_expansion and self._is_colpali_model
         )
 
-        # Pad queries (if query expansion) and handle padding for documents if specified
-        tokenize_args = (
-            {"padding": "max_length"}
-            if pad or (is_query and self.do_query_expansion)
-            else {}
+        if use_suffix_expansion:
+            text_kwargs: dict[str, Any] = {}
+        else:
+            target_length = max_length - 1 if use_prefix else max_length
+            text_kwargs = {"max_length": target_length}
+            if pad or (is_query and self.do_query_expansion):
+                text_kwargs["padding"] = "max_length"
+
+        # For multimodal inputs (images, etc.), skip text processing_kwargs:
+        # VLM processors expand visual placeholders (e.g. <|image_pad|>) in the
+        # text string *before* tokenization, so max_length would truncate the
+        # expanded visual tokens. The visual token budget is controlled upstream
+        # by image processor settings (max_pixels, longest_edge, etc.), not by
+        # tokenizer max_length.
+        tokenized_outputs = self._first_module().preprocess(
+            inputs,
+            processing_kwargs={"text": text_kwargs}
+            if self._is_text_input(inputs)
+            else None,
         )
 
-        # Tokenize the texts
-        tokenized_outputs = self._first_module().tokenize(texts, **tokenize_args)
+        if use_suffix_expansion:
+            tokenized_outputs = self._append_expansion_tokens(
+                tokenized_outputs,
+                n_tokens=10,
+            )
 
         if use_prefix:
-            # Insert prefix token and update attention mask
             tokenized_outputs["input_ids"] = self.insert_prefix_token(
                 tokenized_outputs["input_ids"], prefix_id
             )
             tokenized_outputs["attention_mask"] = self.insert_prefix_token(
                 tokenized_outputs["attention_mask"], 1
             )
-
-            # Update token type IDs if they exist
             if "token_type_ids" in tokenized_outputs:
                 tokenized_outputs["token_type_ids"] = self.insert_prefix_token(
                     tokenized_outputs["token_type_ids"], 0
                 )
 
-        # Adjust attention mask for expansion tokens if required
-        if is_query and self.attend_to_expansion_tokens:
+        if (
+            is_query
+            and self.attend_to_expansion_tokens
+            and not use_suffix_expansion
+            and "attention_mask" in tokenized_outputs
+        ):
             tokenized_outputs["attention_mask"].fill_(1)
 
         return tokenized_outputs
+
+    def _append_expansion_tokens(
+        self,
+        features: dict[str, torch.Tensor],
+        n_tokens: int,
+    ) -> dict[str, torch.Tensor]:
+        """Append *n_tokens* expansion tokens (pad_token_id) to each sequence.
+
+        Unlike pad-to-fixed-length expansion, this preserves the full query
+        text and always appends exactly *n_tokens* regardless of input length,
+        matching ``colpali_engine``'s ``process_queries`` behavior.
+
+        Because expansion tokens and batch-alignment padding share the same
+        token ID (pad_token_id), the input_ids are correct after a simple
+        concat.  The attention mask is recomputed so that exactly the first
+        ``real_length + n_tokens`` positions are attended, which naturally
+        promotes any batch-alignment padding between real tokens and the
+        appended tokens into expansion — giving the right count and positions.
+        """
+        batch_size = features["input_ids"].shape[0]
+        seq_len = features["input_ids"].shape[1]
+        device = features["input_ids"].device
+
+        pad_ids = torch.full(
+            (batch_size, n_tokens),
+            self.tokenizer.pad_token_id,
+            dtype=features["input_ids"].dtype,
+            device=device,
+        )
+        features["input_ids"] = torch.cat([features["input_ids"], pad_ids], dim=1)
+
+        if "attention_mask" in features:
+            real_lengths = features["attention_mask"].sum(dim=1, keepdim=True)
+            positions = torch.arange(seq_len + n_tokens, device=device).unsqueeze(0)
+            features["attention_mask"] = (positions < real_lengths + n_tokens).to(
+                features["attention_mask"].dtype
+            )
+
+        for key in ("token_type_ids", "mm_token_type_ids"):
+            if key in features:
+                zeros = torch.zeros(
+                    batch_size,
+                    n_tokens,
+                    dtype=features[key].dtype,
+                    device=device,
+                )
+                features[key] = torch.cat([features[key], zeros], dim=1)
+
+        return features
+
+    def tokenize(
+        self,
+        texts: list[str] | list[dict] | list[tuple[str, str]],
+        is_query: bool = True,
+        pad: bool = False,
+        task: str | None = None,
+    ) -> dict[str, torch.Tensor]:
+        """
+        Backward-compatible wrapper around :meth:`preprocess`.
+
+        .. deprecated::
+            Use :meth:`preprocess` instead.
+        """
+        warnings.warn(
+            "tokenize() is deprecated, use preprocess() instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        return self.preprocess(inputs=texts, is_query=is_query, pad=pad, task=task)
+
+    def _configure_chat_template(
+        self,
+        user_processor_kwargs: dict | None,
+    ) -> None:
+        """Configure a ColPali-faithful chat template on the multimodal processor.
+
+        Run once at construction time, after the parent SentenceTransformer init
+        has loaded the processor. The resolution order is:
+
+        1. **User override at construction**: ``processor_kwargs["chat_template"]``
+           contains a ``chat_template`` entry. Install the user's value under
+           the ``"sentence_transformers"`` slot so ``save_pretrained`` persists
+           it to disk for downstream usage, then rewire the ST kwarg to resolve
+           through the slot. The one exception is when the user's value *is* the
+           slot name — that means "use whatever the slot already holds", so we
+           fall through to cases (2)–(4) to populate it.
+        2. **Persisted ColPali pin**: the loaded module has
+           ``processing_kwargs["chat_template"]["chat_template"] == "sentence_transformers"``
+           in ``sentence_bert_config.json``. This is exactly the shape a prior
+           ``save_pretrained`` of an installed ColBERT writes. Any *other* value
+           (raw Jinja, different named template, unrelated kwarg) is treated as
+           a non-ColPali setup and falls through to the registry — the user
+           gets ColPali-faithful preprocessing by default.
+        3. **Persisted HF processor template**: ``processor.chat_template`` is
+           already a dict containing ``"sentence_transformers"``. HF's
+           ``from_pretrained`` loaded it from
+           ``additional_chat_templates/sentence_transformers.jinja``. Covers
+           checkpoints with the HF half but no ST-side wiring.
+        4. **Registry default**: a built-in entry exists for
+           ``config.model_type``. Install it under the ``"sentence_transformers"``
+           key, preserving the model's original template as ``"default"``.
+        5. **Fallback**: leave ``processor.chat_template`` untouched.
+
+        When option 3 or 4 fires, we also set
+        ``processing_kwargs["chat_template"]["chat_template"] = "sentence_transformers"``
+        on the multimodal Transformer so every ``apply_chat_template`` call
+        resolves the named template. HF's ``processor.save_pretrained`` writes
+        named entries to ``additional_chat_templates/<name>.jinja``
+        automatically, and ST persists the kwarg via
+        ``sentence_bert_config.json``; together they make save/reload land in
+        case (2) or (3) on the next construction.
+        """
+        first_module = self._first_module()
+        processor = getattr(first_module, "processor", None)
+        if processor is None:
+            return
+
+        # (1) Honor any explicit chat_template the user passed at construction time.
+        user_chat_kwargs = (
+            (user_processor_kwargs or {}).get("chat_template")
+            if isinstance(user_processor_kwargs, dict)
+            else None
+        )
+        # If the user passed a chat_template value, install it under our named
+        # slot so ``save_pretrained`` persists it to disk for downstream usage,
+        # and rewire the ST kwarg to resolve through the slot. Skip the install
+        # only when the user's value is literally our slot name — that means
+        # "use whatever the slot holds", so we fall through to cases (2)–(4) to
+        # fill the slot from persisted state or the registry.
+        if isinstance(user_chat_kwargs, dict) and "chat_template" in user_chat_kwargs:
+            user_value = user_chat_kwargs["chat_template"]
+            if user_value != COLPALI_TEMPLATE_NAME:
+                self._install_named_template(processor, user_value)
+                self._set_chat_template_name(first_module)
+                return
+
+        # (2) Respect a chat template already persisted on the ST module — but
+        # ONLY when it's our named pin. ``sentence_bert_config.json`` round-trips
+        # ``processing_kwargs`` (``Transformer.config_keys`` includes it), and a
+        # prior ``save_pretrained`` of an installed ColBERT lands here as
+        # ``{"chat_template": "sentence_transformers"}``. Any other value (a
+        # raw Jinja string, a different named template, or an unrelated kwarg
+        # like ``add_generation_prompt``) is *not* a ColPali pin — fall through
+        # to the registry so the user gets ColPali-faithful preprocessing.
+        module_chat_kwargs = getattr(first_module, "processing_kwargs", {}).get(
+            "chat_template"
+        )
+        if (
+            isinstance(module_chat_kwargs, dict)
+            and module_chat_kwargs.get("chat_template") == COLPALI_TEMPLATE_NAME
+        ):
+            return
+
+        existing = getattr(processor, "chat_template", None)
+
+        # (3) Reuse a previously-saved sentence_transformers template on the
+        # processor itself — HF's ``from_pretrained`` loads it back from
+        # ``additional_chat_templates/sentence_transformers.jinja``. This covers
+        # checkpoints that ship the HF half but not (yet) the ST-side wiring
+        # (e.g. a single-vector ST checkpoint saved before PyLate's install ran).
+        if isinstance(existing, dict) and COLPALI_TEMPLATE_NAME in existing:
+            self._set_chat_template_name(first_module)
+            return
+
+        # (4) Register a built-in default for known ColPali backbones.
+        model_type = getattr(getattr(first_module, "model", None), "config", None)
+        model_type = getattr(model_type, "model_type", None)
+        template = COLPALI_CHAT_TEMPLATES.get(model_type) if model_type else None
+        if template is None:
+            return  # (5) leave the processor's chat_template alone
+
+        self._install_named_template(processor, template)
+        self._set_chat_template_name(first_module)
+
+    @staticmethod
+    def _install_named_template(processor, template: str) -> None:
+        """Install ``template`` under the ``sentence_transformers`` slot of
+        ``processor.chat_template``, preserving the model's original template as
+        the ``default`` key. HF's ``processor.save_pretrained`` walks this dict
+        and writes ``chat_template.jinja`` (default) plus
+        ``additional_chat_templates/sentence_transformers.jinja`` (named entry).
+        """
+        existing = getattr(processor, "chat_template", None)
+        if isinstance(existing, dict):
+            updated = dict(existing)
+            updated[COLPALI_TEMPLATE_NAME] = template
+            # Preserve whatever was already the default key; if none, materialize
+            # one so apply_chat_template(chat_template=None) still works.
+            updated.setdefault("default", existing.get("default", template))
+        elif isinstance(existing, str) and existing:
+            updated = {"default": existing, COLPALI_TEMPLATE_NAME: template}
+        else:
+            # No existing template — use ours as both default and named entry so
+            # save_pretrained writes both files.
+            updated = {"default": template, COLPALI_TEMPLATE_NAME: template}
+        processor.chat_template = updated
+
+    @staticmethod
+    def _set_chat_template_name(first_module) -> None:
+        """Point ST's ``apply_chat_template`` call at our named template.
+
+        Writes a fresh inner dict instead of mutating in place so we never
+        accidentally mutate a dict the caller still references (the user's
+        original ``processor_kwargs["chat_template"]``).
+        """
+        if not hasattr(first_module, "processing_kwargs"):
+            return
+        existing = first_module.processing_kwargs.get("chat_template", {})
+        first_module.processing_kwargs["chat_template"] = {
+            **existing,
+            "chat_template": COLPALI_TEMPLATE_NAME,
+        }
 
     def save(
         self,
@@ -1229,21 +1758,42 @@ class ColBERT(SentenceTransformer):
             safe_serialization=safe_serialization,
         )
 
-        with open(os.path.join(path, "config_sentence_transformers.json"), "w") as fOut:
-            config = self._model_config.copy()
-            config["prompts"] = self.prompts
-            config["default_prompt_name"] = self.default_prompt_name
-            config["similarity_fn_name"] = self.similarity_fn_name
-            config["query_prefix"] = self.query_prefix
-            config["document_prefix"] = self.document_prefix
-            config["query_length"] = self.query_length
-            config["document_length"] = self.document_length
-            config["attend_to_expansion_tokens"] = self.attend_to_expansion_tokens
-            config["skiplist_words"] = self.skiplist_words
-            config["do_query_expansion"] = self.do_query_expansion
-            json.dump(config, fOut, indent=2)
+    def _get_model_config(self) -> dict[str, Any]:
+        """Return the model configuration dictionary for saving."""
+        config = super()._get_model_config()
+        config["query_prefix"] = self.query_prefix
+        config["document_prefix"] = self.document_prefix
+        config["query_length"] = self.query_length
+        config["document_length"] = self.document_length
+        config["attend_to_expansion_tokens"] = self.attend_to_expansion_tokens
+        config["skiplist_words"] = self.skiplist_words
+        config["do_query_expansion"] = self.do_query_expansion
+        return config
 
-    def _load_auto_model(
+    def _parse_model_config(self, model_config: dict[str, Any]) -> None:
+        """Parse model config and load PyLate-specific parameters."""
+        super()._parse_model_config(model_config)
+
+        # Loading the query/document prefixes and query_length from config
+        if "query_prefix" in model_config and self.query_prefix is None:
+            self.query_prefix = model_config["query_prefix"]
+        if "document_prefix" in model_config and self.document_prefix is None:
+            self.document_prefix = model_config["document_prefix"]
+        if "query_length" in model_config and self.query_length is None:
+            self.query_length = model_config["query_length"]
+        if "document_length" in model_config and self.document_length is None:
+            self.document_length = model_config["document_length"]
+        if (
+            "attend_to_expansion_tokens" in model_config
+            and self.attend_to_expansion_tokens is None
+        ):
+            self.attend_to_expansion_tokens = model_config["attend_to_expansion_tokens"]
+        if "skiplist_words" in model_config and self.skiplist_words is None:
+            self.skiplist_words = model_config["skiplist_words"]
+        if "do_query_expansion" in model_config and self.do_query_expansion is None:
+            self.do_query_expansion = model_config["do_query_expansion"]
+
+    def _load_default_modules(
         self,
         model_name_or_path: str,
         token: bool | str | None,
@@ -1251,53 +1801,21 @@ class ColBERT(SentenceTransformer):
         revision: str | None = None,
         trust_remote_code: bool = False,
         local_files_only: bool = False,
-        model_kwargs: dict | None = None,
-        tokenizer_kwargs: dict | None = None,
-        config_kwargs: dict | None = None,
-        has_modules: bool = False,
-    ) -> list[nn.Module]:
-        """Create a Transformer model from a model name or path. This module is distinct
-        from SentenceTransformer as it do not set the pooling layer.
+        model_kwargs: dict[str, Any] | None = None,
+        processor_kwargs: dict[str, Any] | None = None,
+        config_kwargs: dict[str, Any] | None = None,
+    ) -> tuple[list[nn.Module], dict[str, Any]]:
+        """Create a Transformer model from a model name or path.
 
-        Parameters
-        ----------
-        model_name_or_path
-            The name or path of the pre-trained model.
-        token
-            The token to use for the model.
-        cache_folder
-            The folder to cache the model.
-        revision
-            The revision of the model. Defaults to None.
-        trust_remote_code
-            Whether to trust remote code. Defaults to False.
-        local_files_only
-            Whether to use only local files. Defaults to False.
-        model_kwargs
-            Additional keyword arguments for the model. Defaults to None.
-        tokenizer_kwargs
-            Additional keyword arguments for the tokenizer. Defaults to None.
-        config_kwargs
-            Additional keyword arguments for the config. Defaults to None.
-        has_modules
-            Whether the model has modules.json. Defaults to False.
+        This module is distinct from SentenceTransformer as it does not set the pooling layer.
+        Called when no modules.json is found (creating a new ColBERT from a base model).
 
+        For ColPali-family models (ColQwen2, ColQwen2_5, …) the checkpoint is
+        loaded as the underlying base VLM and the ``custom_text_proj`` weights
+        are extracted into a separate :class:`Dense` module, yielding the
+        standard ``[Transformer, Dense]`` pipeline without requiring
+        ``colpali_engine``.
         """
-        # Due to a change in ST, load_sbert is now only call by default for PyLate models directly (because the class name match the config name). However, ST models needs to be called with load_sbert to load the modules, so if the model has modules, we load it with load_sbert even if the class name is not ColBERT (it is a ST model)
-        if has_modules:
-            model, module_kwargs = self._load_sbert_model(
-                model_name_or_path=model_name_or_path,
-                token=token,
-                cache_folder=cache_folder,
-                revision=revision,
-                trust_remote_code=trust_remote_code,
-                local_files_only=local_files_only,
-                model_kwargs=model_kwargs,
-                tokenizer_kwargs=tokenizer_kwargs,
-                config_kwargs=config_kwargs,
-            )
-            return model
-
         logger.warning(
             f"No sentence-transformers model found with name {model_name_or_path}."
         )
@@ -1313,33 +1831,283 @@ class ColBERT(SentenceTransformer):
             shared_kwargs if model_kwargs is None else {**shared_kwargs, **model_kwargs}
         )
 
-        tokenizer_kwargs = (
+        processor_kwargs_merged = (
             shared_kwargs
-            if tokenizer_kwargs is None
-            else {**shared_kwargs, **tokenizer_kwargs}
+            if processor_kwargs is None
+            else {**shared_kwargs, **processor_kwargs}
         )
 
-        config_kwargs = (
+        config_kwargs_merged = (
             shared_kwargs
             if config_kwargs is None
             else {**shared_kwargs, **config_kwargs}
         )
 
+        # Detect ColPali-family models and override the architecture so
+        # AutoModel loads the base VLM (no colpali_engine dependency).
+        colpali_arch, detected_config = self._detect_colpali_architecture(
+            model_name_or_path, config_kwargs_merged
+        )
+        if colpali_arch is not None:
+            base_arch = _COLPALI_TO_BASE_ARCHITECTURE[colpali_arch]
+            config_kwargs_merged = {
+                **config_kwargs_merged,
+                "architectures": [base_arch],
+            }
+            logger.info(
+                f"Detected ColPali architecture '{colpali_arch}', "
+                f"loading as base VLM '{base_arch}'."
+            )
+
         transformer_model = Transformer(
             model_name_or_path=model_name_or_path,
             cache_dir=cache_folder,
-            model_args=model_kwargs,
-            tokenizer_args=tokenizer_kwargs,
-            config_args=config_kwargs,
+            model_kwargs=model_kwargs,
+            processor_kwargs=processor_kwargs_merged,
+            config_kwargs=config_kwargs_merged,
         )
 
         self.model_card_data.set_base_model(
             model_id=model_name_or_path, revision=revision
         )
 
-        return [transformer_model]
+        modules: list[nn.Module] = [transformer_model]
 
-    def _load_sbert_model(
+        if colpali_arch is not None:
+            self._fix_colpali_processor(
+                transformer_model,
+                model_name_or_path,
+                processor_kwargs_merged,
+                model_type=detected_config.model_type,
+            )
+
+            proj_key = _COLPALI_PROJ_KEY.get(colpali_arch, _DEFAULT_PROJ_KEY)
+            dense = self._extract_colpali_projection(
+                model_name_or_path,
+                transformer_model,
+                proj_key=proj_key,
+                cache_folder=cache_folder,
+                token=token,
+                revision=revision,
+                local_files_only=local_files_only,
+            )
+            modules.append(dense)
+            self._is_colpali_model = True
+            logger.info(
+                f"Extracted '{proj_key}' → Dense({dense.in_features}, {dense.out_features})"
+            )
+
+        return modules, None
+
+    # ------------------------------------------------------------------
+    # ColPali helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _fix_colpali_processor(
+        transformer_model: Transformer,
+        model_name_or_path: str,
+        processor_kwargs: dict[str, Any],
+        model_type: str,
+    ) -> None:
+        """Replace the ColPali processor with the base VLM processor.
+
+        Why we patch instead of loading the right processor upfront:
+        ``Transformer.__init__`` always loads the processor via
+        ``AutoProcessor.from_pretrained(model_name_or_path)``, which reads
+        ``preprocessor_config.json`` from the repo. ColPali repos declare a
+        ColPali-specific ``processor_class`` there (e.g. ``ColQwen2Processor``,
+        ``ColQwen2_5_Processor``). Those custom processors either reject mixed
+        text+image inputs or don't even exist in transformers — causing
+        ``AutoProcessor`` to fall back to a plain tokenizer with no image
+        processing. ``Transformer`` exposes no way to override the processor
+        class, so we have to swap it after construction.
+
+        Why we also re-infer modality config and force structured messages:
+        ``Transformer.__init__`` runs ``infer_modalities(model, processor)``
+        at construction time — *before* we can swap the processor. When the
+        original processor was a plain tokenizer (no image support) or a
+        ColPali processor that ST doesn't fully recognize, the inferred
+        config is wrong (missing ``image`` modality, ``flat`` message format
+        instead of ``structured``). After swapping we re-infer, and force
+        ``structured`` because ColPali models always use typed content items
+        (``[{type: 'image'}, {type: 'text', text: ...}]``) — even when
+        ``infer_modalities`` guesses ``flat`` for newer VL processors that
+        ST doesn't fully support yet (e.g. ``Qwen2_5_VLProcessor``).
+        """
+        import importlib
+
+        from transformers.models.auto.processing_auto import (
+            PROCESSOR_MAPPING_NAMES,
+        )
+
+        base_proc_name = PROCESSOR_MAPPING_NAMES.get(model_type)
+        if base_proc_name is None:
+            logger.warning(
+                f"Could not find a base processor for model_type={model_type!r} "
+                f"in PROCESSOR_MAPPING_NAMES — the colpali-engine processor will not be "
+                f"replaced. Consider upgrading transformers."
+            )
+            return
+
+        base_proc_cls = getattr(importlib.import_module("transformers"), base_proc_name)
+        old_proc = getattr(transformer_model, "processor", None)
+        old_template = getattr(old_proc, "chat_template", None)
+
+        base_processor = base_proc_cls.from_pretrained(
+            model_name_or_path,
+            **processor_kwargs,
+        )
+        if old_template:
+            base_processor.chat_template = old_template
+
+        transformer_model.processor = base_processor
+
+        transformer_model.modality_config, transformer_model.module_output_name = (
+            transformer_model.infer_modalities(
+                transformer_model.model,
+                base_processor,
+            )
+        )
+        if "message" in transformer_model.modality_config:
+            transformer_model.modality_config["message"]["format"] = "structured"
+        transformer_model.input_formatter.supported_modalities = list(
+            transformer_model.modality_config.keys()
+        )
+        transformer_model.input_formatter.message_format = "structured"
+
+        old_name = type(old_proc).__name__ if old_proc else "None"
+        logger.info(
+            f"Replaced ColPali processor {old_name} "
+            f"with {type(base_processor).__name__}"
+        )
+
+    @staticmethod
+    def _detect_colpali_architecture(
+        model_name_or_path: str,
+        config_kwargs: dict[str, Any],
+    ) -> tuple[str | None, Any]:
+        """Return (colpali_arch, config) if this is a ColPali model, else (None, config)."""
+        from transformers import AutoConfig
+
+        try:
+            config = AutoConfig.from_pretrained(model_name_or_path, **config_kwargs)
+        except Exception:
+            # LoRA adapter repos have no config.json — resolve via adapter_config.json.
+            config = ColBERT._resolve_adapter_config(model_name_or_path, config_kwargs)
+            if config is None:
+                return None, None
+        architectures = getattr(config, "architectures", None) or []
+        for arch in architectures:
+            if arch in _COLPALI_TO_BASE_ARCHITECTURE:
+                return arch, config
+        return None, config
+
+    @staticmethod
+    def _resolve_adapter_config(
+        model_name_or_path: str,
+        config_kwargs: dict[str, Any],
+    ) -> Any | None:
+        """Try to load the base model config from a LoRA adapter repo."""
+        import json
+
+        from transformers import AutoConfig
+
+        try:
+            from huggingface_hub import hf_hub_download
+
+            hub_kwargs = {
+                k: v
+                for k, v in config_kwargs.items()
+                if k in ("token", "revision", "local_files_only")
+            }
+            adapter_path = hf_hub_download(
+                model_name_or_path, "adapter_config.json", **hub_kwargs
+            )
+            with open(adapter_path) as f:
+                base_model = json.loads(f.read())["base_model_name_or_path"]
+            return AutoConfig.from_pretrained(base_model, **config_kwargs)
+        except Exception:
+            return None
+
+    @staticmethod
+    def _extract_colpali_projection(
+        model_name_or_path: str,
+        transformer_model: Transformer,
+        proj_key: str,
+        cache_folder: str | None,
+        token: bool | str | None,
+        revision: str | None,
+        local_files_only: bool,
+    ) -> Dense:
+        """Extract the projection layer weights from a ColPali checkpoint.
+
+        Checks whether the loaded ``auto_model`` already carries the projection
+        (happens when ``colpali_engine`` is installed and ``trust_remote_code``
+        was used). Otherwise falls back to reading the safetensors files
+        directly.
+        """
+        weight_key = f"{proj_key}.weight"
+        bias_key = f"{proj_key}.bias"
+
+        auto_model = transformer_model.auto_model
+
+        # Path 1: model was loaded with colpali_engine — projection is an attribute
+        if hasattr(auto_model, proj_key):
+            proj_module = getattr(auto_model, proj_key)
+            proj_weight = proj_module.weight.data.clone()
+            proj_bias = (
+                proj_module.bias.data.clone() if proj_module.bias is not None else None
+            )
+            delattr(auto_model, proj_key)
+            return Dense(
+                in_features=proj_weight.shape[1],
+                out_features=proj_weight.shape[0],
+                bias=proj_bias is not None,
+                init_weight=proj_weight,
+                init_bias=proj_bias,
+            )
+
+        # Path 2: base VLM loaded — projection keys were ignored, read from files
+        hub_kwargs = {
+            "cache_dir": cache_folder,
+            "token": token,
+            "revision": revision,
+            "local_files_only": local_files_only,
+        }
+
+        proj_tensors = _load_colpali_proj_tensors(
+            model_name_or_path, weight_key, bias_key, **hub_kwargs
+        )
+
+        proj_weight = proj_tensors[weight_key]
+        proj_bias = proj_tensors.get(bias_key)
+        return Dense(
+            in_features=proj_weight.shape[1],
+            out_features=proj_weight.shape[0],
+            bias=proj_bias is not None,
+            init_weight=proj_weight,
+            init_bias=proj_bias,
+        )
+
+    @staticmethod
+    def _filter_non_colbert_modules(
+        modules: list[nn.Module] | OrderedDict[str, nn.Module],
+    ) -> list[nn.Module] | OrderedDict[str, nn.Module]:
+        """Filter modules to only keep Transformer and Dense modules (remove Pooling, etc.)."""
+        if isinstance(modules, OrderedDict):
+            return OrderedDict(
+                (name, module)
+                for name, module in modules.items()
+                if isinstance(module, (Transformer, DenseSentenceTransformer))
+            )
+        return [
+            module
+            for module in modules
+            if isinstance(module, (Transformer, DenseSentenceTransformer))
+        ]
+
+    def _load_config_modules(
         self,
         model_name_or_path: str,
         token: bool | str | None,
@@ -1347,12 +2115,12 @@ class ColBERT(SentenceTransformer):
         revision: str | None = None,
         trust_remote_code: bool = False,
         local_files_only: bool = False,
-        model_kwargs: dict | None = None,
-        tokenizer_kwargs: dict | None = None,
-        config_kwargs: dict | None = None,
-    ) -> list[nn.Module]:
-        """Create a Sentence Transformer model from a model name or path."""
-        modules, module_kwargs = super()._load_sbert_model(
+        model_kwargs: dict[str, Any] | None = None,
+        processor_kwargs: dict[str, Any] | None = None,
+        config_kwargs: dict[str, Any] | None = None,
+    ) -> tuple[OrderedDict[str, nn.Module], dict[str, Any]]:
+        """Load a ColBERT model from a model name or path (has modules.json)."""
+        modules, module_kwargs = super()._load_config_modules(
             model_name_or_path=model_name_or_path,
             token=token,
             cache_folder=cache_folder,
@@ -1360,47 +2128,38 @@ class ColBERT(SentenceTransformer):
             trust_remote_code=trust_remote_code,
             local_files_only=local_files_only,
             model_kwargs=model_kwargs,
-            tokenizer_kwargs=tokenizer_kwargs,
+            processor_kwargs=processor_kwargs,
             config_kwargs=config_kwargs,
         )
+        return self._filter_non_colbert_modules(modules), module_kwargs
 
-        config_sentence_transformers_json_path = load_file_path(
+    def _load_converted_modules(
+        self,
+        model_name_or_path: str,
+        token: bool | str | None,
+        cache_folder: str | None,
+        revision: str | None = None,
+        trust_remote_code: bool = False,
+        local_files_only: bool = False,
+        model_kwargs: dict[str, Any] | None = None,
+        processor_kwargs: dict[str, Any] | None = None,
+        config_kwargs: dict[str, Any] | None = None,
+        model_type: str | None = None,
+    ) -> tuple[list[nn.Module] | OrderedDict[str, nn.Module], dict[str, Any]]:
+        """Convert a non-ColBERT model (e.g. SentenceTransformer) to ColBERT modules."""
+        # For SentenceTransformer models, load them via _load_config_modules and filter out Pooling
+        modules, module_kwargs = super()._load_config_modules(
             model_name_or_path=model_name_or_path,
-            filename="config_sentence_transformers.json",
             token=token,
             cache_folder=cache_folder,
             revision=revision,
+            trust_remote_code=trust_remote_code,
             local_files_only=local_files_only,
+            model_kwargs=model_kwargs,
+            processor_kwargs=processor_kwargs,
+            config_kwargs=config_kwargs,
         )
-
-        if config_sentence_transformers_json_path is not None:
-            with open(file=config_sentence_transformers_json_path) as fIn:
-                self._model_config = json.load(fp=fIn)
-
-            # Loading the query/document prefixes and query_length
-            if "query_prefix" in self._model_config:
-                self.query_prefix = self._model_config["query_prefix"]
-            if "document_prefix" in self._model_config:
-                self.document_prefix = self._model_config["document_prefix"]
-            if "query_length" in self._model_config:
-                self.query_length = self._model_config["query_length"]
-            if "document_length" in self._model_config:
-                self.document_length = self._model_config["document_length"]
-            if "attend_to_expansion_tokens" in self._model_config:
-                self.attend_to_expansion_tokens = self._model_config[
-                    "attend_to_expansion_tokens"
-                ]
-            if "skiplist_words" in self._model_config:
-                self.skiplist_words = self._model_config["skiplist_words"]
-            if "do_query_expansion" in self._model_config:
-                self.do_query_expansion = self._model_config["do_query_expansion"]
-
-        return [
-            module
-            for module in modules.values()
-            if isinstance(module, Transformer)
-            or isinstance(module, DenseSentenceTransformer)
-        ], module_kwargs
+        return self._filter_non_colbert_modules(modules), module_kwargs
 
     def _get_model_type(
         self,
@@ -1409,9 +2168,9 @@ class ColBERT(SentenceTransformer):
         cache_folder: str | None,
         revision: str | None = None,
         local_files_only: bool = False,
-    ) -> str | None:
+    ) -> str:
         """
-        Overwrite the _get_model_type method to return the model type from the config_sentence_transformers.json file and default to "ColBERT". This is because, ST only use load_sbert_model if the model_type is equals to the class name, else it will use load_auto_model.
+        Overwrite the _get_model_type method to return the model type from the config_sentence_transformers.json file and default to "ColBERT". This is because, ST only use load_config_modules if the model_type is equals to the class name, else it will use load_converted_modules.
 
         Args:
             model_name_or_path (str): The name or path of the pre-trained model.
@@ -1421,7 +2180,7 @@ class ColBERT(SentenceTransformer):
             local_files_only (bool, optional): Whether to use only local files. Defaults to False.
 
         Returns:
-            Optional[str]: The model type (SentenceTransformer or SparseEncoder) if available, None otherwise.
+            str: The model type (SentenceTransformer or SparseEncoder) if available, None otherwise.
         """
         config_sentence_transformers_json_path = load_file_path(
             model_name_or_path,
@@ -1439,4 +2198,4 @@ class ColBERT(SentenceTransformer):
             config = json.load(fIn)
             return config.get(
                 "model_type", "ColBERT"
-            )  # Default to "SentenceTransformer" if not specified
+            )  # Default to "ColBERT" if not specified

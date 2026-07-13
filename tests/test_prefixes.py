@@ -59,72 +59,65 @@ class TestPrefixInit:
         assert model_custom_prefix.document_prefix == "[DOC] "
 
 
-class TestTokenizePrefixInsertion:
-    """Test that tokenize() inserts/skips prefix tokens based on prefix strings."""
+class TestPreprocessPrefixInsertion:
+    """Test that preprocess() inserts/skips prefix tokens based on prefix strings."""
 
     def test_prefix_inserted_when_set(self, model_with_prefix):
-        tokens = model_with_prefix.tokenize(["hello world"], is_query=True)
+        tokens = model_with_prefix.preprocess(["hello world"], is_query=True)
         input_ids = tokens["input_ids"]
         # Second token (after [CLS]) should be the query prefix
         assert input_ids[0, 1].item() == model_with_prefix.query_prefix_id
 
     def test_prefix_not_inserted_when_empty(self, model_without_prefix):
-        tokens = model_without_prefix.tokenize(["hello world"], is_query=True)
-        ref = model_without_prefix._first_module().tokenize(["hello world"])
+        tokens = model_without_prefix.preprocess(["hello world"], is_query=True)
+        ref = model_without_prefix._first_module().preprocess(["hello world"])
         # Token at index 1 should be the first content token, not a prefix
         assert tokens["input_ids"][0, 1].item() == ref["input_ids"][0, 1].item()
         assert model_without_prefix.query_prefix_id is None
 
     def test_document_prefix_inserted_when_set(self, model_with_prefix):
-        tokens = model_with_prefix.tokenize(["hello world"], is_query=False)
+        tokens = model_with_prefix.preprocess(["hello world"], is_query=False)
         input_ids = tokens["input_ids"]
         assert input_ids[0, 1].item() == model_with_prefix.document_prefix_id
 
     def test_document_prefix_not_inserted_when_empty(self, model_without_prefix):
-        tokens = model_without_prefix.tokenize(["hello world"], is_query=False)
-        ref = model_without_prefix._first_module().tokenize(["hello world"])
+        tokens = model_without_prefix.preprocess(["hello world"], is_query=False)
+        ref = model_without_prefix._first_module().preprocess(["hello world"])
         # Token at index 1 should be the first content token, not a prefix
         assert tokens["input_ids"][0, 1].item() == ref["input_ids"][0, 1].item()
         assert model_without_prefix.document_prefix_id is None
 
     def test_custom_query_prefix_inserted(self, model_custom_prefix):
-        tokens = model_custom_prefix.tokenize(["hello world"], is_query=True)
+        tokens = model_custom_prefix.preprocess(["hello world"], is_query=True)
         input_ids = tokens["input_ids"]
         assert input_ids[0, 1].item() == model_custom_prefix.query_prefix_id
 
     def test_custom_document_prefix_inserted(self, model_custom_prefix):
-        tokens = model_custom_prefix.tokenize(["hello world"], is_query=False)
+        tokens = model_custom_prefix.preprocess(["hello world"], is_query=False)
         input_ids = tokens["input_ids"]
         assert input_ids[0, 1].item() == model_custom_prefix.document_prefix_id
 
     def test_seq_length_with_custom_prefix(self, model_custom_prefix):
-        """Custom prefix should also reduce max_seq_length by 1."""
-        model_custom_prefix.tokenize(["hello world"], is_query=True)
-        assert (
-            model_custom_prefix._first_module().max_seq_length
-            == model_custom_prefix.query_length - 1
-        )
+        """With query expansion, output length should be exactly query_length."""
+        tokens = model_custom_prefix.preprocess(["hello world"], is_query=True)
+        assert tokens["input_ids"].shape[1] == model_custom_prefix.query_length
 
     def test_seq_length_with_prefix(self, model_with_prefix):
-        """With prefix, max_seq_length should be max_length - 1."""
-        model_with_prefix.tokenize(["hello world"], is_query=True)
-        assert (
-            model_with_prefix._first_module().max_seq_length
-            == model_with_prefix.query_length - 1
-        )
+        """With query expansion, output length should be exactly query_length."""
+        tokens = model_with_prefix.preprocess(["hello world"], is_query=True)
+        assert tokens["input_ids"].shape[1] == model_with_prefix.query_length
 
     def test_seq_length_without_prefix(self, model_without_prefix):
-        """Without prefix, max_seq_length should be max_length (no -1)."""
-        model_without_prefix.tokenize(["hello world"], is_query=True)
-        assert (
-            model_without_prefix._first_module().max_seq_length
-            == model_without_prefix.query_length
-        )
+        """With query expansion, output length should be exactly query_length."""
+        tokens = model_without_prefix.preprocess(["hello world"], is_query=True)
+        assert tokens["input_ids"].shape[1] == model_without_prefix.query_length
 
     def test_output_length_difference(self, model_with_prefix, model_without_prefix):
         """With prefix, document tokenization has one extra token (the prefix)."""
-        tokens_with = model_with_prefix.tokenize(["hello world"], is_query=False)
-        tokens_without = model_without_prefix.tokenize(["hello world"], is_query=False)
+        tokens_with = model_with_prefix.preprocess(["hello world"], is_query=False)
+        tokens_without = model_without_prefix.preprocess(
+            ["hello world"], is_query=False
+        )
         assert (
             tokens_with["input_ids"].shape[1]
             == tokens_without["input_ids"].shape[1] + 1
@@ -166,7 +159,7 @@ class TestSaveLoadPrefixes:
             model_without_prefix.save(tmpdir)
             loaded = models.ColBERT(model_name_or_path=tmpdir, device="cpu")
 
-            tokens = loaded.tokenize(["hello world"], is_query=True)
+            tokens = loaded.preprocess(["hello world"], is_query=True)
             input_ids = tokens["input_ids"]
             # Should not have the query prefix as second token
             assert input_ids[0, 1].item() != loaded.query_prefix_id
@@ -190,7 +183,7 @@ class TestSaveLoadPrefixes:
             model_custom_prefix.save(tmpdir)
             loaded = models.ColBERT(model_name_or_path=tmpdir, device="cpu")
 
-            tokens = loaded.tokenize(["hello world"], is_query=True)
+            tokens = loaded.preprocess(["hello world"], is_query=True)
             input_ids = tokens["input_ids"]
             assert input_ids[0, 1].item() == loaded.query_prefix_id
 

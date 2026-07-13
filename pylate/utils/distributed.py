@@ -12,6 +12,11 @@ logger = logging.getLogger(__name__)
 _has_warned_dist_not_initialized = False
 
 
+def is_distributed() -> bool:
+    """Return True if torch.distributed is available and initialized."""
+    return dist.is_available() and dist.is_initialized()
+
+
 def all_gather(tensor: torch.Tensor) -> Sequence[torch.Tensor]:
     """Gathers a tensor from each distributed rank into a list. The tensor for the local rank is the original one, with the gradients while the others have no gradients.
 
@@ -37,8 +42,7 @@ def all_gather(tensor: torch.Tensor) -> Sequence[torch.Tensor]:
     """
     global _has_warned_dist_not_initialized
 
-    # Check if torch.distributed is properly available and initialized.
-    if dist.is_available() and dist.is_initialized():
+    if is_distributed():
         world_size = dist.get_world_size()
         gathered_tensors = [torch.zeros_like(tensor) for _ in range(world_size)]
 
@@ -86,8 +90,7 @@ def all_gather_with_gradients(tensor: torch.Tensor) -> Sequence[torch.Tensor]:
     """
     global _has_warned_dist_not_initialized
 
-    # Check if torch.distributed is properly available and initialized.
-    if dist.is_available() and dist.is_initialized():
+    if is_distributed():
         tensor = dist.nn.all_gather(tensor)
         return tensor
 
@@ -104,17 +107,25 @@ def all_gather_with_gradients(tensor: torch.Tensor) -> Sequence[torch.Tensor]:
     return [tensor]
 
 
+def all_reduce_max(tensor: torch.Tensor) -> torch.Tensor:
+    """In-place all-reduce with MAX op across ranks.
+
+    No-op when distributed is not initialized (single-GPU / non-distributed).
+    """
+    if is_distributed():
+        dist.all_reduce(tensor, op=dist.ReduceOp.MAX)
+    return tensor
+
+
 def get_rank() -> int:
     """Returns the current rank in a distributed training."""
-    # Check if torch.distributed is properly available and initialized.
-    if dist.is_available() and dist.is_initialized():
+    if is_distributed():
         return dist.get_rank()
     return 0
 
 
 def get_world_size() -> int:
     """Returns the world size in a distributed training."""
-    # Check if torch.distributed is properly available and initialized.
-    if dist.is_available() and dist.is_initialized():
+    if is_distributed():
         return dist.get_world_size()
     return 1
