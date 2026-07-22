@@ -97,6 +97,10 @@ For the GPU-fitting shapes (any real ColBERT or ColPali workload):
 See [`flash-maxsim` benchmarks](https://github.com/roipony/flash-maxsim) for
 per-shape numbers.
 
+For a head-to-head H100 comparison of flash vs lik vs `erikkaum/maxsim`
+against the PyTorch baseline (inference, training, KD, pairwise, and precision),
+see [Accelerated MaxSim benchmark](maxsim-benchmark.md).
+
 ## Other late-interaction kernels
 
 PyLate is designed to accommodate multiple fused-MaxSim implementations.
