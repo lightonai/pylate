@@ -194,6 +194,14 @@ class ColBERTCollator:
             for key, value in tokenized.items():
                 batch[f"{column_name}_{key}"] = value
 
+        # Keep tensor fields first so Accelerate can infer the batch size when
+        # dispatching batches from an iterable dataset.
+        return_loss = batch.pop("return_loss")
+        dataset_name = batch.pop("dataset_name", None)
+        batch["return_loss"] = return_loss
+        if dataset_name is not None:
+            batch["dataset_name"] = dataset_name
+
         return batch
 
     def _get_prompt_length(self, prompt: str, task: str | None = None) -> int:
