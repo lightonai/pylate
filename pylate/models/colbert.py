@@ -507,6 +507,7 @@ class ColBERT(SentenceTransformer):
         is_query: bool = True,
         pool_factor: int = 1,
         protected_tokens: int = 1,
+        error_bound: float | None = None,
         output_value: str | None = "token_embeddings",
     ) -> list[torch.Tensor] | ndarray | torch.Tensor | dict[str, list]:
         """
@@ -553,8 +554,13 @@ class ColBERT(SentenceTransformer):
         pool_factor
             The factor by which to pool the document embeddings, resulting in 1/pool_factor of the original tokens. If set
             to 1, no pooling is done; if set to 2, 50% of the tokens are kept; if set to 3, 33%, and so on. Defaults to 1.
+            Mutually exclusive with ``error_bound``.
         protected_tokens
             The number of tokens at the beginning of the sequence that should not be pooled. Defaults to 1 (CLS token).
+        error_bound
+            Optional relative Ward-linkage height cut in ``[0, 1]`` for hierarchical pooling. ``0`` keeps all tokens;
+            ``1`` merges all poolable tokens into a single cluster. Mutually exclusive with ``pool_factor > 1``.
+            Defaults to None (disabled; use ``pool_factor`` instead).
         output_value
             Controls the return format. ``"token_embeddings"`` (default): filtered
             per-document token embeddings — the existing behaviour.
@@ -562,19 +568,20 @@ class ColBERT(SentenceTransformer):
             ``"attention_mask"``, and ``"masks"`` (combined skiplist + attention mask,
             bool), each mapping to a list of per-document tensors/arrays of shape
             ``[seq_len, ...]``. The caller applies the mask to obtain aligned embeddings
-            and token IDs. Incompatible with ``pool_factor > 1``.
+            and token IDs. Incompatible with hierarchical pooling.
 
         """
         if output_value not in ("token_embeddings", None):
             raise ValueError(
                 f"output_value must be 'token_embeddings' or None, got {output_value!r}."
             )
-        if output_value is None and pool_factor > 1:
+        if output_value is None and (pool_factor > 1 or error_bound is not None):
             # Pooling merges token embeddings, so the per-token input_ids/masks
             # we would return could no longer be mapped 1-to-1 onto
             # token_embeddings, the pairing would be ill-defined.
             raise ValueError(
-                "output_value=None is not compatible with pool_factor > 1."
+                "output_value=None is not compatible with hierarchical pooling "
+                "(pool_factor > 1 or error_bound)."
             )
 
         if isinstance(sentences, list):
@@ -598,6 +605,7 @@ class ColBERT(SentenceTransformer):
                         is_query=is_query,
                         pool_factor=pool_factor,
                         protected_tokens=protected_tokens,
+                        error_bound=error_bound,
                         output_value=output_value,
                     )
 
@@ -790,11 +798,12 @@ class ColBERT(SentenceTransformer):
                         )
                         batch["token_embeddings"].append(token_emb)
 
-                if pool_factor > 1 and not is_query:
+                if (pool_factor > 1 or error_bound is not None) and not is_query:
                     batch["token_embeddings"] = self.pool_embeddings_hierarchical(
                         documents_embeddings=batch["token_embeddings"],
                         pool_factor=pool_factor,
                         protected_tokens=protected_tokens,
+                        error_bound=error_bound,
                     )
 
                 # fixes for #522 and #487 to avoid oom problems on gpu with large datasets
@@ -865,23 +874,45 @@ class ColBERT(SentenceTransformer):
         documents_embeddings: list[torch.Tensor],
         pool_factor: int = 1,
         protected_tokens: int = 1,
+        error_bound: float | None = None,
     ) -> list[torch.Tensor]:
         """
         Pools the embeddings hierarchically by clustering and averaging them.
+
+        Uses Ward linkage on Euclidean distances between L2-normalized token
+        embeddings. The dendrogram can be cut either to a fixed cluster count
+        (via ``pool_factor``) or at a relative height (via ``error_bound``).
 
         Parameters
         ----------
         documents_embeddings
             A list of embeddings for each document.
         pool_factor
-            Factor to determine the number of clusters. Defaults to 1.
+            Factor to determine the number of clusters
+            (``max(num_tokens // pool_factor, 1)``). Defaults to 1.
+            Mutually exclusive with ``error_bound``.
         protected_tokens
             Number of tokens to protect from pooling at the start of each document. Defaults to 1.
+        error_bound
+            Optional relative Ward-linkage height cut in ``[0, 1]``. The tree is
+            cut with ``criterion="distance"`` at ``error_bound * max_height``, so
+            documents with redundant tokens compress more aggressively than
+            diverse ones. Mutually exclusive with ``pool_factor > 1``.
 
         Returns
         -------
             A list of pooled embeddings for each document.
         """
+        if error_bound is not None:
+            if not 0.0 <= error_bound <= 1.0:
+                raise ValueError(
+                    f"error_bound must be in [0, 1], got {error_bound}."
+                )
+            if pool_factor > 1:
+                raise ValueError(
+                    "Specify either pool_factor (>1) or error_bound, not both."
+                )
+
         pooled_embeddings = []
 
         for document_embeddings in documents_embeddings:
@@ -893,24 +924,37 @@ class ColBERT(SentenceTransformer):
             to_pool = document_embeddings_cpu[protected_tokens:]
 
             num_embeddings = len(to_pool)
-            num_clusters = max(num_embeddings // pool_factor, 1)
-
-            # Skip pooling if it wouldn't reduce anything
-            if num_clusters >= num_embeddings:
+            if num_embeddings <= 1:
                 pooled_embeddings.append(document_embeddings_cpu)
                 continue
 
-            # Compute cosine similarity and convert to condensed distance matrix
-            cos_sim = torch.mm(to_pool, to_pool.t()).numpy()
-            dist_full = 1 - cos_sim
-            # Extract upper triangle as condensed form for scipy linkage
-            condensed = dist_full[np.triu_indices(num_embeddings, k=1)]
+            if error_bound is None:
+                num_clusters = max(num_embeddings // pool_factor, 1)
+                # Skip pooling if it wouldn't reduce anything
+                if num_clusters >= num_embeddings:
+                    pooled_embeddings.append(document_embeddings_cpu)
+                    continue
 
-            # Hierarchical clustering
-            linkage_matrix = hierarchy.linkage(condensed, method="ward")
-            labels = hierarchy.fcluster(
-                linkage_matrix, t=num_clusters, criterion="maxclust"
-            )
+            # Ward linkage requires Euclidean geometry. Pass L2-normalized
+            # observations (not cosine distances) so scipy computes true
+            # Euclidean pairwise distances.
+            observations = torch.nn.functional.normalize(
+                to_pool.float(), p=2, dim=1
+            ).numpy()
+            linkage_matrix = hierarchy.linkage(observations, method="ward")
+
+            if error_bound is None:
+                labels = hierarchy.fcluster(
+                    linkage_matrix, t=num_clusters, criterion="maxclust"
+                )
+            else:
+                # Relative cut of the dendrogram height range in [0, 1].
+                max_height = float(linkage_matrix[-1, 2])
+                distance_threshold = error_bound * max_height
+                labels = hierarchy.fcluster(
+                    linkage_matrix, t=distance_threshold, criterion="distance"
+                )
+                num_clusters = int(labels.max())
 
             # Vectorized cluster mean via scatter_add_
             labels_tensor = torch.from_numpy(labels.astype(np.int64)) - 1  # 0-indexed
@@ -1015,6 +1059,7 @@ class ColBERT(SentenceTransformer):
         is_query: bool = True,
         pool_factor: int = 1,
         protected_tokens: int = 1,
+        error_bound: float | None = None,
     ) -> list[np.ndarray]:
         """
         Encodes a list of sentences using multiple processes and GPUs via
@@ -1058,8 +1103,12 @@ class ColBERT(SentenceTransformer):
             Whether the input sentences are queries. If True, the query prefix is added to the input sentences
         pool_factor
             The factor by which to pool the document embeddings, resulting in 1/pool_factor of the original tokens.
+            Mutually exclusive with ``error_bound``.
         protected_tokens
             The number of tokens at the beginning of the sequence that should not be pooled. Defaults to 1 (CLS token).
+        error_bound
+            Optional relative Ward-linkage height cut in ``[0, 1]`` for hierarchical pooling. Mutually exclusive
+            with ``pool_factor > 1``. Defaults to None.
 
         Examples
         --------
@@ -1112,6 +1161,7 @@ class ColBERT(SentenceTransformer):
                         is_query,
                         pool_factor,
                         protected_tokens,
+                        error_bound,
                     ]
                 )
                 last_chunk_id += 1
@@ -1131,6 +1181,7 @@ class ColBERT(SentenceTransformer):
                     is_query,
                     pool_factor,
                     protected_tokens,
+                    error_bound,
                 ]
             )
             last_chunk_id += 1

@@ -91,6 +91,7 @@ def _encode_multi_process_worker(
                 is_query,
                 pool_factor,
                 protected_tokens,
+                error_bound,
             ) = input_queue.get()
 
             embeddings = model.encode(
@@ -107,6 +108,7 @@ def _encode_multi_process_worker(
                 is_query=is_query,
                 pool_factor=pool_factor,
                 protected_tokens=protected_tokens,
+                error_bound=error_bound,
             )
 
             results_queue.put([chunk_id, embeddings])

@@ -109,8 +109,14 @@ def test_encode_output_value_none_with_padding(model):
 
 def test_encode_output_value_none_rejects_pool_factor(model):
     """Pooling merges tokens, so token IDs can no longer align with embeddings."""
-    with pytest.raises(ValueError, match="pool_factor"):
+    with pytest.raises(ValueError, match="hierarchical pooling"):
         model.encode(DOCUMENTS, is_query=False, output_value=None, pool_factor=2)
+
+
+def test_encode_output_value_none_rejects_error_bound(model):
+    """Error-bound pooling also merges tokens and breaks ID alignment."""
+    with pytest.raises(ValueError, match="hierarchical pooling"):
+        model.encode(DOCUMENTS, is_query=False, output_value=None, error_bound=0.3)
 
 
 def test_encode_output_value_invalid_raises(model):

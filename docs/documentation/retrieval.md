@@ -175,18 +175,32 @@ scores = retriever.retrieve(
 
 To reduce the memory and storage footprint of the index, you can "pool" similar token embeddings within a document. This technique averages token embeddings that are close to each other in the embedding space, effectively compressing the document representation.
 
-You can enable this by setting the `pool_factor` during document encoding. A `pool_factor` of 2 will attempt to reduce the number of token embeddings by half.
+Hierarchical pooling uses Ward linkage on Euclidean distances between L2-normalized token embeddings. You can cut the dendrogram in either of two ways:
+
+- **Fixed budget** (`pool_factor`): keep about `1/pool_factor` of the tokens in every document.
+- **Adaptive / error bound** (`error_bound` in `[0, 1]`): cut at a relative Ward-linkage height so easy documents compress more and hard ones keep more tokens. `0` keeps all tokens; `1` merges all poolable tokens into one cluster.
+
+These two options are mutually exclusive.
 
 ???+ tip "Performance vs. Compression"
 	As detailed in [this blog post](https://www.answer.ai/posts/colbert-pooling.html), a `pool_factor` of **2** can halve the index size with virtually zero drop in retrieval performance. Higher factors offer more compression at the cost of some accuracy.
 
     ```python
-    # Example of encoding with pooling
+    # Fixed budget: keep ~1/2 of the original tokens in every document
     documents_embeddings = model.encode(
         documents,
         batch_size=32,
         is_query=False,
-        pool_factor=2,  # Keep 1/2 of the original tokens
+        pool_factor=2,
+        show_progress_bar=True,
+    )
+
+    # Adaptive cut: relative Ward height in [0, 1]
+    documents_embeddings = model.encode(
+        documents,
+        batch_size=32,
+        is_query=False,
+        error_bound=0.35,
         show_progress_bar=True,
     )
     ```
