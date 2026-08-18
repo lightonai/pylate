@@ -176,11 +176,15 @@ class ColBERTDistillationEvaluator(SentenceEvaluator):
             max_scores, _ = torch.max(scores, dim=1, keepdim=True)
             min_scores, _ = torch.min(scores, dim=1, keepdim=True)
 
-            # Avoid division by zero by adding a small epsilon
-            epsilon = 1e-8
+            # Clamp the denominator rather than adding an epsilon to it: 1e-8 is not
+            # representable in float16 (smallest subnormal ~5.96e-8), so under
+            # autocast(float16) the guard rounded to zero and a degenerate group
+            # produced NaN. finfo.tiny is representable in every supported dtype, and
+            # keeps the backward pass inside float16's range.
+            epsilon = torch.finfo(scores.dtype).tiny
 
             # Normalize the scores
-            scores = (scores - min_scores) / (max_scores - min_scores + epsilon)
+            scores = (scores - min_scores) / (max_scores - min_scores).clamp(min=epsilon)
         kl_divergence = self.loss(
             torch.nn.functional.log_softmax(scores, dim=-1),
             torch.nn.functional.log_softmax(
