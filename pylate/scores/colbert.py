@@ -197,7 +197,9 @@ def colbert_scores(
 
     if documents_mask is not None:
         scores = scores * documents_mask.unsqueeze(0).unsqueeze(2)
-    scores = scores.max(axis=-1).values.sum(axis=-1)
+    # accumulate the per-query-token maxima in fp32: summing ~32 terms in fp16/bf16
+    # loses retrieval quality, and reduced precision is the documented training path
+    scores = scores.max(axis=-1).values.sum(axis=-1, dtype=torch.float32)
     return scores
 
 
