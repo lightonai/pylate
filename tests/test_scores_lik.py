@@ -24,17 +24,24 @@ from pylate.scores._lik_backend import LIKUnsupported
 
 _LIK_INSTALLED = importlib.util.find_spec("late_interaction_kernels") is not None
 _HAS_CUDA = torch.cuda.is_available()
+# LIK ships MPS kernels as well as CUDA ones, and `_lik_backend.is_available()`
+# accepts either, so the parity tests should run on whichever accelerator is present.
+_ACCELERATOR = "cuda" if _HAS_CUDA else ("mps" if torch.backends.mps.is_available() else None)
 
 requires_lik = pytest.mark.skipif(
+    not (_LIK_INSTALLED and _ACCELERATOR),
+    reason="requires CUDA or MPS + late-interaction-kernels",
+)
+requires_lik_cuda = pytest.mark.skipif(
     not (_LIK_INSTALLED and _HAS_CUDA),
-    reason="requires CUDA + late-interaction-kernels",
+    reason="LIK path under test is CUDA-only",
 )
 
 EMBEDDING_DIM: int = 128
 
 
 def _norm(shape: tuple[int, ...], dtype: torch.dtype = torch.float16) -> torch.Tensor:
-    x = torch.randn(*shape, dtype=dtype, device="cuda")
+    x = torch.randn(*shape, dtype=dtype, device=_ACCELERATOR)
     return F.normalize(x, dim=-1)
 
 
@@ -121,8 +128,8 @@ def test_colbert_scores_parity(dtype: torch.dtype) -> None:
     Nq, B, Lq, Ld = 4, 8, 32, 180
     query = _norm((Nq, Lq, EMBEDDING_DIM), dtype=dtype)
     doc = _norm((B, Ld, EMBEDDING_DIM), dtype=dtype)
-    q_mask = torch.ones(Nq, Lq, device="cuda")
-    d_mask = torch.ones(B, Ld, device="cuda")
+    q_mask = torch.ones(Nq, Lq, device=_ACCELERATOR)
+    d_mask = torch.ones(B, Ld, device=_ACCELERATOR)
     q_mask[1, 20:] = 0
     d_mask[3, 100:] = 0
 
@@ -133,7 +140,7 @@ def test_colbert_scores_parity(dtype: torch.dtype) -> None:
     torch.testing.assert_close(got.float(), ref.float(), atol=atol, rtol=atol)
 
 
-@requires_lik
+@requires_lik_cuda
 def test_colbert_scores_pairwise_parity() -> None:
     torch.manual_seed(0)
     B, Lq, Ld = 6, 32, 180
@@ -146,14 +153,14 @@ def test_colbert_scores_pairwise_parity() -> None:
     torch.testing.assert_close(got.float(), ref.float(), atol=5e-2, rtol=5e-2)
 
 
-@requires_lik
+@requires_lik_cuda
 def test_colbert_kd_scores_parity() -> None:
     torch.manual_seed(0)
     Nq, B, Lq, Ld = 4, 4, 32, 180
     query = _norm((Nq, Lq, EMBEDDING_DIM))
     doc = _norm((Nq, B, Ld, EMBEDDING_DIM))
-    q_mask = torch.ones(Nq, Lq, device="cuda")
-    d_mask = torch.ones(Nq, B, Ld, device="cuda")
+    q_mask = torch.ones(Nq, Lq, device=_ACCELERATOR)
+    d_mask = torch.ones(Nq, B, Ld, device=_ACCELERATOR)
     q_mask[0, 28:] = 0
     d_mask[1, 2, 150:] = 0
 
@@ -163,17 +170,17 @@ def test_colbert_kd_scores_parity() -> None:
     torch.testing.assert_close(got.float(), ref.float(), atol=5e-2, rtol=5e-2)
 
 
-@requires_lik
+@requires_lik_cuda
 def test_colbert_kd_scores_variable_lengths_parity() -> None:
     """KD parity with right-padded per-(query, doc) lengths."""
     torch.manual_seed(3)
     Nq, B, Lq, Ld = 4, 5, 12, 24
     query = _norm((Nq, Lq, EMBEDDING_DIM), dtype=torch.float32)
     doc = _norm((Nq, B, Ld, EMBEDDING_DIM), dtype=torch.float32)
-    q_mask = torch.zeros(Nq, Lq, device="cuda")
+    q_mask = torch.zeros(Nq, Lq, device=_ACCELERATOR)
     for i in range(Nq):
         q_mask[i, : 6 + i] = 1.0
-    d_mask = torch.zeros(Nq, B, Ld, device="cuda")
+    d_mask = torch.zeros(Nq, B, Ld, device=_ACCELERATOR)
     for i in range(Nq):
         for j in range(B):
             d_mask[i, j, : 10 + j] = 1.0
@@ -225,7 +232,7 @@ def test_training_smoke() -> None:
         _norm((B, Ld, EMBEDDING_DIM), dtype=torch.float32).detach().requires_grad_(True)
     )
     optimizer = torch.optim.SGD([query, doc], lr=1e-2)
-    labels = torch.arange(B, device="cuda")
+    labels = torch.arange(B, device=_ACCELERATOR)
 
     losses: list[float] = []
     for _ in range(5):
@@ -244,9 +251,9 @@ def test_training_smoke() -> None:
 def test_lik_unsupported_strict_propagates() -> None:
     """backend='lik' (strict) re-raises LIKUnsupported instead of falling back."""
     query = torch.zeros(
-        2, 4, 100, device="cuda", dtype=torch.float16
+        2, 4, 100, device=_ACCELERATOR, dtype=torch.float16
     )  # head dim 100: not a multiple of 8
-    doc = torch.zeros(3, 5, 100, device="cuda", dtype=torch.float16)
+    doc = torch.zeros(3, 5, 100, device=_ACCELERATOR, dtype=torch.float16)
     with pytest.raises(LIKUnsupported):
         colbert_scores(query, doc, backend="lik")
 
