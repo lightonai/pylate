@@ -44,17 +44,63 @@ class RandContext:
         self._fork = None
 
 
+def _capture_autocast_kwargs() -> dict:
+    """Snapshot the autocast context that is active during ``forward``.
+
+    GradCache's backward hook runs after that context has exited. Recomputing
+    the embedding pass in full precision against low-precision cached grads
+    either crashes on a dtype mismatch or produces the wrong Jacobian.
+    """
+    for device_type in ("cuda", "cpu", "mps"):
+        try:
+            enabled = torch.is_autocast_enabled(device_type)
+        except (TypeError, RuntimeError):
+            continue
+        if not enabled:
+            continue
+        try:
+            dtype = torch.get_autocast_dtype(device_type)
+        except (AttributeError, TypeError, RuntimeError):
+            if device_type == "cuda":
+                dtype = torch.get_autocast_gpu_dtype()
+            elif device_type == "cpu" and hasattr(torch, "get_autocast_cpu_dtype"):
+                dtype = torch.get_autocast_cpu_dtype()
+            else:
+                dtype = torch.bfloat16
+        return {"device_type": device_type, "dtype": dtype, "enabled": True}
+
+    if torch.is_autocast_enabled():
+        return {
+            "device_type": "cuda",
+            "dtype": torch.get_autocast_gpu_dtype(),
+            "enabled": True,
+        }
+    if getattr(torch, "is_autocast_cpu_enabled", lambda: False)():
+        return {
+            "device_type": "cpu",
+            "dtype": torch.get_autocast_cpu_dtype(),
+            "enabled": True,
+        }
+    return {"device_type": "cpu", "dtype": torch.float32, "enabled": False}
+
+
 def _backward_hook(
     grad_output: Tensor,
     sentence_features: Iterable[dict[str, Tensor]],
     loss_obj,
+    autocast_kwargs: dict | None = None,
 ) -> None:
     """A backward hook that re-runs the forward for each mini-batch with gradients enabled
     and uses the cached partial derivatives w.r.t. the embeddings to backprop.
     """
     assert loss_obj.cache is not None
     assert loss_obj.random_states is not None
-    with torch.enable_grad():
+    autocast_ctx = (
+        torch.autocast(**autocast_kwargs)
+        if autocast_kwargs is not None
+        else nullcontext()
+    )
+    with torch.enable_grad(), autocast_ctx:
         for sentence_feature, grad, random_states in zip(
             sentence_features, loss_obj.cache, loss_obj.random_states
         ):
@@ -374,7 +420,10 @@ class CachedContrastive(nn.Module):
             # Step (3): A 2nd embedding step with gradients/computation graphs and connect the cached gradients into the backward chain
             loss.register_hook(
                 partial(
-                    _backward_hook, sentence_features=sentence_features, loss_obj=self
+                    _backward_hook,
+                    sentence_features=sentence_features,
+                    loss_obj=self,
+                    autocast_kwargs=_capture_autocast_kwargs(),
                 )
             )
         else:
