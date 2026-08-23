@@ -245,8 +245,6 @@ class ColBERTTripletEvaluator(TripletEvaluator):
         for metric in self.metrics:
             logger.info(f"{metric.capitalize()}: \t{metrics[metric]:.2f}")
 
-        self.store_metrics_in_model_card_data(model=model, metrics=metrics)
-
         if output_path is not None and self.write_csv:
             csv_writer(
                 path=os.path.join(output_path, self.csv_file),
@@ -257,5 +255,10 @@ class ColBERTTripletEvaluator(TripletEvaluator):
                 ]
                 + [metrics[metric] for metric in self.metrics],
             )
+
+        metrics = self.prefix_name_to_metrics(metrics=metrics, name=self.name)
+        self.store_metrics_in_model_card_data(
+            model=model, metrics=metrics, epoch=epoch, step=steps
+        )
 
         return metrics
