@@ -190,7 +190,7 @@ class ColBERTDistillationEvaluator(SentenceEvaluator):
         metrics = self.prefix_name_to_metrics(
             {"kl_divergence": kl_divergence}, self.name
         )
-        self.store_metrics_in_model_card_data(model, metrics)
+        self.store_metrics_in_model_card_data(model, metrics, epoch, steps)
 
         if output_path is not None and self.write_csv:
             csv_writer(
