@@ -124,6 +124,8 @@ def rerank(
             for query_document_embeddings in query_documents_embeddings
         ]
 
+        document_lengths = [len(document) for document in query_documents_embeddings]
+
         # Pad the documents embeddings
         query_documents_embeddings = torch.nn.utils.rnn.pad_sequence(
             query_documents_embeddings, batch_first=True, padding_value=0
@@ -137,9 +139,19 @@ def rerank(
                 query_embeddings.device
             )
 
+        # Exclude padding from MaxSim even when all real similarities are negative.
+        document_lengths = torch.tensor(
+            document_lengths, device=query_documents_embeddings.device
+        )
+        documents_mask = torch.arange(
+            query_documents_embeddings.shape[1],
+            device=query_documents_embeddings.device,
+        ).unsqueeze(0) < document_lengths.unsqueeze(1)
+
         query_scores = colbert_scores(
             queries_embeddings=query_embeddings.unsqueeze(0),
             documents_embeddings=query_documents_embeddings,
+            documents_mask=documents_mask,
         )[0]
 
         scores, sorted_indices = torch.sort(input=query_scores, descending=True)

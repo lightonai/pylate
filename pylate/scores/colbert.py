@@ -192,12 +192,19 @@ def colbert_scores(
         documents_embeddings,
     )
 
-    if queries_mask is not None:
-        scores = scores * queries_mask.unsqueeze(1).unsqueeze(3)
-
     if documents_mask is not None:
-        scores = scores * documents_mask.unsqueeze(0).unsqueeze(2)
-    scores = scores.max(axis=-1).values.sum(axis=-1)
+        # Padding must not win the max when all real similarities are negative.
+        scores = torch.where(
+            documents_mask.unsqueeze(0).unsqueeze(2) != 0, scores, float("-inf")
+        )
+
+    maxima = scores.max(axis=-1).values
+
+    if queries_mask is not None:
+        # Mask after the max to avoid 0 * -inf for fully masked documents.
+        maxima = maxima.masked_fill(queries_mask.unsqueeze(1) == 0, 0)
+
+    scores = maxima.sum(axis=-1)
     return scores
 
 
@@ -379,13 +386,18 @@ def colbert_kd_scores(
         documents_embeddings,
     )
 
-    if queries_mask is not None:
-        scores = scores * queries_mask.unsqueeze(1).unsqueeze(3)
-
     if documents_mask is not None:
-        scores = scores * documents_mask.unsqueeze(2)
+        # Exclude padded document tokens from the max (see colbert_scores):
+        # zeroing would floor each query-token max at 0.
+        scores = torch.where(documents_mask.unsqueeze(2) != 0, scores, float("-inf"))
 
-    scores = scores.max(axis=-1).values.sum(axis=-1)
+    maxima = scores.max(axis=-1).values
+
+    if queries_mask is not None:
+        # Mask after the max to avoid 0 * -inf for fully masked documents.
+        maxima = maxima.masked_fill(queries_mask.unsqueeze(1) == 0, 0)
+
+    scores = maxima.sum(axis=-1)
     return scores
 
 
