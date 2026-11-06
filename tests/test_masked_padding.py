@@ -9,6 +9,8 @@ could even reorder a ranking.
 
 from __future__ import annotations
 
+import numpy as np
+import pytest
 import torch
 
 from pylate.rank import rerank
@@ -44,18 +46,41 @@ class TestMaskedPaddingExclusion:
 
         torch.testing.assert_close(padded, dense)
 
-    def test_rerank_unequal_lengths_are_not_reordered_by_padding(self) -> None:
+    @pytest.mark.parametrize(
+        "device",
+        [
+            None,
+            "cpu",
+            pytest.param(
+                "cuda",
+                marks=pytest.mark.skipif(
+                    not torch.cuda.is_available(), reason="requires CUDA"
+                ),
+            ),
+        ],
+    )
+    def test_rerank_unequal_lengths_are_not_reordered_by_padding(self, device) -> None:
         q = torch.tensor([[[-1.0], [-1.0]]])
-        # docA has 2 real tokens, docB has 1 real token (gets one pad slot).
+        # B has worse real similarities, but its zero padding used to win the max.
         results = rerank(
             documents_ids=[["A", "B"]],
             queries_embeddings=q,
             documents_embeddings=[
-                [torch.tensor([[1.0], [1.0]]), torch.tensor([[1.0]])],
+                [torch.tensor([[1.0], [1.0]]), torch.tensor([[2.0]])],
             ],
+            device=device,
         )
-        by_id = {r["id"]: r["score"] for r in results[0]}
-        assert by_id["A"] == by_id["B"]
+        assert results == [[{"id": "A", "score": -2.0}, {"id": "B", "score": -4.0}]]
+
+    @pytest.mark.parametrize("array", [torch.tensor, np.array])
+    def test_rerank_accepts_integer_embeddings(self, array) -> None:
+        results = rerank(
+            documents_ids=[["A", "B"]],
+            queries_embeddings=[array([[-1], [-1]])],
+            documents_embeddings=[[array([[1], [1]]), array([[2]])]],
+        )
+
+        assert results == [[{"id": "A", "score": -2.0}, {"id": "B", "score": -4.0}]]
 
     def test_padded_query_token_contributes_zero_no_nan(self) -> None:
         q = torch.tensor([[[-1.0], [-1.0]]])
@@ -76,4 +101,41 @@ class TestMaskedPaddingExclusion:
         out = colbert_scores(q, doc, documents_mask=doc_mask)
 
         assert not torch.isnan(out).any()
-        assert torch.isinf(out).all()
+        assert torch.isneginf(out).all()
+
+    @pytest.mark.parametrize("scorer", [colbert_scores, colbert_kd_scores])
+    def test_masked_tokens_do_not_receive_gradients(self, scorer) -> None:
+        q = torch.tensor([[[-1.0], [-2.0]]], requires_grad=True)
+        doc = torch.tensor([[[1.0], [2.0], [0.0]]], requires_grad=True)
+        doc_mask = torch.tensor([[1.0, 1.0, 0.0]])
+        kd = scorer is colbert_kd_scores
+
+        out = scorer(
+            q,
+            doc.unsqueeze(0) if kd else doc,
+            queries_mask=torch.tensor([[1.0, 0.0]]),
+            documents_mask=doc_mask.unsqueeze(0) if kd else doc_mask,
+            backend="torch",
+        )
+        out.sum().backward()
+
+        torch.testing.assert_close(out, torch.tensor([[-1.0]]))
+        torch.testing.assert_close(q.grad, torch.tensor([[[1.0], [0.0]]]))
+        torch.testing.assert_close(doc.grad, torch.tensor([[[-1.0], [0.0], [0.0]]]))
+
+    @pytest.mark.parametrize("scorer", [colbert_scores, colbert_kd_scores])
+    def test_fully_masked_queries_and_documents_score_zero(self, scorer) -> None:
+        q = torch.tensor([[[-1.0], [-1.0]]])
+        doc = torch.tensor([[[1.0], [1.0]]])
+        doc_mask = torch.zeros(1, 2)
+        kd = scorer is colbert_kd_scores
+
+        out = scorer(
+            q,
+            doc.unsqueeze(0) if kd else doc,
+            queries_mask=torch.zeros(1, 2),
+            documents_mask=doc_mask.unsqueeze(0) if kd else doc_mask,
+            backend="torch",
+        )
+
+        torch.testing.assert_close(out, torch.zeros(1, 1))

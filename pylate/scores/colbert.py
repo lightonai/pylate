@@ -193,24 +193,16 @@ def colbert_scores(
     )
 
     if documents_mask is not None:
-        # Padded document tokens must be excluded from the max, not zeroed:
-        # zeroing floors every query-token max at 0, so padding wins whenever
-        # a query token's real similarities are all negative. -inf masking
-        # keeps the flash/LIK backends (which mask by length) numerically
-        # equivalent on padded inputs.
-        scores = scores.masked_fill(
-            documents_mask.unsqueeze(0).unsqueeze(2) == 0, float("-inf")
+        # Padding must not win the max when all real similarities are negative.
+        scores = torch.where(
+            documents_mask.unsqueeze(0).unsqueeze(2) != 0, scores, float("-inf")
         )
 
     maxima = scores.max(axis=-1).values
 
     if queries_mask is not None:
-        # Padded query tokens must contribute exactly 0 to the sum. Do this
-        # AFTER the max: multiplying pre-max scores either leaks -inf into
-        # the sum (query row zeroed but the document fully padded -> max is
-        # -inf) or yields NaN (0 * -inf) if applied after the doc mask.
-        keep = queries_mask.unsqueeze(1).to(torch.bool)
-        maxima = torch.where(keep, maxima, torch.zeros((), dtype=maxima.dtype))
+        # Mask after the max to avoid 0 * -inf for fully masked documents.
+        maxima = maxima.masked_fill(queries_mask.unsqueeze(1) == 0, 0)
 
     scores = maxima.sum(axis=-1)
     return scores
@@ -397,15 +389,13 @@ def colbert_kd_scores(
     if documents_mask is not None:
         # Exclude padded document tokens from the max (see colbert_scores):
         # zeroing would floor each query-token max at 0.
-        scores = scores.masked_fill(documents_mask.unsqueeze(2) == 0, float("-inf"))
+        scores = torch.where(documents_mask.unsqueeze(2) != 0, scores, float("-inf"))
 
     maxima = scores.max(axis=-1).values
 
     if queries_mask is not None:
-        # Padded query tokens contribute exactly 0 (after the max, see
-        # colbert_scores): avoids both -inf leakage and 0 * -inf NaN.
-        keep = queries_mask.unsqueeze(1).to(torch.bool)
-        maxima = torch.where(keep, maxima, torch.zeros((), dtype=maxima.dtype))
+        # Mask after the max to avoid 0 * -inf for fully masked documents.
+        maxima = maxima.masked_fill(queries_mask.unsqueeze(1) == 0, 0)
 
     scores = maxima.sum(axis=-1)
     return scores

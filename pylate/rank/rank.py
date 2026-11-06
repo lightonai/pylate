@@ -124,13 +124,7 @@ def rerank(
             for query_document_embeddings in query_documents_embeddings
         ]
 
-        # Build the real-length document mask before padding so padded slots
-        # are excluded from MaxSim instead of flooring each query-token max
-        # at 0 (see pylate.scores.colbert.colbert_scores).
-        doc_lengths = torch.tensor(
-            [len(document) for document in query_documents_embeddings],
-            dtype=torch.long,
-        )
+        document_lengths = [len(document) for document in query_documents_embeddings]
 
         # Pad the documents embeddings
         query_documents_embeddings = torch.nn.utils.rnn.pad_sequence(
@@ -145,18 +139,19 @@ def rerank(
                 query_embeddings.device
             )
 
-        doc_mask = (
-            torch.arange(
-                query_documents_embeddings.shape[1],
-                device=query_documents_embeddings.device,
-            ).unsqueeze(0)
-            < doc_lengths.unsqueeze(1)
-        ).to(query_documents_embeddings.dtype)
+        # Exclude padding from MaxSim even when all real similarities are negative.
+        document_lengths = torch.tensor(
+            document_lengths, device=query_documents_embeddings.device
+        )
+        documents_mask = torch.arange(
+            query_documents_embeddings.shape[1],
+            device=query_documents_embeddings.device,
+        ).unsqueeze(0) < document_lengths.unsqueeze(1)
 
         query_scores = colbert_scores(
             queries_embeddings=query_embeddings.unsqueeze(0),
             documents_embeddings=query_documents_embeddings,
-            documents_mask=doc_mask,
+            documents_mask=documents_mask,
         )[0]
 
         scores, sorted_indices = torch.sort(input=query_scores, descending=True)
