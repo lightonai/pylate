@@ -404,6 +404,27 @@ results = index(queries_embeddings, k=10)
 
 All build and search hyperparameters are optional with corpus-adaptive defaults — zero-parameter builds work well out of the box on ColBERTv2.0. See the `TachiomIndex` docstring for the full parameter reference.
 
+## MLXVS Retrieval (Apple silicon GPU)
+
+On Apple silicon Macs, `indexes.MLXVS` searches the document tokens on the GPU with [mlxvs](https://github.com/mikepapadim/mlxvs), built on Apple's MLX. It is a token-level index like `Voyager`: the `ColBERT` retriever searches each query token's nearest document tokens, then reranks the candidate documents with MaxSim.
+
+By default the search is exact: every query token is scored against every document token, so building the index costs nothing. With `exact=False` it searches a CAGRA graph index (the graph search of NVIDIA cuVS), which pays a build for faster searches on large collections. Documents can be added in several calls and removed.
+
+```bash
+pip install "pylate[mlxvs]"
+```
+
+```python
+from pylate import indexes, retrieve
+
+index = indexes.MLXVS(embedding_size=128)  # exact=False for the graph index
+index.add_documents(documents_ids=documents_ids, documents_embeddings=documents_embeddings)
+retriever = retrieve.ColBERT(index=index)
+scores = retriever.retrieve(queries_embeddings=queries_embeddings, k=10)
+```
+
+On SciFact (5,183 documents, 1.19M tokens, `lightonai/GTE-ModernColBERT-v1`, MacBook Pro M3 Pro), the 300 queries' token searches take 2.8 s exact and 0.06 s with the graph index (built in 14.5 s), with the same NDCG@10 (0.7599) as Voyager (0.7598) and PLAID (0.7590).
+
 ## Reranking
 
 To perform reranking on top of your first-stage retrieval pipeline without building an index, you can simply use `rank.rerank` function which takes the queries and documents embeddings along with the documents ids to rerank them:
