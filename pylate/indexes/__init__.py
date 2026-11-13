@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from .mlxvs import MLXVS
 from .plaid import PLAID
 from .scann import ScaNN
 from .tachiom import TachiomIndex
@@ -12,4 +13,5 @@ __all__ = [
     "ScaNN",
     "TachiomIndex",
     "WARP",
+    "MLXVS",
 ]
