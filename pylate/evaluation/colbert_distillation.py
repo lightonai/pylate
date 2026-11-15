@@ -10,6 +10,7 @@ from sentence_transformers.evaluation.SentenceEvaluator import SentenceEvaluator
 from sentence_transformers.SentenceTransformer import SentenceTransformer
 
 from ..scores import colbert_kd_scores
+from ..scores._normalization import normalize_distillation_scores
 from .colbert_triplet import csv_writer, evaluation_message
 
 logger = logging.getLogger(__name__)
@@ -38,6 +39,9 @@ class ColBERTDistillationEvaluator(SentenceEvaluator):
         Whether to write the results to a CSV file.
     truncate_dim
         The dimension to truncate the embeddings.
+    normalize_scores
+        Whether to min-max normalize scores. Very small denominators are floored
+        at the dtype's smallest normal value to avoid zero division in float16.
 
 
     Examples
@@ -172,15 +176,7 @@ class ColBERTDistillationEvaluator(SentenceEvaluator):
             documents_embeddings=documents_embeddings,
         )
         if self.normalize_scores:
-            # Compute max and min along the num_scores dimension (dim=1)
-            max_scores, _ = torch.max(scores, dim=1, keepdim=True)
-            min_scores, _ = torch.min(scores, dim=1, keepdim=True)
-
-            # Avoid division by zero by adding a small epsilon
-            epsilon = 1e-8
-
-            # Normalize the scores
-            scores = (scores - min_scores) / (max_scores - min_scores + epsilon)
+            scores = normalize_distillation_scores(scores)
         kl_divergence = self.loss(
             torch.nn.functional.log_softmax(scores, dim=-1),
             torch.nn.functional.log_softmax(

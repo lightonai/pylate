@@ -6,6 +6,7 @@ import torch
 
 from ..models import ColBERT
 from ..scores import colbert_kd_scores
+from ..scores._normalization import normalize_distillation_scores
 from .contrastive import extract_skiplist_mask
 
 
@@ -22,6 +23,8 @@ class Distillation(torch.nn.Module):
         Average by the size of the mini-batch or perform sum.
     normalize_scores
         Whether to min-max normalize scores before computing the loss.
+        Very small denominators are floored at the dtype's smallest normal value
+        to avoid zero division and overflowing unscaled gradients in float16.
 
     Examples
     --------
@@ -121,15 +124,7 @@ class Distillation(torch.nn.Module):
             documents_mask=documents_embeddings_mask,
         )
         if self.normalize_scores:
-            # Compute max and min along the num_scores dimension (dim=1)
-            max_scores, _ = torch.max(scores, dim=1, keepdim=True)
-            min_scores, _ = torch.min(scores, dim=1, keepdim=True)
-
-            # Avoid division by zero by adding a small epsilon
-            epsilon = 1e-8
-
-            # Normalize the scores
-            scores = (scores - min_scores) / (max_scores - min_scores + epsilon)
+            scores = normalize_distillation_scores(scores)
         return self.loss_function(
             torch.nn.functional.log_softmax(scores, dim=-1),
             torch.nn.functional.log_softmax(labels, dim=-1),
